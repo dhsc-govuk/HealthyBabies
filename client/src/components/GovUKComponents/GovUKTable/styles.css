@@ -1,0 +1,88 @@
+/* GovUK Table Filter Component
+ * Uses GOV.UK Design System classes where possible
+ * Custom styles only for layout that isn't covered by the design system
+ */
+
+/* Filter container - uses GOV.UK grid row
+ * Override govuk-grid-row float layout with flex to align inputs at the bottom
+ */
+.govuk-table-filter {
+  margin-bottom: 20px;
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+/* Ensure consistent label styling across search and sort */
+.govuk-table-filter .govuk-label {
+  margin-bottom: 5px;
+}
+
+/* Search input wrapper for input + button layout */
+.govuk-table-filter__search {
+  display: flex;
+}
+
+/* Extend govuk-input for flex layout */
+.govuk-table-filter__input {
+  flex: 1;
+  margin-bottom: 0;
+  height: 40px;
+  box-sizing: border-box;
+}
+
+/* Search button styling - matches GOV.UK button colours */
+.govuk-table-filter__search-button {
+  background-color: #1d70b8;
+  border: none;
+  width: 40px;
+  height: 40px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.govuk-table-filter__search-button:hover {
+  background-color: #003078;
+}
+
+.govuk-table-filter__search-button:focus {
+  outline: 3px solid #ffdd00;
+  outline-offset: 0;
+  background-color: #ffdd00;
+}
+
+.govuk-table-filter__search-button:focus svg circle,
+.govuk-table-filter__search-button:focus svg line {
+  stroke: #0b0c0c;
+}
+
+/* Style native select to match GOV.UK Design System */
+.govuk-table-filter .govuk-select {
+  font-family: "GDS Transport", arial, sans-serif;
+  font-size: 19px;
+  font-weight: 400;
+  line-height: 1.25;
+  width: 100%;
+  height: 40px;
+  padding: 5px;
+  border: 2px solid #0b0c0c;
+  box-sizing: border-box;
+}
+
+/* Clickable table rows */
+.govuk-table-row--clickable {
+  cursor: pointer;
+}
+
+/* Table action links */
+.govuk-table__actions {
+  display: flex;
+  gap: 15px;
+  justify-content: flex-end;
+}
+
+.govuk-table__actions a {
+  white-space: nowrap;
+}

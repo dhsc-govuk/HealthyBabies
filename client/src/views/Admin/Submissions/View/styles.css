@@ -1,0 +1,71 @@
+/* Submission View Styles - Custom layouts only */
+
+/* Files Section - flex layout for icon + content */
+.submission-files__item {
+  display: flex;
+  gap: 15px;
+}
+
+.submission-files__downloads {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.submission-files__download-button {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+  font-size: inherit;
+  font-family: inherit;
+}
+
+.submission-files__download-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* Local Authority Filters - row alignment */
+.submission-la-filters__row {
+  display: flex;
+  gap: 20px;
+  align-items: flex-start;
+}
+
+.submission-la-filters__search {
+  flex: 1;
+  padding-top: 23px;
+}
+
+.submission-la-filters__search-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.submission-la-filters__sort,
+.submission-la-filters__filter {
+  padding-top: 23px;
+}
+
+/* Local Authority List - flex layout */
+.submission-la-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  border-top: 1px solid #b1b4b6;
+}
+
+.submission-la-list__item {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 15px 0;
+  border-bottom: 1px solid #b1b4b6;
+}
+
+.submission-la-list__item--empty {
+  justify-content: center;
+}

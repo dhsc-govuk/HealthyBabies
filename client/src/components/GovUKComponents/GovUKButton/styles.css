@@ -1,0 +1,38 @@
+/*
+ * GovUKButton loading state styles.
+ *
+ * The button uses position: relative so the spinner wrapper can overlay it.
+ * The label text is hidden (visibility: hidden) when loading to preserve the
+ * button's width — no layout shift when switching to the loading state.
+ */
+
+.govuk-button {
+  position: relative;
+}
+
+/* Full-button overlay that centres the spinner with flexbox */
+.govuk-button__spinner-wrapper {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+/* Spinner ring — uses currentColor so it inherits the button's text colour
+   automatically (white on green/blue/red, dark on white warning-panel buttons) */
+.govuk-button__spinner {
+  width: 18px;
+  height: 18px;
+  border: 3px solid currentColor;
+  border-right-color: transparent;
+  border-radius: 50%;
+  animation: govuk-button-spin 0.7s linear infinite;
+}
+
+@keyframes govuk-button-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

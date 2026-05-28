@@ -1,0 +1,127 @@
+image: atlassian/default-image:3
+
+definitions:
+  steps:
+    - step: &build-client
+        name: "Build client"
+        image: node:20
+        caches:
+          - node
+        script:
+          - cd client
+          - echo "{ \"api_url\":\"$API_URL\", \"ad_domain_hint\":\"$AD_DOMAIN\", \"ad_client_id\":\"$AD_CLIENT_ID\", \"ad_scope\":\"$AD_SCOPE\", \"ad_redirect_uri\":\"$AD_REDIRECT_URI\",\"ad_tenant_id\":\"$AD_TENANT_ID\",\"ad_authority\":\"$AD_AUTHORITY\",\"accessibility_testing_enabled\":\"$ACCESSIBILITY_TESTING_ENABLED\",\"app_insights_connection_string\":\"$APP_INSIGHTS_CONNECTION_STRING\" }" > ./src/config.json
+          - npm install
+          - npm run build
+          - apt update && apt install zip
+          - cd dist
+          - zip -r ../../client.zip .
+        artifacts:
+          - "client.zip"
+    - step: &build-api
+        name: "Build api"
+        image: mcr.microsoft.com/dotnet/sdk:10.0
+        caches:
+          - dotnetcore
+        script:
+          - cd api
+          - dotnet restore ./src/Api/Api.csproj
+          - dotnet build ./src/Api/Api.csproj -c Release --no-restore
+          - dotnet publish ./src/Api/Api.csproj -c Release --no-restore --no-build -o publish
+          - apt update && apt install zip -y
+          - cd publish
+          - zip -r ../../api.zip .
+        artifacts:
+          - "api.zip"
+    - step: &run-backend-tests
+        name: "Run backend tests"
+        image: mcr.microsoft.com/dotnet/sdk:10.0
+        caches:
+          - dotnetcore
+        script:
+          - export TESTCONTAINERS_RYUK_DISABLED=true
+          - cd api
+          - dotnet tool install -g trx2junit
+          - dotnet test --logger 'trx;LogFileName=log.trx'
+        after-script:
+          - export PATH="$PATH:/root/.dotnet/tools"
+          - trx2junit ./TestResults/*.trx
+        services:
+          - docker
+    - step: &sonar-qube
+        name: "SonarQube analysis"
+        image: mcr.microsoft.com/dotnet/sdk:10.0
+        caches:
+          - dotnetcore
+          - sonar
+        script:
+          - cd api
+          - export TESTCONTAINERS_RYUK_DISABLED=true
+          - apt-get update
+          - apt-get install --yes default-jre
+          - dotnet tool install --global dotnet-sonarscanner
+          - dotnet tool install --global JetBrains.dotCover.GlobalTool
+          - export PATH="$PATH:/root/.dotnet/tools"
+          - dotnet sonarscanner begin /k:"$SONAR_PROJECT_KEY" /d:sonar.host.url="$SONAR_HOST_URL"  /d:sonar.login="$SONAR_LOGIN" /d:sonar.cs.dotcover.reportsPaths=dotCover.Output.html
+          - dotnet build ./src/Api/Api.csproj
+          - dotnet dotcover test --dcReportType=HTML
+          - dotnet sonarscanner end /d:sonar.login="$SONAR_LOGIN"
+        services:
+          - docker
+    - step: &deploy-client
+        name: "Deploy client"
+        script:
+          - pipe: atlassian/azure-web-apps-deploy:1.1.0
+            variables:
+              AZURE_APP_ID: $AZURE_APP_ID
+              AZURE_PASSWORD: $AZURE_PASSWORD
+              AZURE_TENANT_ID: $AZURE_TENANT_ID
+              AZURE_RESOURCE_GROUP: $AZURE_RESOURCE_GROUP
+              AZURE_APP_NAME: $AZURE_HUB_APP_NAME
+              ZIP_FILE: client.zip
+    - step: &deploy-api
+        name: "Deploy api"
+        script:
+          - pipe: atlassian/azure-web-apps-deploy:1.1.0
+            variables:
+              AZURE_APP_ID: $AZURE_APP_ID
+              AZURE_PASSWORD: $AZURE_PASSWORD
+              AZURE_TENANT_ID: $AZURE_TENANT_ID
+              AZURE_RESOURCE_GROUP: $AZURE_RESOURCE_GROUP
+              AZURE_APP_NAME: $AZURE_API_APP_NAME
+              ZIP_FILE: api.zip
+    - step: &run-e2e-tests
+        name: "Run E2E tests"
+        script:
+          - curl -X POST $CIRCLE_CI_URL -H "Circle-Token:$CIRCLE_CI_TOKEN" -H "Content-Type:application/json" -d "{\"branch\":\"$CIRCLE_CI_BRANCH\"}"
+  caches:
+    sonar: ~/.sonar
+
+pipelines:
+  pull-requests:
+    "**":
+      - parallel:
+          - step: *build-client
+          - step: *build-api
+      - step: *run-backend-tests
+
+  branches:
+    mvp:
+      - stage:
+          name: Deploy to MVP
+          deployment: MVP
+          steps:
+            - step: *build-client
+            - step: *build-api
+            - step: *run-backend-tests
+            - step: *deploy-client
+            - step: *deploy-api
+      - stage:
+          name: Deploy to UAT
+          deployment: UAT
+          trigger: manual
+          steps:
+            - step: *build-client
+            - step: *build-api
+          #  - step: *run-backend-tests
+            - step: *deploy-client
+            - step: *deploy-api

@@ -1,0 +1,25 @@
+/* Help page styles using GOV.UK Design System classes */
+
+.help-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.help-page__main {
+  flex-grow: 1;
+  background-color: #ffffff;
+}
+
+.help-page__service-banner {
+  background-color: #f4f8fb;
+  padding: 15px 0;
+  border-bottom: 2px solid #8eb8dc;
+}
+
+.help-page__service-name {
+  font-family: "GDS Transport", arial, sans-serif;
+  font-weight: 700;
+  font-size: 19px;
+  color: #0b0c0c;
+}

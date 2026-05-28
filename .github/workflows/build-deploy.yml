@@ -1,0 +1,656 @@
+name: Build and Deploy to Azure Container Apps
+
+# This workflow builds and deploys the Family Hubs application to Azure Container Apps.
+# Uses federated identity (OIDC) for authentication - no secrets required.
+#
+# Pipeline Structure:
+#   - Build: Build & test API and Client
+#   - Dev: Auto-deploy on push to main
+#   - Tst: Auto-deploys after dev deployment succeeds
+#   - Prd: Auto-deploys after tst deployment succeeds
+#
+# Image Strategy:
+#   - API: Built directly from source in each environment's ACR
+#   - Client: Built per environment (config baked into image at build time)
+#
+# Required GitHub Variables (set at environment level):
+#   AZURE_CLIENT_ID: Client ID of the service principal with federated credentials
+#   AZURE_TENANT_ID: Azure tenant ID (dhscacp.onmicrosoft.com)
+#   AZURE_RTL_SUBSCRIPTION_ID: Subscription ID where resources are located
+#   AZURE_CONTAINER_REGISTRY: Azure Container Registry name (e.g., crhbydevuks)
+#   AZURE_RESOURCE_GROUP: Azure Resource Group name (e.g., rg-hby-dev-uks)
+#   API_CONTAINER_APP: API Container App name (e.g., ca-hby-api-dev-uks)
+#   CLIENT_CONTAINER_APP: Client Container App name (e.g., ca-hby-client-dev-uks)
+#
+# Repository-level Variables (shared across environments):
+#   PROJECTLABEL: Project label for self-hosted runner name (e.g., hby)
+#
+# Required GitHub Secrets (set at environment level):
+#   AZURE_RTL_MANAGED_IDENTITY: Managed identity resource ID for ACR pull
+#
+# Client Config Variables (per environment):
+#   CLIENT_API_URL: API URL for the client to connect to
+#   CLIENT_AD_TENANT_ID: Entra External ID tenant ID
+#   CLIENT_AD_AUTHORITY: Entra External ID authority URL
+#   CLIENT_AD_CLIENT_ID: Entra External ID SPA client ID
+#   CLIENT_AD_SCOPE: API scope for authentication
+#   CLIENT_AD_DOMAIN_HINT: Entra domain_hint sent on sign-in (e.g., healthybabyext.onmicrosoft.com) - bypasses HRD
+#   CLIENT_BASE_PATH: Base path for the client app (e.g., /healthybabies/) - defaults to /
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        default: 'dev'
+        type: choice
+        options: [dev, tst, prd]
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  API_IMAGE_NAME: family-hubs-api
+  CLIENT_IMAGE_NAME: family-hubs-client
+  DOTNET_VERSION: "9.0.x"
+  NODE_VERSION: "22"
+
+jobs:
+  # =============================================================================
+  # Build and Test API (.NET)
+  # =============================================================================
+  build-api:
+    name: Build & Test API
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore dependencies
+        run: dotnet restore
+        working-directory: ./api
+
+      - name: Build API
+        run: dotnet build --no-restore --configuration Release
+        working-directory: ./api
+
+      - name: Run Unit Tests
+        run: dotnet test --no-build --configuration Release --verbosity normal --logger "trx;LogFileName=test-results.trx"
+        working-directory: ./api
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: api-test-results
+          path: ./api/**/TestResults/*.trx
+
+  # =============================================================================
+  # Build and Test Client (React/Vite) - Validation only, no image
+  # =============================================================================
+  build-client:
+    name: Build & Test Client
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+          cache-dependency-path: ./client/package-lock.json
+
+      - name: Generate config.json (placeholder for build validation)
+        run: |
+          cat > ./client/src/config.json << EOF
+          {
+            "api_url": "https://localhost:5001/",
+            "ad_tenant_id": "",
+            "ad_authority": "",
+            "ad_client_id": "",
+            "ad_scope": "",
+            "ad_redirect_uri": "${{ vars.CLIENT_BASE_PATH || '/' }}",
+            "ad_domain_hint": "",
+            "accessibility_testing_enabled": "false",
+            "app_insights_connection_string": ""
+          }
+          EOF
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: ./client
+
+      - name: Run linting
+        run: npm run lint --if-present
+        working-directory: ./client
+
+      - name: Build Client (validation only)
+        run: npm run build
+        working-directory: ./client
+
+  # =============================================================================
+  # DEV: Build & Push Images to ACR
+  # =============================================================================
+  push-images-dev:
+    name: Push Images to ACR (Dev)
+    runs-on: ${{ vars.PROJECTLABEL }}-selfhosted-runner
+    needs: [build-api, build-client]
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || inputs.environment == 'dev' || inputs.environment == 'tst' || inputs.environment == 'prd'
+    environment: dev
+
+    outputs:
+      resource-group: ${{ vars.AZURE_RESOURCE_GROUP }}
+      container-registry: ${{ vars.AZURE_CONTAINER_REGISTRY }}
+      api-container-app: ${{ vars.API_CONTAINER_APP }}
+      client-container-app: ${{ vars.CLIENT_CONTAINER_APP }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Azure Login (Federated Identity)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_RTL_SUBSCRIPTION_ID }}
+
+      - name: Build and Push API Image to ACR
+        run: |
+          az acr build \
+            --subscription "${{ vars.AZURE_RTL_SUBSCRIPTION_ID }}" \
+            --registry "${{ vars.AZURE_CONTAINER_REGISTRY }}" \
+            --source-acr-auth-id [caller] \
+            --image "hby/${{ env.API_IMAGE_NAME }}:${{ github.sha }}" \
+            --file "./api/src/Api/Dockerfile" \
+            ./api
+
+      - name: Generate Client Config
+        run: |
+          cat > ./client/src/config.json << EOF
+          {
+            "api_url": "${{ vars.CLIENT_API_URL }}",
+            "ad_tenant_id": "${{ vars.CLIENT_AD_TENANT_ID }}",
+            "ad_authority": "${{ vars.CLIENT_AD_AUTHORITY }}",
+            "ad_client_id": "${{ vars.CLIENT_AD_CLIENT_ID }}",
+            "ad_scope": "${{ vars.CLIENT_AD_SCOPE }}",
+            "ad_redirect_uri": "${{ vars.CLIENT_BASE_PATH || '/' }}",
+            "ad_domain_hint": "${{ vars.CLIENT_AD_DOMAIN_HINT }}",
+            "accessibility_testing_enabled": "false",
+            "app_insights_connection_string": "${{ vars.CLIENT_APP_INSIGHTS_CONNECTION_STRING }}"
+          }
+          EOF
+          echo "Generated config.json:"
+          cat ./client/src/config.json
+
+      - name: Build and Push Client Image to ACR
+        run: |
+          az acr build \
+            --subscription "${{ vars.AZURE_RTL_SUBSCRIPTION_ID }}" \
+            --registry "${{ vars.AZURE_CONTAINER_REGISTRY }}" \
+            --source-acr-auth-id [caller] \
+            --image "hby/${{ env.CLIENT_IMAGE_NAME }}:${{ github.sha }}" \
+            --file "./client/Dockerfile" \
+            --build-arg VITE_BASE_PATH="${{ vars.CLIENT_BASE_PATH || '/' }}" \
+            ./client
+
+  # =============================================================================
+  # DEV: Deploy to Azure Container Apps
+  # =============================================================================
+  deploy-dev:
+    name: Deploy to Dev
+    runs-on: ${{ vars.PROJECTLABEL }}-selfhosted-runner
+    needs: push-images-dev
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || inputs.environment == 'dev' || inputs.environment == 'tst' || inputs.environment == 'prd'
+    environment: dev
+
+    steps:
+      - name: Azure Login (Federated Identity)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_RTL_SUBSCRIPTION_ID }}
+
+      - name: Ensure API registry identity configured
+        run: |
+          az containerapp registry set \
+            --name "${{ needs.push-images-dev.outputs.api-container-app }}" \
+            --resource-group "${{ needs.push-images-dev.outputs.resource-group }}" \
+            --server "${{ needs.push-images-dev.outputs.container-registry }}.azurecr.io" \
+            --identity "${{ secrets.AZURE_RTL_MANAGED_IDENTITY }}"
+
+      - name: Ensure Client registry identity configured
+        run: |
+          az containerapp registry set \
+            --name "${{ needs.push-images-dev.outputs.client-container-app }}" \
+            --resource-group "${{ needs.push-images-dev.outputs.resource-group }}" \
+            --server "${{ needs.push-images-dev.outputs.container-registry }}.azurecr.io" \
+            --identity "${{ secrets.AZURE_RTL_MANAGED_IDENTITY }}"
+
+      - name: Deploy API Container App
+        run: |
+          echo "Deploying API container app..."
+            az containerapp update \
+            --name "${{ needs.push-images-dev.outputs.api-container-app }}" \
+            --resource-group "${{ needs.push-images-dev.outputs.resource-group }}" \
+            --image "${{ needs.push-images-dev.outputs.container-registry }}.azurecr.io/hby/${{ env.API_IMAGE_NAME }}:${{ github.sha }}" \
+            --subscription "${{ vars.AZURE_RTL_SUBSCRIPTION_ID }}" \
+            --revision-suffix ${{ github.run_number }}
+
+      - name: Deploy Client Container App
+        run: |
+          echo "Deploying Client container app..."
+            az containerapp update \
+            --name "${{ needs.push-images-dev.outputs.client-container-app }}" \
+            --resource-group "${{ needs.push-images-dev.outputs.resource-group }}" \
+            --image "${{ needs.push-images-dev.outputs.container-registry }}.azurecr.io/hby/${{ env.CLIENT_IMAGE_NAME }}:${{ github.sha }}" \
+            --subscription "${{ vars.AZURE_RTL_SUBSCRIPTION_ID }}" \
+            --revision-suffix ${{ github.run_number }}
+
+      - name: Output deployment URLs
+        run: |
+          API_FQDN=$(az containerapp show --name "${{ needs.push-images-dev.outputs.api-container-app }}" --resource-group "${{ needs.push-images-dev.outputs.resource-group }}" --subscription "${{ vars.AZURE_RTL_SUBSCRIPTION_ID }}" --query "properties.configuration.ingress.fqdn" -o tsv)
+          CLIENT_FQDN=$(az containerapp show --name "${{ needs.push-images-dev.outputs.client-container-app }}" --resource-group "${{ needs.push-images-dev.outputs.resource-group }}" --subscription "${{ vars.AZURE_RTL_SUBSCRIPTION_ID }}" --query "properties.configuration.ingress.fqdn" -o tsv)
+          echo "## Dev Deployment Complete" >> $GITHUB_STEP_SUMMARY
+          echo "- **API URL:** https://${API_FQDN}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Client URL:** https://${CLIENT_FQDN}" >> $GITHUB_STEP_SUMMARY
+
+  # =============================================================================
+  # TEST: Build & Push Images to ACR (auto after dev deploy)
+  # =============================================================================
+  push-images-tst:
+    name: Push Images to ACR (Test)
+    runs-on: ${{ vars.PROJECTLABEL }}-selfhosted-runner
+    needs: [build-api, build-client]
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || inputs.environment == 'tst' || inputs.environment == 'prd'
+    environment: tst
+
+    outputs:
+      resource-group: ${{ vars.AZURE_RESOURCE_GROUP }}
+      container-registry: ${{ vars.AZURE_CONTAINER_REGISTRY }}
+      api-container-app: ${{ vars.API_CONTAINER_APP }}
+      client-container-app: ${{ vars.CLIENT_CONTAINER_APP }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Azure Login (Federated Identity)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_RTL_SUBSCRIPTION_ID }}
+
+      - name: Build and Push API Image to ACR
+        run: |
+          az acr build \
+            --subscription "${{ vars.AZURE_RTL_SUBSCRIPTION_ID }}" \
+            --registry "${{ vars.AZURE_CONTAINER_REGISTRY }}" \
+            --source-acr-auth-id [caller] \
+            --image "hby/${{ env.API_IMAGE_NAME }}:${{ github.sha }}" \
+            --file "./api/src/Api/Dockerfile" \
+            ./api
+
+      - name: Generate Client Config
+        run: |
+          cat > ./client/src/config.json << EOF
+          {
+            "api_url": "${{ vars.CLIENT_API_URL }}",
+            "ad_tenant_id": "${{ vars.CLIENT_AD_TENANT_ID }}",
+            "ad_authority": "${{ vars.CLIENT_AD_AUTHORITY }}",
+            "ad_client_id": "${{ vars.CLIENT_AD_CLIENT_ID }}",
+            "ad_scope": "${{ vars.CLIENT_AD_SCOPE }}",
+            "ad_redirect_uri": "${{ vars.CLIENT_BASE_PATH || '/' }}",
+            "ad_domain_hint": "${{ vars.CLIENT_AD_DOMAIN_HINT }}",
+            "accessibility_testing_enabled": "false",
+            "app_insights_connection_string": "${{ vars.CLIENT_APP_INSIGHTS_CONNECTION_STRING }}"
+          }
+          EOF
+          echo "Generated config.json:"
+          cat ./client/src/config.json
+
+      - name: Build and Push Client Image to ACR
+        run: |
+          az acr build \
+            --subscription "${{ vars.AZURE_RTL_SUBSCRIPTION_ID }}" \
+            --registry "${{ vars.AZURE_CONTAINER_REGISTRY }}" \
+            --source-acr-auth-id [caller] \
+            --image "hby/${{ env.CLIENT_IMAGE_NAME }}:${{ github.sha }}" \
+            --file "./client/Dockerfile" \
+            --build-arg VITE_BASE_PATH="${{ vars.CLIENT_BASE_PATH || '/' }}" \
+            ./client
+
+  # =============================================================================
+  # TEST: Deploy to Azure Container Apps
+  # =============================================================================
+  deploy-tst:
+    name: Deploy to Test
+    runs-on: ${{ vars.PROJECTLABEL }}-selfhosted-runner
+    needs: push-images-tst
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || inputs.environment == 'tst' || inputs.environment == 'prd'
+    environment: tst
+
+    steps:
+      - name: Azure Login (Federated Identity)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_RTL_SUBSCRIPTION_ID }}
+
+      - name: Ensure API registry identity configured
+        run: |
+          az containerapp registry set \
+            --name "${{ needs.push-images-tst.outputs.api-container-app }}" \
+            --resource-group "${{ needs.push-images-tst.outputs.resource-group }}" \
+            --server "${{ needs.push-images-tst.outputs.container-registry }}.azurecr.io" \
+            --identity "${{ secrets.AZURE_RTL_MANAGED_IDENTITY }}"
+
+      - name: Ensure Client registry identity configured
+        run: |
+          az containerapp registry set \
+            --name "${{ needs.push-images-tst.outputs.client-container-app }}" \
+            --resource-group "${{ needs.push-images-tst.outputs.resource-group }}" \
+            --server "${{ needs.push-images-tst.outputs.container-registry }}.azurecr.io" \
+            --identity "${{ secrets.AZURE_RTL_MANAGED_IDENTITY }}"
+
+      - name: Deploy API Container App
+        run: |
+          echo "Deploying API container app..."
+            az containerapp update \
+            --name "${{ needs.push-images-tst.outputs.api-container-app }}" \
+            --resource-group "${{ needs.push-images-tst.outputs.resource-group }}" \
+            --image "${{ needs.push-images-tst.outputs.container-registry }}.azurecr.io/hby/${{ env.API_IMAGE_NAME }}:${{ github.sha }}" \
+            --subscription "${{ vars.AZURE_RTL_SUBSCRIPTION_ID }}" \
+            --revision-suffix ${{ github.run_number }}
+
+      - name: Deploy Client Container App
+        run: |
+          echo "Deploying Client container app..."
+            az containerapp update \
+            --name "${{ needs.push-images-tst.outputs.client-container-app }}" \
+            --resource-group "${{ needs.push-images-tst.outputs.resource-group }}" \
+            --image "${{ needs.push-images-tst.outputs.container-registry }}.azurecr.io/hby/${{ env.CLIENT_IMAGE_NAME }}:${{ github.sha }}" \
+            --subscription "${{ vars.AZURE_RTL_SUBSCRIPTION_ID }}" \
+            --revision-suffix ${{ github.run_number }}
+
+      - name: Output deployment URLs
+        run: |
+          API_FQDN=$(az containerapp show --name "${{ needs.push-images-tst.outputs.api-container-app }}" --resource-group "${{ needs.push-images-tst.outputs.resource-group }}" --subscription "${{ vars.AZURE_RTL_SUBSCRIPTION_ID }}" --query "properties.configuration.ingress.fqdn" -o tsv)
+          CLIENT_FQDN=$(az containerapp show --name "${{ needs.push-images-tst.outputs.client-container-app }}" --resource-group "${{ needs.push-images-tst.outputs.resource-group }}" --subscription "${{ vars.AZURE_RTL_SUBSCRIPTION_ID }}" --query "properties.configuration.ingress.fqdn" -o tsv)
+          echo "## Test Deployment Complete" >> $GITHUB_STEP_SUMMARY
+          echo "- **API URL:** https://${API_FQDN}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Client URL:** https://${CLIENT_FQDN}" >> $GITHUB_STEP_SUMMARY
+
+  # =============================================================================
+  # TEST: Build & Push Images to ACR (auto after dev deploy)
+  # COMMENTED OUT - Test environment not currently in use
+  # =============================================================================
+  # push-images-tst:
+  #   name: Push Images to ACR (Test)
+  #   runs-on: ${{ vars.PROJECTLABEL }}-selfhosted-runner
+  #   needs: deploy-dev
+  #   environment: tst
+  #
+  #   outputs:
+  #     resource-group: ${{ vars.AZURE_RESOURCE_GROUP }}
+  #     container-registry: ${{ vars.AZURE_CONTAINER_REGISTRY }}
+  #     api-container-app: ${{ vars.API_CONTAINER_APP }}
+  #     client-container-app: ${{ vars.CLIENT_CONTAINER_APP }}
+  #
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v4
+  #
+  #     - name: Azure Login (Federated Identity)
+  #       uses: azure/login@v2
+  #       with:
+  #         client-id: ${{ vars.AZURE_CLIENT_ID }}
+  #         tenant-id: ${{ vars.AZURE_TENANT_ID }}
+  #         subscription-id: ${{ vars.AZURE_RTL_SUBSCRIPTION_ID }}
+  #
+  #     - name: Build and Push API Image to ACR
+  #       run: |
+  #         az acr build \
+  #           --subscription "${{ vars.AZURE_RTL_SUBSCRIPTION_ID }}" \
+  #           --registry "${{ vars.AZURE_CONTAINER_REGISTRY }}" \
+  #           --source-acr-auth-id [caller] \
+  #           --image "hby/${{ env.API_IMAGE_NAME }}:${{ github.sha }}" \
+  #           --file "./api/src/Api/Dockerfile" \
+  #           ./api
+  #
+  #     - name: Generate Client Config
+  #       run: |
+  #         cat > ./client/src/config.json << EOF
+  #         {
+  #           "api_url": "${{ vars.CLIENT_API_URL }}",
+  #           "ad_tenant_id": "${{ vars.CLIENT_AD_TENANT_ID }}",
+  #           "ad_authority": "${{ vars.CLIENT_AD_AUTHORITY }}",
+  #           "ad_client_id": "${{ vars.CLIENT_AD_CLIENT_ID }}",
+  #           "ad_scope": "${{ vars.CLIENT_AD_SCOPE }}",
+  #           "ad_redirect_uri": "${{ vars.CLIENT_BASE_PATH || '/' }}",
+  #           "accessibility_testing_enabled": "false",
+  #           "sentry_dsn": ""
+  #         }
+  #         EOF
+  #         echo "Generated config.json:"
+  #         cat ./client/src/config.json
+  #
+  #     - name: Build and Push Client Image to ACR
+  #       run: |
+  #         az acr build \
+  #           --subscription "${{ vars.AZURE_RTL_SUBSCRIPTION_ID }}" \
+  #           --registry "${{ vars.AZURE_CONTAINER_REGISTRY }}" \
+  #           --source-acr-auth-id [caller] \
+  #           --image "hby/${{ env.CLIENT_IMAGE_NAME }}:${{ github.sha }}" \
+  #           --file "./client/Dockerfile" \
+  #           --build-arg VITE_BASE_PATH="${{ vars.CLIENT_BASE_PATH || '/' }}" \
+  #           ./client
+  #
+  # # =============================================================================
+  # # TEST: Deploy to Azure Container Apps
+  # # =============================================================================
+  # deploy-tst:
+  #   name: Deploy to Test
+  #   runs-on: ${{ vars.PROJECTLABEL }}-selfhosted-runner
+  #   needs: push-images-tst
+  #   environment: tst
+  #
+  #   steps:
+  #     - name: Azure Login (Federated Identity)
+  #       uses: azure/login@v2
+  #       with:
+  #         client-id: ${{ vars.AZURE_CLIENT_ID }}
+  #         tenant-id: ${{ vars.AZURE_TENANT_ID }}
+  #         subscription-id: ${{ vars.AZURE_RTL_SUBSCRIPTION_ID }}
+  #
+  #     - name: Ensure API registry identity configured
+  #       run: |
+  #         az containerapp registry set \
+  #           --name "${{ needs.push-images-tst.outputs.api-container-app }}" \
+  #           --resource-group "${{ needs.push-images-tst.outputs.resource-group }}" \
+  #           --server "${{ needs.push-images-tst.outputs.container-registry }}.azurecr.io" \
+  #           --identity "${{ secrets.AZURE_RTL_MANAGED_IDENTITY }}"
+  #
+  #     - name: Ensure Client registry identity configured
+  #       run: |
+  #         az containerapp registry set \
+  #           --name "${{ needs.push-images-tst.outputs.client-container-app }}" \
+  #           --resource-group "${{ needs.push-images-tst.outputs.resource-group }}" \
+  #           --server "${{ needs.push-images-tst.outputs.container-registry }}.azurecr.io" \
+  #           --identity "${{ secrets.AZURE_RTL_MANAGED_IDENTITY }}"
+  #
+  #     - name: Deploy API Container App
+  #       run: |
+  #         echo "Deploying API container app..."
+  #         az containerapp update \
+  #           --name "${{ needs.push-images-tst.outputs.api-container-app }}" \
+  #           --resource-group "${{ needs.push-images-tst.outputs.resource-group }}" \
+  #           --image "${{ needs.push-images-tst.outputs.container-registry }}.azurecr.io/hby/${{ env.API_IMAGE_NAME }}:${{ github.sha }}" \
+  #           --subscription "${{ vars.AZURE_RTL_SUBSCRIPTION_ID }}" \
+  #           --revision-suffix ${{ github.run_number }}
+  #
+  #     - name: Deploy Client Container App
+  #       run: |
+  #         echo "Deploying Client container app..."
+  #         az containerapp update \
+  #           --name "${{ needs.push-images-tst.outputs.client-container-app }}" \
+  #           --resource-group "${{ needs.push-images-tst.outputs.resource-group }}" \
+  #           --image "${{ needs.push-images-tst.outputs.container-registry }}.azurecr.io/hby/${{ env.CLIENT_IMAGE_NAME }}:${{ github.sha }}" \
+  #           --subscription "${{ vars.AZURE_RTL_SUBSCRIPTION_ID }}" \
+  #           --revision-suffix ${{ github.run_number }}
+  #
+  #     - name: Output deployment URLs
+  #       run: |
+  #         API_FQDN=$(az containerapp show --name "${{ needs.push-images-tst.outputs.api-container-app }}" --resource-group "${{ needs.push-images-tst.outputs.resource-group }}" --subscription "${{ vars.AZURE_RTL_SUBSCRIPTION_ID }}" --query "properties.configuration.ingress.fqdn" -o tsv)
+  #         CLIENT_FQDN=$(az containerapp show --name "${{ needs.push-images-tst.outputs.client-container-app }}" --resource-group "${{ needs.push-images-tst.outputs.resource-group }}" --subscription "${{ vars.AZURE_RTL_SUBSCRIPTION_ID }}" --query "properties.configuration.ingress.fqdn" -o tsv)
+  #         echo "## Test Deployment Complete" >> $GITHUB_STEP_SUMMARY
+  #         echo "- **API URL:** https://${API_FQDN}" >> $GITHUB_STEP_SUMMARY
+  #         echo "- **Client URL:** https://${CLIENT_FQDN}" >> $GITHUB_STEP_SUMMARY
+
+  # =============================================================================
+  # PRODUCTION: Build & Push Images to ACR (auto after tst deploy)
+  # =============================================================================
+  push-images-prd:
+    name: Push Images to ACR (Production)
+    runs-on: ${{ vars.PROJECTLABEL }}-selfhosted-runner
+    needs: [build-api, build-client]
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || inputs.environment == 'prd'
+    environment: prd
+
+    outputs:
+      resource-group: ${{ vars.AZURE_RESOURCE_GROUP }}
+      container-registry: ${{ vars.AZURE_CONTAINER_REGISTRY }}
+      api-container-app: ${{ vars.API_CONTAINER_APP }}
+      client-container-app: ${{ vars.CLIENT_CONTAINER_APP }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Azure Login (Federated Identity)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_RTL_SUBSCRIPTION_ID }}
+
+      - name: Build and Push API Image to ACR
+        run: |
+          az acr build \
+            --subscription "${{ vars.AZURE_RTL_SUBSCRIPTION_ID }}" \
+            --registry "${{ vars.AZURE_CONTAINER_REGISTRY }}" \
+            --source-acr-auth-id [caller] \
+            --image "hby/${{ env.API_IMAGE_NAME }}:${{ github.sha }}" \
+            --file "./api/src/Api/Dockerfile" \
+            ./api
+
+      - name: Generate Client Config
+        run: |
+          cat > ./client/src/config.json << EOF
+          {
+            "api_url": "${{ vars.CLIENT_API_URL }}",
+            "ad_tenant_id": "${{ vars.CLIENT_AD_TENANT_ID }}",
+            "ad_authority": "${{ vars.CLIENT_AD_AUTHORITY }}",
+            "ad_client_id": "${{ vars.CLIENT_AD_CLIENT_ID }}",
+            "ad_scope": "${{ vars.CLIENT_AD_SCOPE }}",
+            "ad_redirect_uri": "${{ vars.CLIENT_BASE_PATH || '/' }}",
+            "ad_domain_hint": "${{ vars.CLIENT_AD_DOMAIN_HINT }}",
+            "accessibility_testing_enabled": "false",
+            "app_insights_connection_string": "${{ vars.CLIENT_APP_INSIGHTS_CONNECTION_STRING }}"
+          }
+          EOF
+          echo "Generated config.json:"
+          cat ./client/src/config.json
+
+      - name: Build and Push Client Image to ACR
+        run: |
+          az acr build \
+            --subscription "${{ vars.AZURE_RTL_SUBSCRIPTION_ID }}" \
+            --registry "${{ vars.AZURE_CONTAINER_REGISTRY }}" \
+            --source-acr-auth-id [caller] \
+            --image "hby/${{ env.CLIENT_IMAGE_NAME }}:${{ github.sha }}" \
+            --file "./client/Dockerfile" \
+            --build-arg VITE_BASE_PATH="${{ vars.CLIENT_BASE_PATH || '/' }}" \
+            ./client
+
+  # =============================================================================
+  # PRODUCTION: Deploy to Azure Container Apps
+  # =============================================================================
+  deploy-prd:
+    name: Deploy to Production
+    runs-on: ${{ vars.PROJECTLABEL }}-selfhosted-runner
+    needs: push-images-prd
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || inputs.environment == 'prd'
+    environment: prd
+
+    steps:
+      - name: Azure Login (Federated Identity)
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_RTL_SUBSCRIPTION_ID }}
+
+      - name: Ensure API registry identity configured
+        run: |
+          az containerapp registry set \
+            --name "${{ needs.push-images-prd.outputs.api-container-app }}" \
+            --resource-group "${{ needs.push-images-prd.outputs.resource-group }}" \
+            --server "${{ needs.push-images-prd.outputs.container-registry }}.azurecr.io" \
+            --identity "${{ secrets.AZURE_RTL_MANAGED_IDENTITY }}"
+
+      - name: Ensure Client registry identity configured
+        run: |
+          az containerapp registry set \
+            --name "${{ needs.push-images-prd.outputs.client-container-app }}" \
+            --resource-group "${{ needs.push-images-prd.outputs.resource-group }}" \
+            --server "${{ needs.push-images-prd.outputs.container-registry }}.azurecr.io" \
+            --identity "${{ secrets.AZURE_RTL_MANAGED_IDENTITY }}"
+
+      - name: Deploy API Container App
+        run: |
+          echo "Deploying API container app..."
+          az containerapp update \
+            --name "${{ needs.push-images-prd.outputs.api-container-app }}" \
+            --resource-group "${{ needs.push-images-prd.outputs.resource-group }}" \
+            --image "${{ needs.push-images-prd.outputs.container-registry }}.azurecr.io/hby/${{ env.API_IMAGE_NAME }}:${{ github.sha }}" \
+            --subscription "${{ vars.AZURE_RTL_SUBSCRIPTION_ID }}" \
+            --revision-suffix ${{ github.run_number }}
+
+      - name: Deploy Client Container App
+        run: |
+          echo "Deploying Client container app..."
+          az containerapp update \
+            --name "${{ needs.push-images-prd.outputs.client-container-app }}" \
+            --resource-group "${{ needs.push-images-prd.outputs.resource-group }}" \
+            --image "${{ needs.push-images-prd.outputs.container-registry }}.azurecr.io/hby/${{ env.CLIENT_IMAGE_NAME }}:${{ github.sha }}" \
+            --subscription "${{ vars.AZURE_RTL_SUBSCRIPTION_ID }}" \
+            --revision-suffix ${{ github.run_number }}
+
+      - name: Output deployment URLs
+        run: |
+          API_FQDN=$(az containerapp show --name "${{ needs.push-images-prd.outputs.api-container-app }}" --resource-group "${{ needs.push-images-prd.outputs.resource-group }}" --subscription "${{ vars.AZURE_RTL_SUBSCRIPTION_ID }}" --query "properties.configuration.ingress.fqdn" -o tsv)
+          CLIENT_FQDN=$(az containerapp show --name "${{ needs.push-images-prd.outputs.client-container-app }}" --resource-group "${{ needs.push-images-prd.outputs.resource-group }}" --subscription "${{ vars.AZURE_RTL_SUBSCRIPTION_ID }}" --query "properties.configuration.ingress.fqdn" -o tsv)
+          echo "## Production Deployment Complete" >> $GITHUB_STEP_SUMMARY
+          echo "- **API URL:** https://${API_FQDN}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Client URL:** https://${CLIENT_FQDN}" >> $GITHUB_STEP_SUMMARY

@@ -1,0 +1,145 @@
+/* app-subnav component - GOV.UK Design System website source */
+
+/* Visually hidden heading */
+.govuk-visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  clip: rect(0 0 0 0) !important;
+  clip-path: inset(50%) !important;
+  border: 0 !important;
+  white-space: nowrap !important;
+}
+
+/* Main navigation container */
+.app-subnav {
+  font-family: "GDS Transport", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-size: 16px;
+  line-height: 20px;
+  margin-bottom: 100px;
+  padding-right: 15px;
+}
+
+/* Theme headings (section headings) */
+.app-subnav__theme {
+  font-family: "GDS Transport", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-size: 19px;
+  line-height: 25px;
+  font-weight: 400;
+  color: #484949;
+  margin: 0;
+  padding: 10px 15px 10px 0;
+}
+
+/* First theme heading has no top padding */
+.app-subnav__theme--first {
+  padding-top: 0;
+}
+
+/* Section list (the <ul>) */
+.app-subnav__section {
+  list-style-type: none;
+  margin: 0 0 20px 0;
+  padding: 0;
+}
+
+/* Section item (each <li>) */
+.app-subnav__section-item {
+  margin-bottom: 5px;
+  padding-top: 5px;
+  padding-bottom: 5px;
+}
+
+/* Current/active section item */
+.app-subnav__section-item--current {
+  margin-left: -14px;
+  padding-left: 10px;
+  border-left: 4px solid #1d70b8;
+}
+
+/* Active item link - bold via compound selector */
+.app-subnav__section-item--current .app-subnav__link {
+  font-weight: 700;
+}
+
+/* Navigation links */
+.app-subnav__link {
+  padding: 2px 0;
+  display: inline;
+}
+
+/* govuk-link base styles */
+.app-subnav__link.govuk-link {
+  font-family: "GDS Transport", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  color: #1a65a6;
+}
+
+/* govuk-link--no-underline - remove default underline */
+.app-subnav__link.govuk-link--no-underline,
+.app-subnav__link.govuk-link--no-underline:link,
+.app-subnav__link.govuk-link--no-underline:visited {
+  text-decoration: none;
+  border-bottom: none;
+}
+
+/* govuk-link--no-visited-state - keep same color when visited */
+.app-subnav__link.govuk-link--no-visited-state:visited {
+  color: #1a65a6;
+}
+
+/* Ensure no underline by default, only on hover */
+.app-subnav__link.govuk-link {
+  text-decoration: none;
+  border-bottom: none;
+}
+
+/* Link hover state - matches global link hover styles */
+.app-subnav__link.govuk-link:hover {
+  color: #003078;
+  text-decoration: underline;
+  text-decoration-thickness: max(3px, .1875rem, .12em);
+  text-decoration-skip-ink: none;
+}
+
+/* Link active (clicked) state */
+.app-subnav__link.govuk-link:active {
+  color: #0b0c0c;
+}
+
+/* Link focus state */
+.app-subnav__link.govuk-link:focus {
+  outline: 3px solid transparent;
+  color: #0b0c0c;
+  background-color: #ffdd00;
+  box-shadow: 0 -2px #ffdd00, 0 4px #0b0c0c;
+  text-decoration: none;
+}
+
+/* Nested section list */
+.app-subnav__section--nested {
+  margin-top: 10px;
+  margin-bottom: 0;
+  padding-left: 20px;
+}
+
+/* Nested item dash prefix */
+.app-subnav__section--nested .app-subnav__section-item::before {
+  content: "—";
+  margin-left: -20px;
+  color: #484949;
+}
+
+/* Nested link styles */
+.app-subnav__section--nested .app-subnav__link {
+  padding-left: 0;
+  font-weight: 400;
+}

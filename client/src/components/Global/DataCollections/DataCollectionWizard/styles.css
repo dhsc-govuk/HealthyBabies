@@ -1,0 +1,62 @@
+.dc-wizard {
+  max-width: 40em;
+}
+
+.dc-wizard__actions {
+  margin-top: 2rem;
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.dc-wizard__search-container {
+  display: flex;
+}
+
+.dc-wizard__search-input {
+  flex: 1;
+}
+
+.dc-wizard__search-button {
+  background-color: #1d70b8;
+  border: none;
+  width: 40px;
+  height: 40px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dc-wizard__search-button:hover {
+  background-color: #003078;
+}
+
+.dc-wizard__conditional-section {
+  border-left: 4px solid #b1b4b6;
+  padding-left: 16px;
+  margin-top: 16px;
+  margin-left: 20px;
+}
+
+.dc-wizard .govuk-summary-list {
+  border: none;
+  border-bottom: 1px solid #b1b4b6;
+}
+
+/*
+ * Indeterminate state for the "All" select-all checkbox.
+ * govuk-frontend only styles :checked on the label::after pseudo-element,
+ * so :indeterminate needs an explicit rule to show the dash/bar indicator.
+ */
+.dc-wizard .govuk-checkboxes__input:indeterminate + .govuk-checkboxes__label::after {
+  opacity: 1;
+  border: none;
+  background-color: #0b0c0c;
+  height: 4px;
+  width: 16px;
+  top: 55%;
+  left: 14px;
+  margin-top: -2px;
+  transform: none;
+}

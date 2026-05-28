@@ -1,0 +1,30 @@
+.la-view__contact p {
+  margin: 0;
+}
+
+/* Files Section - matching admin submissions view */
+.submission-files__item {
+  display: flex;
+  gap: 15px;
+}
+
+.submission-files__downloads {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.submission-files__download-button {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+  font-size: inherit;
+  font-family: inherit;
+}
+
+.submission-files__download-button:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}

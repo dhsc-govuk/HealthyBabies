@@ -1,0 +1,11 @@
+{
+  "api_url": "https://localhost:5001/",
+  "ad_tenant_id": "your-tenant-id",
+  "ad_authority": "https://your-tenant.ciamlogin.com/",
+  "ad_client_id": "your-client-id",
+  "ad_scope": "https://your-tenant.onmicrosoft.com/your-api-client-id/API",
+  "ad_redirect_uri": "/",
+  "ad_domain_hint": "your-tenant.onmicrosoft.com",
+  "accessibility_testing_enabled": "false",
+  "app_insights_connection_string": ""
+}
