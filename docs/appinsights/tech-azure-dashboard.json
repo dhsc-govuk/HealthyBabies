@@ -1,0 +1,500 @@
+{
+  "properties": {
+    "lenses": [
+      {
+        "order": 0,
+        "parts": [
+          {
+            "position": { "x": 0, "y": 0, "colSpan": 2, "rowSpan": 1 },
+            "metadata": {
+              "inputs": [
+                { "name": "id", "value": "/subscriptions/YOUR_SUBSCRIPTION_ID/resourceGroups/YOUR_RESOURCE_GROUP/providers/Microsoft.Insights/components/YOUR_APP_INSIGHTS_NAME" },
+                { "name": "Version", "value": "1.0" }
+              ],
+              "type": "Extension/AppInsightsExtension/PartType/AspNetOverviewPinnedPart",
+              "asset": { "idInputName": "id", "type": "ApplicationInsights" },
+              "defaultMenuItemId": "overview"
+            }
+          },
+          {
+            "position": { "x": 2, "y": 0, "colSpan": 1, "rowSpan": 1 },
+            "metadata": {
+              "inputs": [
+                {
+                  "name": "ResourceId",
+                  "value": "/subscriptions/YOUR_SUBSCRIPTION_ID/resourceGroups/YOUR_RESOURCE_GROUP/providers/Microsoft.Insights/components/YOUR_APP_INSIGHTS_NAME"
+                },
+                {
+                  "name": "DataModel",
+                  "value": { "version": "1.0.0", "timeContext": { "durationMs": 86400000, "createdTime": "2018-05-04T23:42:40.072Z", "isInitialTime": false, "grain": 1, "useDashboardTimeRange": false } },
+                  "isOptional": true
+                },
+                { "name": "ConfigurationId", "value": "8a02f7bf-ac0f-40e1-afe9-f0e72cfee77f", "isOptional": true }
+              ],
+              "type": "Extension/AppInsightsExtension/PartType/CuratedBladeFailuresPinnedPart",
+              "isAdapter": true,
+              "asset": { "idInputName": "ResourceId", "type": "ApplicationInsights" },
+              "defaultMenuItemId": "failures"
+            }
+          },
+          {
+            "position": { "x": 3, "y": 0, "colSpan": 1, "rowSpan": 1 },
+            "metadata": {
+              "inputs": [
+                {
+                  "name": "ResourceId",
+                  "value": "/subscriptions/YOUR_SUBSCRIPTION_ID/resourceGroups/YOUR_RESOURCE_GROUP/providers/Microsoft.Insights/components/YOUR_APP_INSIGHTS_NAME"
+                },
+                {
+                  "name": "DataModel",
+                  "value": { "version": "1.0.0", "timeContext": { "durationMs": 86400000, "createdTime": "2018-05-04T23:43:37.804Z", "isInitialTime": false, "grain": 1, "useDashboardTimeRange": false } },
+                  "isOptional": true
+                },
+                { "name": "ConfigurationId", "value": "2a8ede4f-2bee-4b9c-aed9-2db0e8a01865", "isOptional": true }
+              ],
+              "type": "Extension/AppInsightsExtension/PartType/CuratedBladePerformancePinnedPart",
+              "isAdapter": true,
+              "asset": { "idInputName": "ResourceId", "type": "ApplicationInsights" },
+              "defaultMenuItemId": "performance"
+            }
+          },
+          {
+            "position": { "x": 0, "y": 1, "colSpan": 8, "rowSpan": 1 },
+            "metadata": {
+              "inputs": [],
+              "type": "Extension/HubsExtension/PartType/MarkdownPart",
+              "settings": { "content": { "settings": { "content": "# Errors & Failures", "title": "", "subtitle": "" } } }
+            }
+          },
+          {
+            "position": { "x": 8, "y": 1, "colSpan": 8, "rowSpan": 1 },
+            "metadata": {
+              "inputs": [],
+              "type": "Extension/HubsExtension/PartType/MarkdownPart",
+              "settings": { "content": { "settings": { "content": "# Performance", "title": "", "subtitle": "" } } }
+            }
+          },
+          {
+            "position": { "x": 0, "y": 2, "colSpan": 4, "rowSpan": 3 },
+            "metadata": {
+              "inputs": [
+                {
+                  "name": "options",
+                  "value": {
+                    "chart": {
+                      "metrics": [
+                        {
+                          "resourceMetadata": { "id": "/subscriptions/YOUR_SUBSCRIPTION_ID/resourceGroups/YOUR_RESOURCE_GROUP/providers/Microsoft.Insights/components/YOUR_APP_INSIGHTS_NAME" },
+                          "name": "requests/failed",
+                          "aggregationType": 7,
+                          "namespace": "microsoft.insights/components",
+                          "metricVisualization": { "displayName": "Failed requests", "color": "#EC008C" }
+                        }
+                      ],
+                      "title": "Failed Requests",
+                      "visualization": { "chartType": 3, "legendVisualization": { "isVisible": true, "position": 2, "hideSubtitle": false }, "axisVisualization": { "x": { "isVisible": true, "axisType": 2 }, "y": { "isVisible": true, "axisType": 1 } } }
+                    }
+                  }
+                },
+                { "name": "sharedTimeRange", "isOptional": true }
+              ],
+              "type": "Extension/HubsExtension/PartType/MonitorChartPart",
+              "settings": {
+                "content": {
+                  "options": {
+                    "chart": {
+                      "metrics": [
+                        {
+                          "resourceMetadata": { "id": "/subscriptions/YOUR_SUBSCRIPTION_ID/resourceGroups/YOUR_RESOURCE_GROUP/providers/Microsoft.Insights/components/YOUR_APP_INSIGHTS_NAME" },
+                          "name": "requests/failed",
+                          "aggregationType": 7,
+                          "namespace": "microsoft.insights/components",
+                          "metricVisualization": { "displayName": "Failed requests", "color": "#EC008C" }
+                        }
+                      ],
+                      "title": "Failed Requests",
+                      "visualization": { "chartType": 3, "legendVisualization": { "isVisible": true, "position": 2, "hideSubtitle": false }, "axisVisualization": { "x": { "isVisible": true, "axisType": 2 }, "y": { "isVisible": true, "axisType": 1 } }, "disablePinning": true }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "position": { "x": 4, "y": 2, "colSpan": 4, "rowSpan": 3 },
+            "metadata": {
+              "inputs": [
+                {
+                  "name": "options",
+                  "value": {
+                    "chart": {
+                      "metrics": [
+                        {
+                          "resourceMetadata": { "id": "/subscriptions/YOUR_SUBSCRIPTION_ID/resourceGroups/YOUR_RESOURCE_GROUP/providers/Microsoft.Insights/components/YOUR_APP_INSIGHTS_NAME" },
+                          "name": "exceptions/server",
+                          "aggregationType": 7,
+                          "namespace": "microsoft.insights/components",
+                          "metricVisualization": { "displayName": "Server exceptions", "color": "#47BDF5" }
+                        },
+                        {
+                          "resourceMetadata": { "id": "/subscriptions/YOUR_SUBSCRIPTION_ID/resourceGroups/YOUR_RESOURCE_GROUP/providers/Microsoft.Insights/components/YOUR_APP_INSIGHTS_NAME" },
+                          "name": "exceptions/browser",
+                          "aggregationType": 7,
+                          "namespace": "microsoft.insights/components",
+                          "metricVisualization": { "displayName": "Browser exceptions", "color": "#7E58FF" }
+                        }
+                      ],
+                      "title": "Exceptions",
+                      "visualization": { "chartType": 2, "legendVisualization": { "isVisible": true, "position": 2, "hideSubtitle": false }, "axisVisualization": { "x": { "isVisible": true, "axisType": 2 }, "y": { "isVisible": true, "axisType": 1 } } }
+                    }
+                  }
+                },
+                { "name": "sharedTimeRange", "isOptional": true }
+              ],
+              "type": "Extension/HubsExtension/PartType/MonitorChartPart",
+              "settings": {
+                "content": {
+                  "options": {
+                    "chart": {
+                      "metrics": [
+                        {
+                          "resourceMetadata": { "id": "/subscriptions/YOUR_SUBSCRIPTION_ID/resourceGroups/YOUR_RESOURCE_GROUP/providers/Microsoft.Insights/components/YOUR_APP_INSIGHTS_NAME" },
+                          "name": "exceptions/server",
+                          "aggregationType": 7,
+                          "namespace": "microsoft.insights/components",
+                          "metricVisualization": { "displayName": "Server exceptions", "color": "#47BDF5" }
+                        },
+                        {
+                          "resourceMetadata": { "id": "/subscriptions/YOUR_SUBSCRIPTION_ID/resourceGroups/YOUR_RESOURCE_GROUP/providers/Microsoft.Insights/components/YOUR_APP_INSIGHTS_NAME" },
+                          "name": "exceptions/browser",
+                          "aggregationType": 7,
+                          "namespace": "microsoft.insights/components",
+                          "metricVisualization": { "displayName": "Browser exceptions", "color": "#7E58FF" }
+                        }
+                      ],
+                      "title": "Exceptions",
+                      "visualization": { "chartType": 2, "legendVisualization": { "isVisible": true, "position": 2, "hideSubtitle": false }, "axisVisualization": { "x": { "isVisible": true, "axisType": 2 }, "y": { "isVisible": true, "axisType": 1 } }, "disablePinning": true }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "position": { "x": 8, "y": 2, "colSpan": 4, "rowSpan": 3 },
+            "metadata": {
+              "inputs": [
+                {
+                  "name": "options",
+                  "value": {
+                    "chart": {
+                      "metrics": [
+                        {
+                          "resourceMetadata": { "id": "/subscriptions/YOUR_SUBSCRIPTION_ID/resourceGroups/YOUR_RESOURCE_GROUP/providers/Microsoft.Insights/components/YOUR_APP_INSIGHTS_NAME" },
+                          "name": "requests/duration",
+                          "aggregationType": 4,
+                          "namespace": "microsoft.insights/components",
+                          "metricVisualization": { "displayName": "Server response time (avg)", "color": "#00BCF2" }
+                        }
+                      ],
+                      "title": "Server Response Time (avg ms)",
+                      "visualization": { "chartType": 2, "legendVisualization": { "isVisible": true, "position": 2, "hideSubtitle": false }, "axisVisualization": { "x": { "isVisible": true, "axisType": 2 }, "y": { "isVisible": true, "axisType": 1 } } }
+                    }
+                  }
+                },
+                { "name": "sharedTimeRange", "isOptional": true }
+              ],
+              "type": "Extension/HubsExtension/PartType/MonitorChartPart",
+              "settings": {
+                "content": {
+                  "options": {
+                    "chart": {
+                      "metrics": [
+                        {
+                          "resourceMetadata": { "id": "/subscriptions/YOUR_SUBSCRIPTION_ID/resourceGroups/YOUR_RESOURCE_GROUP/providers/Microsoft.Insights/components/YOUR_APP_INSIGHTS_NAME" },
+                          "name": "requests/duration",
+                          "aggregationType": 4,
+                          "namespace": "microsoft.insights/components",
+                          "metricVisualization": { "displayName": "Server response time (avg)", "color": "#00BCF2" }
+                        }
+                      ],
+                      "title": "Server Response Time (avg ms)",
+                      "visualization": { "chartType": 2, "legendVisualization": { "isVisible": true, "position": 2, "hideSubtitle": false }, "axisVisualization": { "x": { "isVisible": true, "axisType": 2 }, "y": { "isVisible": true, "axisType": 1 } }, "disablePinning": true }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "position": { "x": 12, "y": 2, "colSpan": 4, "rowSpan": 3 },
+            "metadata": {
+              "inputs": [
+                {
+                  "name": "options",
+                  "value": {
+                    "chart": {
+                      "metrics": [
+                        {
+                          "resourceMetadata": { "id": "/subscriptions/YOUR_SUBSCRIPTION_ID/resourceGroups/YOUR_RESOURCE_GROUP/providers/Microsoft.Insights/components/YOUR_APP_INSIGHTS_NAME" },
+                          "name": "availabilityResults/availabilityPercentage",
+                          "aggregationType": 4,
+                          "namespace": "microsoft.insights/components",
+                          "metricVisualization": { "displayName": "Availability %", "color": "#47BDF5" }
+                        }
+                      ],
+                      "title": "Average Availability",
+                      "visualization": { "chartType": 3, "legendVisualization": { "isVisible": true, "position": 2, "hideSubtitle": false }, "axisVisualization": { "x": { "isVisible": true, "axisType": 2 }, "y": { "isVisible": true, "axisType": 1 } } }
+                    }
+                  }
+                },
+                { "name": "sharedTimeRange", "isOptional": true }
+              ],
+              "type": "Extension/HubsExtension/PartType/MonitorChartPart",
+              "settings": {
+                "content": {
+                  "options": {
+                    "chart": {
+                      "metrics": [
+                        {
+                          "resourceMetadata": { "id": "/subscriptions/YOUR_SUBSCRIPTION_ID/resourceGroups/YOUR_RESOURCE_GROUP/providers/Microsoft.Insights/components/YOUR_APP_INSIGHTS_NAME" },
+                          "name": "availabilityResults/availabilityPercentage",
+                          "aggregationType": 4,
+                          "namespace": "microsoft.insights/components",
+                          "metricVisualization": { "displayName": "Availability %", "color": "#47BDF5" }
+                        }
+                      ],
+                      "title": "Average Availability",
+                      "visualization": { "chartType": 3, "legendVisualization": { "isVisible": true, "position": 2, "hideSubtitle": false }, "axisVisualization": { "x": { "isVisible": true, "axisType": 2 }, "y": { "isVisible": true, "axisType": 1 } }, "disablePinning": true }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "position": { "x": 0, "y": 5, "colSpan": 4, "rowSpan": 3 },
+            "metadata": {
+              "inputs": [
+                {
+                  "name": "options",
+                  "value": {
+                    "chart": {
+                      "metrics": [
+                        {
+                          "resourceMetadata": { "id": "/subscriptions/YOUR_SUBSCRIPTION_ID/resourceGroups/YOUR_RESOURCE_GROUP/providers/Microsoft.Insights/components/YOUR_APP_INSIGHTS_NAME" },
+                          "name": "dependencies/failed",
+                          "aggregationType": 7,
+                          "namespace": "microsoft.insights/components",
+                          "metricVisualization": { "displayName": "Dependency failures", "color": "#EC008C" }
+                        }
+                      ],
+                      "title": "Dependency Failures",
+                      "visualization": { "chartType": 2, "legendVisualization": { "isVisible": true, "position": 2, "hideSubtitle": false }, "axisVisualization": { "x": { "isVisible": true, "axisType": 2 }, "y": { "isVisible": true, "axisType": 1 } } }
+                    }
+                  }
+                },
+                { "name": "sharedTimeRange", "isOptional": true }
+              ],
+              "type": "Extension/HubsExtension/PartType/MonitorChartPart",
+              "settings": {
+                "content": {
+                  "options": {
+                    "chart": {
+                      "metrics": [
+                        {
+                          "resourceMetadata": { "id": "/subscriptions/YOUR_SUBSCRIPTION_ID/resourceGroups/YOUR_RESOURCE_GROUP/providers/Microsoft.Insights/components/YOUR_APP_INSIGHTS_NAME" },
+                          "name": "dependencies/failed",
+                          "aggregationType": 7,
+                          "namespace": "microsoft.insights/components",
+                          "metricVisualization": { "displayName": "Dependency failures", "color": "#EC008C" }
+                        }
+                      ],
+                      "title": "Dependency Failures",
+                      "visualization": { "chartType": 2, "legendVisualization": { "isVisible": true, "position": 2, "hideSubtitle": false }, "axisVisualization": { "x": { "isVisible": true, "axisType": 2 }, "y": { "isVisible": true, "axisType": 1 } }, "disablePinning": true }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "position": { "x": 4, "y": 5, "colSpan": 4, "rowSpan": 3 },
+            "metadata": {
+              "inputs": [
+                {
+                  "name": "options",
+                  "value": {
+                    "chart": {
+                      "metrics": [
+                        {
+                          "resourceMetadata": { "id": "/subscriptions/YOUR_SUBSCRIPTION_ID/resourceGroups/YOUR_RESOURCE_GROUP/providers/Microsoft.Insights/components/YOUR_APP_INSIGHTS_NAME" },
+                          "name": "requests/count",
+                          "aggregationType": 7,
+                          "namespace": "microsoft.insights/components",
+                          "metricVisualization": { "displayName": "Total requests", "color": "#47BDF5" }
+                        }
+                      ],
+                      "title": "Total Requests",
+                      "visualization": { "chartType": 2, "legendVisualization": { "isVisible": true, "position": 2, "hideSubtitle": false }, "axisVisualization": { "x": { "isVisible": true, "axisType": 2 }, "y": { "isVisible": true, "axisType": 1 } } }
+                    }
+                  }
+                },
+                { "name": "sharedTimeRange", "isOptional": true }
+              ],
+              "type": "Extension/HubsExtension/PartType/MonitorChartPart",
+              "settings": {
+                "content": {
+                  "options": {
+                    "chart": {
+                      "metrics": [
+                        {
+                          "resourceMetadata": { "id": "/subscriptions/YOUR_SUBSCRIPTION_ID/resourceGroups/YOUR_RESOURCE_GROUP/providers/Microsoft.Insights/components/YOUR_APP_INSIGHTS_NAME" },
+                          "name": "requests/count",
+                          "aggregationType": 7,
+                          "namespace": "microsoft.insights/components",
+                          "metricVisualization": { "displayName": "Total requests", "color": "#47BDF5" }
+                        }
+                      ],
+                      "title": "Total Requests",
+                      "visualization": { "chartType": 2, "legendVisualization": { "isVisible": true, "position": 2, "hideSubtitle": false }, "axisVisualization": { "x": { "isVisible": true, "axisType": 2 }, "y": { "isVisible": true, "axisType": 1 } }, "disablePinning": true }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "position": { "x": 8, "y": 5, "colSpan": 4, "rowSpan": 3 },
+            "metadata": {
+              "inputs": [
+                {
+                  "name": "options",
+                  "value": {
+                    "chart": {
+                      "metrics": [
+                        {
+                          "resourceMetadata": { "id": "/subscriptions/YOUR_SUBSCRIPTION_ID/resourceGroups/YOUR_RESOURCE_GROUP/providers/Microsoft.Insights/components/YOUR_APP_INSIGHTS_NAME" },
+                          "name": "performanceCounters/processorCpuPercentage",
+                          "aggregationType": 4,
+                          "namespace": "microsoft.insights/components",
+                          "metricVisualization": { "displayName": "Processor time", "color": "#47BDF5" }
+                        },
+                        {
+                          "resourceMetadata": { "id": "/subscriptions/YOUR_SUBSCRIPTION_ID/resourceGroups/YOUR_RESOURCE_GROUP/providers/Microsoft.Insights/components/YOUR_APP_INSIGHTS_NAME" },
+                          "name": "performanceCounters/processCpuPercentage",
+                          "aggregationType": 4,
+                          "namespace": "microsoft.insights/components",
+                          "metricVisualization": { "displayName": "Process CPU", "color": "#7E58FF" }
+                        }
+                      ],
+                      "title": "CPU Utilization",
+                      "visualization": { "chartType": 2, "legendVisualization": { "isVisible": true, "position": 2, "hideSubtitle": false }, "axisVisualization": { "x": { "isVisible": true, "axisType": 2 }, "y": { "isVisible": true, "axisType": 1 } } }
+                    }
+                  }
+                },
+                { "name": "sharedTimeRange", "isOptional": true }
+              ],
+              "type": "Extension/HubsExtension/PartType/MonitorChartPart",
+              "settings": {
+                "content": {
+                  "options": {
+                    "chart": {
+                      "metrics": [
+                        {
+                          "resourceMetadata": { "id": "/subscriptions/YOUR_SUBSCRIPTION_ID/resourceGroups/YOUR_RESOURCE_GROUP/providers/Microsoft.Insights/components/YOUR_APP_INSIGHTS_NAME" },
+                          "name": "performanceCounters/processorCpuPercentage",
+                          "aggregationType": 4,
+                          "namespace": "microsoft.insights/components",
+                          "metricVisualization": { "displayName": "Processor time", "color": "#47BDF5" }
+                        },
+                        {
+                          "resourceMetadata": { "id": "/subscriptions/YOUR_SUBSCRIPTION_ID/resourceGroups/YOUR_RESOURCE_GROUP/providers/Microsoft.Insights/components/YOUR_APP_INSIGHTS_NAME" },
+                          "name": "performanceCounters/processCpuPercentage",
+                          "aggregationType": 4,
+                          "namespace": "microsoft.insights/components",
+                          "metricVisualization": { "displayName": "Process CPU", "color": "#7E58FF" }
+                        }
+                      ],
+                      "title": "CPU Utilization",
+                      "visualization": { "chartType": 2, "legendVisualization": { "isVisible": true, "position": 2, "hideSubtitle": false }, "axisVisualization": { "x": { "isVisible": true, "axisType": 2 }, "y": { "isVisible": true, "axisType": 1 } }, "disablePinning": true }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "position": { "x": 12, "y": 5, "colSpan": 4, "rowSpan": 3 },
+            "metadata": {
+              "inputs": [
+                {
+                  "name": "options",
+                  "value": {
+                    "chart": {
+                      "metrics": [
+                        {
+                          "resourceMetadata": { "id": "/subscriptions/YOUR_SUBSCRIPTION_ID/resourceGroups/YOUR_RESOURCE_GROUP/providers/Microsoft.Insights/components/YOUR_APP_INSIGHTS_NAME" },
+                          "name": "performanceCounters/memoryAvailableBytes",
+                          "aggregationType": 4,
+                          "namespace": "microsoft.insights/components",
+                          "metricVisualization": { "displayName": "Available memory", "color": "#44F1C8" }
+                        }
+                      ],
+                      "title": "Available Memory",
+                      "visualization": { "chartType": 2, "legendVisualization": { "isVisible": true, "position": 2, "hideSubtitle": false }, "axisVisualization": { "x": { "isVisible": true, "axisType": 2 }, "y": { "isVisible": true, "axisType": 1 } } }
+                    }
+                  }
+                },
+                { "name": "sharedTimeRange", "isOptional": true }
+              ],
+              "type": "Extension/HubsExtension/PartType/MonitorChartPart",
+              "settings": {
+                "content": {
+                  "options": {
+                    "chart": {
+                      "metrics": [
+                        {
+                          "resourceMetadata": { "id": "/subscriptions/YOUR_SUBSCRIPTION_ID/resourceGroups/YOUR_RESOURCE_GROUP/providers/Microsoft.Insights/components/YOUR_APP_INSIGHTS_NAME" },
+                          "name": "performanceCounters/memoryAvailableBytes",
+                          "aggregationType": 4,
+                          "namespace": "microsoft.insights/components",
+                          "metricVisualization": { "displayName": "Available memory", "color": "#44F1C8" }
+                        }
+                      ],
+                      "title": "Available Memory",
+                      "visualization": { "chartType": 2, "legendVisualization": { "isVisible": true, "position": 2, "hideSubtitle": false }, "axisVisualization": { "x": { "isVisible": true, "axisType": 2 }, "y": { "isVisible": true, "axisType": 1 } }, "disablePinning": true }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        ]
+      }
+    ],
+    "metadata": {
+      "model": {
+        "timeRange": {
+          "value": { "relative": { "duration": 24, "timeUnit": 1 } },
+          "type": "MsPortalFx.Composition.Configuration.ValueTypes.TimeRange"
+        },
+        "filterLocale": { "value": "en-us" },
+        "filters": {
+          "value": {
+            "MsPortalFx_TimeRange": {
+              "model": { "format": "utc", "granularity": "auto", "relative": "24h" },
+              "displayCache": { "name": "UTC Time", "value": "Past 24 hours" },
+              "filteredPartIds": []
+            }
+          }
+        }
+      }
+    }
+  },
+  "name": "Family Hubs — Tech Dashboard",
+  "type": "Microsoft.Portal/dashboards",
+  "location": "INSERT LOCATION",
+  "tags": { "hidden-title": "Family Hubs — Tech Dashboard" },
+  "apiVersion": "2022-12-01-preview"
+}

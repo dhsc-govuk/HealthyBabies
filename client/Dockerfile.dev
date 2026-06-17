@@ -1,0 +1,9 @@
+FROM node:22-alpine AS build
+WORKDIR /app
+ARG NPM_ORGANISATION_TOKEN
+COPY ./client/package*.json ./
+COPY ./.npmrc ./
+RUN npm install
+COPY ./client .
+EXPOSE 80
+CMD ["npm", "start"]

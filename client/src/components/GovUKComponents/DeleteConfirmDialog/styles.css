@@ -1,0 +1,21 @@
+.delete-confirm-dialog__title {
+  background-color: #f3f2f1;
+  color: #0b0c0c;
+  border-bottom: 1px solid #b1b4b6;
+}
+
+.delete-confirm-dialog__content {
+  margin-top: 16px;
+}
+
+.delete-confirm-dialog__item-name {
+  margin-top: 8px;
+  font-weight: bold;
+}
+
+.delete-confirm-dialog__actions {
+  padding: 16px;
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}

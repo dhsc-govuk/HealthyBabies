@@ -1,0 +1,625 @@
+/* Bulk Upload Services - GOV.UK styled components */
+
+/* Step caption and heading */
+.bulk-upload-caption {
+  font-size: 24px;
+  line-height: 30px;
+  font-weight: 300;
+  color: #505a5f;
+  margin: 0 0 5px 0;
+}
+
+.bulk-upload-heading {
+  font-size: 36px;
+  line-height: 40px;
+  font-weight: 700;
+  color: #0b0c0c;
+  margin: 0 0 30px 0;
+}
+
+.bulk-upload-heading--medium {
+  font-size: 24px;
+  line-height: 30px;
+  font-weight: 700;
+  color: #0b0c0c;
+  margin: 0 0 20px 0;
+}
+
+/* Content width constraint */
+.bulk-upload-content {
+  max-width: 630px;
+}
+
+/* Body text */
+.bulk-upload-body {
+  font-size: 19px;
+  line-height: 25px;
+  font-weight: 300;
+  color: #0b0c0c;
+  margin-bottom: 15px;
+}
+
+.bulk-upload-body-small {
+  font-size: 16px;
+  line-height: 20px;
+  font-weight: 300;
+  color: #505a5f;
+  margin-bottom: 0;
+}
+
+/* File upload component */
+.bulk-upload-file {
+  margin-bottom: 30px;
+}
+
+.bulk-upload-file__label {
+  font-size: 19px;
+  line-height: 25px;
+  font-weight: 700;
+  color: #0b0c0c;
+  display: block;
+  margin-bottom: 5px;
+}
+
+.bulk-upload-file__hint {
+  font-size: 19px;
+  line-height: 25px;
+  font-weight: 300;
+  color: #505a5f;
+  display: block;
+  margin-bottom: 10px;
+}
+
+.bulk-upload-file__hint ul {
+  margin-top: 10px;
+  margin-bottom: 10px;
+  padding-left: 20px;
+}
+
+.bulk-upload-file__hint li {
+  margin-bottom: 0;
+}
+
+.bulk-upload-file__dropzone {
+  border: 2px dashed #b1b4b6;
+  background-color: #fff;
+  padding: 25px;
+}
+
+.bulk-upload-file__status {
+  background-color: #bbd4ea;
+  color: #0c2d4a;
+  padding: 15px 10px;
+  font-size: 19px;
+  line-height: 25px;
+  margin-bottom: 0;
+}
+
+.bulk-upload-file__status--success {
+  background-color: #cce2d8;
+  color: #005a30;
+}
+
+.bulk-upload-file__controls {
+  display: flex;
+  align-items: baseline;
+  gap: 15px;
+  margin-top: 15px;
+}
+
+.bulk-upload-file__button {
+  background-color: #f3f2f1;
+  border: none;
+  border-bottom: 2px solid #929191;
+  color: #0b0c0c;
+  font-size: 19px;
+  line-height: 25px;
+  padding: 8px 12px 7px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.bulk-upload-file__button:hover {
+  background-color: #dbdad9;
+}
+
+.bulk-upload-file__or-text {
+  font-size: 19px;
+  line-height: 25px;
+  color: #0b0c0c;
+}
+
+/* Delimiter section */
+.bulk-upload-delimiter {
+  margin-bottom: 30px;
+}
+
+.bulk-upload-delimiter__label {
+  font-size: 19px;
+  line-height: 25px;
+  font-weight: 700;
+  color: #0b0c0c;
+  display: block;
+  margin-bottom: 5px;
+}
+
+.bulk-upload-delimiter__hint {
+  font-size: 19px;
+  line-height: 25px;
+  font-weight: 300;
+  color: #505a5f;
+  display: block;
+  margin-bottom: 15px;
+}
+
+.bulk-upload-delimiter__options {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+}
+
+/* Small radios for inline use */
+.bulk-upload-radio-small {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-right: 30px;
+  padding: 10px 0;
+}
+
+.bulk-upload-radio-small__input {
+  width: 24px;
+  height: 24px;
+  margin: 0;
+  cursor: pointer;
+}
+
+.bulk-upload-radio-small__label {
+  font-size: 19px;
+  line-height: 25px;
+  color: #0b0c0c;
+  cursor: pointer;
+}
+
+/* Table preview section */
+.bulk-upload-table-section {
+  margin-bottom: 30px;
+}
+
+.bulk-upload-table-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+.bulk-upload-table-label {
+  font-size: 19px;
+  line-height: 25px;
+  font-weight: 700;
+  color: #0b0c0c;
+  margin: 0;
+}
+
+/* Simple table styling */
+.bulk-upload-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 19px;
+  line-height: 25px;
+}
+
+.bulk-upload-table__wrapper {
+  overflow-x: auto;
+  max-height: 600px;
+  border: 1px solid #b1b4b6;
+}
+
+.bulk-upload-table th,
+.bulk-upload-table td {
+  padding: 8px;
+  text-align: left;
+  border: 1px solid #b1b4b6;
+  vertical-align: top;
+}
+
+.bulk-upload-table th {
+  background-color: #f0f4f5;
+  font-weight: 700;
+}
+
+.bulk-upload-table__header-code {
+  font-size: 16px;
+  font-weight: 400;
+  color: #505a5f;
+  display: block;
+}
+
+.bulk-upload-table__row-number {
+  width: 50px;
+  text-align: center;
+  color: #505a5f;
+  background-color: #f0f4f5;
+}
+
+/* Error summary */
+.bulk-upload-error-summary {
+  border: 4px solid #d5281b;
+  padding: 20px;
+  margin-bottom: 30px;
+}
+
+.bulk-upload-error-summary__title {
+  font-size: 19px;
+  line-height: 25px;
+  font-weight: 700;
+  color: #d5281b;
+  margin: 0 0 10px 0;
+}
+
+.bulk-upload-error-summary__body {
+  font-size: 19px;
+  line-height: 25px;
+  color: #d5281b;
+  margin: 0;
+}
+
+.bulk-upload-error-summary__body a {
+  color: #d5281b;
+}
+
+/* Cell with error */
+.bulk-upload-table__cell--error {
+  background-color: #fdf3f3;
+  border-left: 4px solid #d5281b !important;
+  color: #d5281b;
+}
+
+/* Editable cell - subtle hover indicator */
+.bulk-upload-table__cell--editable {
+  cursor: cell;
+  transition: background-color 0.1s ease;
+}
+
+.bulk-upload-table__cell--editable:hover {
+  background-color: #f0f4f5;
+}
+
+/* Cell in edit mode - contains the input */
+.bulk-upload-table__cell--editing {
+  padding: 0 !important;
+  outline: 2px solid #005eb8;
+  outline-offset: -2px;
+}
+
+/* Excel-like inline input */
+.bulk-upload-table__cell-input {
+  width: 100%;
+  height: 100%;
+  min-height: 41px;
+  padding: 8px;
+  border: none;
+  outline: none;
+  background-color: #fff;
+  font-size: 19px;
+  line-height: 25px;
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+.bulk-upload-table__cell-input:focus {
+  background-color: #fff;
+}
+
+/* Error cell maintains its styling even when editable */
+.bulk-upload-table__cell--error.bulk-upload-table__cell--editable:hover {
+  background-color: #fce8e8;
+}
+
+.bulk-upload-table__cell--error.bulk-upload-table__cell--editing {
+  border-left: 4px solid #d5281b !important;
+}
+
+/* Checkbox small */
+.bulk-upload-checkbox-small {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+}
+
+.bulk-upload-checkbox-small__input {
+  width: 24px;
+  height: 24px;
+  min-width: 24px;
+  margin: 0;
+  cursor: pointer;
+}
+
+.bulk-upload-checkbox-small__label {
+  font-size: 19px;
+  line-height: 25px;
+  color: #0b0c0c;
+  cursor: pointer;
+}
+
+/* Service summary list */
+.bulk-upload-summary-list {
+  padding-bottom: 30px;
+}
+
+.bulk-upload-summary-list__row {
+  display: flex;
+  align-items: flex-start;
+  gap: 40px;
+  padding: 15px 0;
+  border-bottom: 1px solid #b1b4b6;
+}
+
+.bulk-upload-summary-list__key {
+  flex: 1;
+  min-width: 0;
+}
+
+.bulk-upload-summary-list__service-name {
+  font-size: 19px;
+  line-height: 25px;
+  font-weight: 700;
+  color: #0b0c0c;
+  margin: 0 0 5px 0;
+}
+
+.bulk-upload-summary-list__service-status {
+  font-size: 16px;
+  line-height: 20px;
+  font-weight: 300;
+  color: #505a5f;
+  margin: 0;
+}
+
+.bulk-upload-summary-list__value {
+  flex: 0 0 auto;
+  display: flex;
+  gap: 40px;
+}
+
+.bulk-upload-summary-list__option {
+  flex: 0 0 auto;
+  white-space: nowrap;
+}
+
+.bulk-upload-summary-list__option-info {
+  padding-left: 34px;
+  margin-top: 5px;
+  white-space: normal;
+}
+
+.bulk-upload-summary-list__option-info p {
+  font-size: 16px;
+  line-height: 20px;
+  color: #505a5f;
+  margin: 0;
+}
+
+/* Button styles */
+.bulk-upload-button {
+  background-color: #00703c;
+  border: none;
+  border-bottom: 2px solid #005a30;
+  color: #fff;
+  font-size: 19px;
+  line-height: 25px;
+  padding: 8px 12px 7px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.bulk-upload-button:hover {
+  background-color: #005a30;
+}
+
+.bulk-upload-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.bulk-upload-button--secondary {
+  background-color: #f3f2f1;
+  border-bottom: 2px solid #929191;
+  color: #0b0c0c;
+}
+
+.bulk-upload-button--secondary:hover {
+  background-color: #dbdad9;
+}
+
+/* Button group */
+.bulk-upload-buttons {
+  display: flex;
+  gap: 15px;
+  margin-top: 30px;
+}
+
+/* Section spacing */
+.bulk-upload-section {
+  margin-bottom: 30px;
+}
+
+/* Back link */
+.bulk-upload-back-link {
+  display: inline-flex;
+  align-items: center;
+  color: #0b0c0c;
+  text-decoration: underline;
+  font-size: 16px;
+  margin-bottom: 20px;
+}
+
+.bulk-upload-back-link:hover {
+  color: #0b0c0c;
+}
+
+.bulk-upload-back-link svg {
+  margin-right: 5px;
+}
+
+/* Cell Editor Styles */
+.cell-editor {
+  position: relative;
+  min-width: 200px;
+}
+
+.cell-editor__error-message {
+  background-color: #d5281b;
+  color: #fff;
+  padding: 6px 10px;
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 0;
+}
+
+.cell-editor__content {
+  display: flex;
+  align-items: stretch;
+  background-color: #fff;
+  border: 2px solid #ffdd00;
+}
+
+.cell-editor__input,
+.cell-editor__select {
+  flex: 1;
+  min-width: 120px;
+  padding: 8px;
+  border: none;
+  outline: none;
+  font-size: 16px;
+  font-family: inherit;
+  background-color: #fff;
+}
+
+.cell-editor__select {
+  cursor: pointer;
+}
+
+.cell-editor__actions {
+  display: flex;
+  flex-shrink: 0;
+}
+
+.cell-editor__btn {
+  width: 36px;
+  height: 36px;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cell-editor__btn--save {
+  background-color: #00703c;
+  color: #fff;
+}
+
+.cell-editor__btn--save:hover {
+  background-color: #005a30;
+}
+
+.cell-editor__btn--cancel {
+  background-color: #0b0c0c;
+  color: #fff;
+}
+
+.cell-editor__btn--cancel:hover {
+  background-color: #333;
+}
+
+/* Checkbox list for multi-select */
+.cell-editor__checkbox-list {
+  max-height: 200px;
+  overflow-y: auto;
+  background-color: #fff;
+  padding: 8px;
+  min-width: 200px;
+}
+
+.cell-editor__search-box {
+  margin-bottom: 8px;
+}
+
+.cell-editor__search-input {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid #b1b4b6;
+  font-size: 14px;
+  font-family: inherit;
+}
+
+.cell-editor__search-input:focus {
+  outline: 2px solid #ffdd00;
+  outline-offset: 0;
+}
+
+.cell-editor__checkbox-item {
+  display: flex;
+  align-items: center;
+  padding: 6px 0;
+  cursor: pointer;
+}
+
+.cell-editor__checkbox-item:hover {
+  background-color: #f3f2f1;
+}
+
+.cell-editor__checkbox-input {
+  width: 20px;
+  height: 20px;
+  margin-right: 10px;
+  cursor: pointer;
+}
+
+.cell-editor__checkbox-label {
+  font-size: 16px;
+  color: #0b0c0c;
+}
+
+/* Date field wrapper with clear button */
+.cell-editor__date-wrapper {
+  display: flex;
+  align-items: center;
+  flex: 1;
+  gap: 8px;
+}
+
+.cell-editor__clear-btn {
+  background-color: #f3f2f1;
+  border: 1px solid #b1b4b6;
+  color: #0b0c0c;
+  font-size: 14px;
+  padding: 6px 10px;
+  cursor: pointer;
+  font-family: inherit;
+  white-space: nowrap;
+}
+
+.cell-editor__clear-btn:hover {
+  background-color: #dbdad9;
+}
+
+/* Tags */
+.bulk-upload-tag {
+  display: inline-block;
+  padding: 2px 8px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  border-radius: 2px;
+  margin-left: 8px;
+}
+
+.bulk-upload-tag--new {
+  background-color: #1d70b8;
+  color: #fff;
+}

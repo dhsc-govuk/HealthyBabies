@@ -1,0 +1,111 @@
+/* GOV.UK container centering */
+.govuk-main-wrapper {
+  padding-top: 0px;
+  padding-bottom: 20px;
+}
+
+.govuk-width-container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 0 15px;
+}
+
+@media (min-width: 641px) {
+  .govuk-width-container {
+    padding: 0 30px;
+  }
+}
+
+.content-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+}
+
+.content-header__title {
+  flex: 1;
+}
+
+.content-header__title h1,
+.content-header__title h2,
+.content-header__title h3,
+.content-header__title .govuk-heading-xl,
+.content-header__title .govuk-heading-l,
+.content-header__title .govuk-heading-m {
+  margin: 0;
+  margin-bottom: 0;
+}
+
+.content-header__actions {
+  flex-shrink: 0;
+  margin-left: 20px;
+}
+
+.content-header__actions button {
+  margin-bottom: 0;
+}
+
+.content-body {
+  padding-bottom: 40px;
+}
+
+.content-body .govuk-fieldset,
+.content-body .govuk-error-summary {
+  max-width: 640px;
+}
+
+/* Question code positioning */
+.content-body .govuk-form-group {
+  position: relative;
+}
+
+.content-body .govuk-form-group .question-code {
+  position: absolute;
+  top: 0;
+  right: 0;
+  color: #505a5f;
+  font-weight: 400;
+  font-size: 16px;
+}
+
+/* GOV.UK styling for MUI DataGrid */
+.content-body .MuiDataGrid-root {
+  border: 0;
+  font-family: "GDS Transport", arial, sans-serif;
+  font-size: 16px;
+}
+
+.content-body .MuiDataGrid-columnHeaders {
+  background-color: #f3f2f1;
+  border-bottom: 1px solid #b1b4b6;
+}
+
+.content-body .MuiDataGrid-columnHeaderTitle {
+  font-weight: 700;
+  color: #0b0c0c;
+}
+
+.content-body .MuiDataGrid-cell {
+  border-bottom: 1px solid #b1b4b6;
+  color: #0b0c0c;
+}
+
+.content-body .MuiDataGrid-row:hover {
+  background-color: transparent;
+}
+
+.content-body .MuiDataGrid-footerContainer {
+  border-top: 1px solid #b1b4b6;
+}
+
+.content-body .MuiButton-root {
+  color: #1d70b8;
+  text-transform: none;
+  font-weight: 400;
+}
+
+.content-body .MuiButton-root:hover {
+  color: #003078;
+  background-color: transparent;
+}

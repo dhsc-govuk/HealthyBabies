@@ -1,0 +1,158 @@
+.govuk-label--s {
+  font-family: "GDS Transport", arial, sans-serif;
+  font-weight: 700;
+  font-size: 19px;
+  margin-bottom: 5px;
+}
+
+.govuk-hint {
+  font-family: "GDS Transport", arial, sans-serif;
+  font-size: 16px;
+  color: #505a5f;
+  margin-bottom: 15px;
+}
+
+.govuk-error-message {
+  font-family: "GDS Transport", arial, sans-serif;
+  font-size: 19px;
+  color: #d4351c;
+  font-weight: 700;
+  margin-bottom: 15px;
+}
+
+.govuk-input {
+  font-family: "GDS Transport", arial, sans-serif;
+  font-size: 19px;
+  padding: 5px;
+  border: 2px solid #0b0c0c;
+  width: 100%;
+}
+
+.govuk-select {
+  font-family: "GDS Transport", arial, sans-serif;
+  font-size: 19px;
+  padding: 5px 25px 5px 10px;
+  border: 2px solid #0b0c0c;
+  width: 100%;
+  height: 40px;
+  background-color: #fff;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%230b0c0c' d='M1.41 0L6 4.58 10.59 0 12 1.41l-6 6-6-6z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 10px center;
+}
+
+.govuk-input--error {
+  border-color: #d4351c;
+}
+
+.govuk-select--error {
+  border-color: #d4351c;
+}
+
+.govuk-form-group {
+  margin-bottom: 30px;
+}
+
+.govuk-form-group--error {
+  padding-left: 15px;
+  border-left: 5px solid #d4351c;
+}
+
+/* Error Summary Box */
+.govuk-error-summary {
+  padding: 15px 20px;
+  margin-bottom: 30px;
+  border: 5px solid #d4351c;
+  background-color: #fff;
+}
+
+.govuk-error-summary__title {
+  font-family: "GDS Transport", arial, sans-serif;
+  font-size: 24px;
+  font-weight: 700;
+  margin: 0 0 15px 0;
+  color: #0b0c0c;
+}
+
+.govuk-error-summary__body {
+  font-family: "GDS Transport", arial, sans-serif;
+  font-size: 19px;
+}
+
+.govuk-error-summary__list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.govuk-error-summary__list li {
+  margin-bottom: 5px;
+}
+
+.govuk-error-summary__list a {
+  color: #d4351c;
+  font-weight: 700;
+  text-decoration: underline;
+}
+
+.govuk-error-summary__list a:hover {
+  color: #942514;
+}
+
+.govuk-checkboxes__item {
+  display: flex;
+  align-items: flex-start;
+  gap: 15px;
+}
+
+.govuk-checkboxes__input {
+  width: 40px;
+  height: 40px;
+  margin: 0;
+  cursor: pointer;
+}
+
+.govuk-checkboxes__label {
+  font-family: "GDS Transport", arial, sans-serif;
+  font-size: 19px;
+  padding-top: 7px;
+}
+
+.govuk-summary-list {
+  font-family: "GDS Transport", arial, sans-serif;
+  font-size: 19px;
+  margin-bottom: 30px;
+}
+
+.govuk-summary-list__row {
+  display: flex;
+  border-bottom: 1px solid #b1b4b6;
+  padding: 0 0;
+}
+
+.govuk-summary-list__key {
+  font-weight: 700;
+  width: 35%;
+  padding-right: 5px;
+}
+
+.govuk-summary-list__value {
+  flex: 1;
+}
+
+.govuk-body {
+  font-family: "GDS Transport", arial, sans-serif;
+  font-size: 19px;
+  line-height: 1.5;
+  margin-bottom: 20px;
+  color: #0b0c0c;
+}
+
+.govuk-back-link {
+  font-family: "GDS Transport", arial, sans-serif;
+  font-size: 16px;
+  color: #0b0c0c;
+  text-decoration: underline;
+}
+
