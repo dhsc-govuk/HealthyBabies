@@ -1,0 +1,7 @@
+/* Data Collection View Page
+ * All styling uses GOV.UK Design System components and styled-components from govuk-global.ts
+ * No custom CSS required - using:
+ * - PageHeaderContainer, PageHeaderActions for header layout
+ * - ActionsDropdownContainer, ActionsDropdownButton, ActionsDropdownMenu, ActionsDropdownItem for actions menu
+ * - govuk-summary-list for summary display
+ */

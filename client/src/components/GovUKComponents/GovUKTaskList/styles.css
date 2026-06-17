@@ -1,0 +1,125 @@
+/* GOV.UK Task List Component
+ * Based on: https://design-system.service.gov.uk/components/task-list/
+ * These styles follow the GOV.UK Design System specifications
+ */
+
+.govuk-task-list {
+  font-family: "GDS Transport", arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-weight: 400;
+  font-size: 16px;
+  font-size: 1rem;
+  line-height: 1.25;
+  margin: 0;
+  padding: 0;
+  list-style-type: none;
+}
+
+@media (min-width: 40.0625em) {
+  .govuk-task-list {
+    font-size: 19px;
+    font-size: 1.1875rem;
+    line-height: 1.3157894737;
+  }
+}
+
+@media print {
+  .govuk-task-list {
+    font-family: sans-serif;
+    font-size: 14pt;
+    line-height: 1.15;
+  }
+}
+
+.govuk-task-list__item {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding-top: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #b1b4b6;
+}
+
+@media (min-width: 40.0625em) {
+  .govuk-task-list__item {
+    padding-top: 10px;
+    padding-bottom: 10px;
+  }
+}
+
+.govuk-task-list__item:first-child {
+  border-top: 1px solid #b1b4b6;
+}
+
+
+.govuk-task-list__name-and-hint {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
+  min-width: 0;
+}
+
+.govuk-task-list__link {
+  display: inline;
+  text-decoration: underline;
+  text-decoration-thickness: max(1px, .0625rem);
+  text-underline-offset: 0.1578em;
+}
+
+.govuk-task-list__link:hover {
+  text-decoration-thickness: max(3px, .1875rem, .12em);
+  text-decoration-skip-ink: none;
+  text-decoration-skip: none;
+}
+
+.govuk-task-list__link:focus {
+  outline: 3px solid transparent;
+  color: #0b0c0c;
+  background-color: #ffdd00;
+  box-shadow: 0 -2px #ffdd00, 0 4px #0b0c0c;
+  text-decoration: none;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+.govuk-task-list__link:link {
+  color: #1d70b8;
+}
+
+.govuk-task-list__link:visited {
+  color: #4c2c92;
+}
+
+.govuk-task-list__link:hover {
+  color: #003078;
+}
+
+.govuk-task-list__link:active {
+  color: #0b0c0c;
+}
+
+.govuk-task-list__link:focus {
+  color: #0b0c0c;
+}
+
+.govuk-task-list__hint {
+  margin-top: 5px;
+  color: #505a5f;
+}
+
+.govuk-task-list__status {
+  display: flex;
+  flex-shrink: 0;
+  align-items: flex-start;
+  margin-left: 10px;
+  text-align: right;
+}
+
+@media (min-width: 40.0625em) {
+  .govuk-task-list__status {
+    margin-left: 20px;
+  }
+}

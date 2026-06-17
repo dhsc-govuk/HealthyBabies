@@ -1,0 +1,4590 @@
+{
+  "serviceFormQuestions": [
+    {
+      "code": "SMD01",
+      "label": "What is the name of the service?",
+      "hint": "Enter the name of the service",
+      "placeholder": "Enter service name",
+      "questionType": "Text",
+      "step": 1,
+      "displayOrder": 1,
+      "isRequired": true,
+      "isPredefined": true,
+      "helpTextSummary": null,
+      "helpText": null,
+      "conditionalQuestionCode": null,
+      "conditionalValue": null,
+      "isActive": true,
+      "options": []
+    },
+    {
+      "code": "SMD02",
+      "label": "Is the service funded by Best Start Family Hubs and/or Healthy Babies?",
+      "hint": null,
+      "placeholder": null,
+      "questionType": "Radio",
+      "step": 1,
+      "displayOrder": 2,
+      "isRequired": true,
+      "isPredefined": false,
+      "helpTextSummary": null,
+      "helpText": null,
+      "conditionalQuestionCode": null,
+      "conditionalValue": null,
+      "isActive": true,
+      "options": [
+        {
+          "value": "funded",
+          "label": "Funded",
+          "displayOrder": 1
+        },
+        {
+          "value": "partially_funded",
+          "label": "Partially funded",
+          "displayOrder": 2
+        },
+        {
+          "value": "not_funded",
+          "label": "Not programme funded",
+          "displayOrder": 3
+        }
+      ]
+    },
+    {
+      "code": "SMD03",
+      "label": "What is the status of the service?",
+      "hint": null,
+      "placeholder": null,
+      "questionType": "Radio",
+      "step": 1,
+      "displayOrder": 3,
+      "isRequired": true,
+      "isPredefined": false,
+      "helpTextSummary": null,
+      "helpText": null,
+      "conditionalQuestionCode": null,
+      "conditionalValue": null,
+      "isActive": true,
+      "options": [
+        {
+          "value": "live",
+          "label": "Live service",
+          "displayOrder": 1
+        },
+        {
+          "value": "planned",
+          "label": "Planned for implementation",
+          "displayOrder": 2
+        },
+        {
+          "value": "no_longer_offered",
+          "label": "No longer offered",
+          "displayOrder": 3
+        }
+      ]
+    },
+    {
+      "code": "SMD04",
+      "label": "When did the service close?",
+      "hint": null,
+      "placeholder": null,
+      "questionType": "Date",
+      "step": 1,
+      "displayOrder": 4,
+      "isRequired": true,
+      "isPredefined": false,
+      "helpTextSummary": null,
+      "helpText": "Has to be a date in the past.",
+      "conditionalQuestionCode": "SMD03",
+      "conditionalValue": "no_longer_offered",
+      "isActive": true,
+      "options": []
+    },
+    {
+      "code": "SMD05",
+      "label": "When is the service expected to start?",
+      "hint": null,
+      "placeholder": null,
+      "questionType": "Date",
+      "step": 1,
+      "displayOrder": 5,
+      "isRequired": true,
+      "isPredefined": false,
+      "helpTextSummary": null,
+      "helpText": "Has to be a date in the future.",
+      "conditionalQuestionCode": "SMD03",
+      "conditionalValue": "planned",
+      "isActive": true,
+      "options": []
+    },
+    {
+      "code": "SMD06",
+      "label": "How frequently can users access this service?",
+      "hint": "Select all that apply.",
+      "placeholder": null,
+      "questionType": "Checkbox",
+      "step": 2,
+      "displayOrder": 1,
+      "isRequired": true,
+      "isPredefined": false,
+      "helpTextSummary": null,
+      "helpText": null,
+      "conditionalQuestionCode": null,
+      "conditionalValue": null,
+      "isActive": true,
+      "options": [
+        {
+          "value": "daily",
+          "label": "Daily",
+          "displayOrder": 1
+        },
+        {
+          "value": "weekly",
+          "label": "Weekly",
+          "displayOrder": 2
+        },
+        {
+          "value": "monthly",
+          "label": "Monthly",
+          "displayOrder": 3
+        },
+        {
+          "value": "annually",
+          "label": "Annually",
+          "displayOrder": 4
+        },
+        {
+          "value": "one_off_event",
+          "label": "One-off event",
+          "displayOrder": 5
+        },
+        {
+          "value": "ad_hoc",
+          "label": "Ad-hoc as needed",
+          "displayOrder": 6
+        },
+        {
+          "value": "always_live",
+          "label": "Always live (e.g. apps, websites, 24/7 helplines)",
+          "displayOrder": 7
+        },
+        {
+          "value": "other",
+          "label": "Other",
+          "displayOrder": 8
+        }
+      ]
+    },
+    {
+      "code": "SMD07",
+      "label": "Provide more information about how often users can attend this service (optional)",
+      "hint": null,
+      "placeholder": null,
+      "questionType": "Text",
+      "step": 2,
+      "displayOrder": 2,
+      "isRequired": false,
+      "isPredefined": false,
+      "helpTextSummary": null,
+      "helpText": null,
+      "conditionalQuestionCode": "SMD06",
+      "conditionalValue": "other",
+      "isActive": true,
+      "options": []
+    },
+    {
+      "code": "SMD08",
+      "label": "Which strand funds this service?",
+      "hint": null,
+      "placeholder": null,
+      "questionType": "Radio",
+      "step": 2,
+      "displayOrder": 3,
+      "isRequired": true,
+      "isPredefined": false,
+      "helpTextSummary": null,
+      "helpText": null,
+      "conditionalQuestionCode": null,
+      "conditionalValue": null,
+      "isActive": true,
+      "options": [
+        {
+          "value": "parenting",
+          "label": "Parenting support",
+          "displayOrder": 1
+        },
+        {
+          "value": "parent_infant_relationships",
+          "label": "Parent-infant relationships and perinatal mental health support",
+          "displayOrder": 2
+        },
+        {
+          "value": "infant_feeding",
+          "label": "Infant Feeding support",
+          "displayOrder": 3
+        },
+        {
+          "value": "early_language",
+          "label": "Early language and the home learning environment",
+          "displayOrder": 4
+        },
+        {
+          "value": "send",
+          "label": "SEND",
+          "displayOrder": 5
+        },
+        {
+          "value": "wider_services",
+          "label": "Wider services",
+          "displayOrder": 6
+        }
+      ]
+    },
+    {
+      "code": "SMD09",
+      "label": "For parent-infant relationships and perinatal mental health support services, which category does this service belong to?",
+      "hint": "Select all that apply.",
+      "placeholder": null,
+      "questionType": "Checkbox",
+      "step": 2,
+      "displayOrder": 4,
+      "isRequired": true,
+      "isPredefined": false,
+      "helpTextSummary": null,
+      "helpText": null,
+      "conditionalQuestionCode": "SMD08",
+      "conditionalValue": "parent_infant_relationships",
+      "isActive": true,
+      "options": [
+        {
+          "value": "pir_support",
+          "label": "Parent-Infant Relationship (PIR) Support",
+          "displayOrder": 1
+        },
+        {
+          "value": "pmh_mild_moderate",
+          "label": "Perinatal Mental Health - Mild-Moderate Support",
+          "displayOrder": 2
+        },
+        {
+          "value": "pmh_dads_co_parents",
+          "label": "Perinatal Mental Health - Support for Dads and Co-Parents",
+          "displayOrder": 3
+        },
+        {
+          "value": "other",
+          "label": "Other",
+          "displayOrder": 4
+        }
+      ]
+    },
+    {
+      "code": "SMD10",
+      "label": "If the parenting support service is from the Evidence Based Intervention menu, select the relevant intervention.",
+      "hint": "Select Not Applicable if your service is not drawn from the Evidence Based Intervention menu.",
+      "placeholder": null,
+      "questionType": "Checkbox",
+      "step": 2,
+      "displayOrder": 5,
+      "isRequired": true,
+      "isPredefined": false,
+      "helpTextSummary": null,
+      "helpText": null,
+      "conditionalQuestionCode": "SMD08",
+      "conditionalValue": "parenting",
+      "isActive": true,
+      "options": [
+        {
+          "value": "child_parent_psychotherapy",
+          "label": "Child-Parent Psychotherapy",
+          "displayOrder": 1
+        },
+        {
+          "value": "epec",
+          "label": "Empowering Parents Empowering Communities (EPEC)",
+          "displayOrder": 2
+        },
+        {
+          "value": "fcu",
+          "label": "Family Check-Up for Children (FCU)",
+          "displayOrder": 3
+        },
+        {
+          "value": "gen_pmto",
+          "label": "Generation Parent Management Training Oregon (GEN PMTO)",
+          "displayOrder": 4
+        },
+        {
+          "value": "incredible_years_preschool",
+          "label": "Incredible Years Preschool",
+          "displayOrder": 5
+        },
+        {
+          "value": "incredible_years_advance",
+          "label": "Incredible Years Preschool +ADVANCE Parent Training Curriculum",
+          "displayOrder": 6
+        },
+        {
+          "value": "parentchild_plus",
+          "label": "ParentChild+",
+          "displayOrder": 7
+        },
+        {
+          "value": "paft",
+          "label": "Parents as First Teachers (PAFT)",
+          "displayOrder": 8
+        },
+        {
+          "value": "schoolchildren_families",
+          "label": "Schoolchildren and their Families",
+          "displayOrder": 9
+        },
+        {
+          "value": "strengthening_families",
+          "label": "Strengthening Families, Strengthening Communities",
+          "displayOrder": 10
+        },
+        {
+          "value": "tf_cbt",
+          "label": "Trauma-Focused Cognitive Behavioural Therapy",
+          "displayOrder": 11
+        },
+        {
+          "value": "triple_p_enhanced",
+          "label": "Triple P – Enhanced Triple P (Level 5)",
+          "displayOrder": 12
+        },
+        {
+          "value": "triple_p_family_transitions",
+          "label": "Triple P – Family Transitions",
+          "displayOrder": 13
+        },
+        {
+          "value": "triple_p_l4_group",
+          "label": "Triple P – Level 4 Group Triple P",
+          "displayOrder": 14
+        },
+        {
+          "value": "triple_p_l4_standard",
+          "label": "Triple P – Level 4 Standard Triple P",
+          "displayOrder": 15
+        },
+        {
+          "value": "triple_p_l5_pathways",
+          "label": "Triple P – Level 5 Pathways",
+          "displayOrder": 16
+        },
+        {
+          "value": "triple_p_selected_seminars_ss",
+          "label": "Triple P – Selected (Seminars) Stepping Stones",
+          "displayOrder": 17
+        },
+        {
+          "value": "triple_p_standard_ss_group",
+          "label": "Triple P – Standard Stepping Stones + Group",
+          "displayOrder": 18
+        },
+        {
+          "value": "triple_p_l3_discussion",
+          "label": "Triple P Level 3 Discussion Groups",
+          "displayOrder": 19
+        },
+        {
+          "value": "triple_p_online",
+          "label": "Triple P Online",
+          "displayOrder": 20
+        },
+        {
+          "value": "vippsd",
+          "label": "Video-Interventions to promote positive parenting and sensitive discipline (VIPPSD) / Healthy Start, Happy Start",
+          "displayOrder": 21
+        },
+        {
+          "value": "not_applicable",
+          "label": "Not applicable",
+          "displayOrder": 22
+        }
+      ]
+    },
+    {
+      "code": "SMD11",
+      "label": "If the Early Language and the Home Learning Environment service is from the Evidence Based Intervention menu, select the relevant intervention.",
+      "hint": "Select Not Applicable if your service is not drawn from the Evidence Based Intervention menu.",
+      "placeholder": null,
+      "questionType": "Radio",
+      "step": 2,
+      "displayOrder": 6,
+      "isRequired": true,
+      "isPredefined": false,
+      "helpTextSummary": null,
+      "helpText": null,
+      "conditionalQuestionCode": "SMD08",
+      "conditionalValue": "early_language",
+      "isActive": true,
+      "options": [
+        {
+          "value": "auditory_verbal_therapy",
+          "label": "Auditory Verbal Therapy",
+          "displayOrder": 1
+        },
+        {
+          "value": "early_talk_boost",
+          "label": "Early Talk Boost",
+          "displayOrder": 2
+        },
+        {
+          "value": "early_words_together",
+          "label": "Early Words Together",
+          "displayOrder": 3
+        },
+        {
+          "value": "easypeasy",
+          "label": "EasyPeasy",
+          "displayOrder": 4
+        },
+        {
+          "value": "incredible_years_preschool",
+          "label": "Incredible Years Preschool",
+          "displayOrder": 5
+        },
+        {
+          "value": "incredible_years_advance",
+          "label": "Incredible Years Preschool +ADVANCE Parent Training Curriculum",
+          "displayOrder": 6
+        },
+        {
+          "value": "leap_into_learning",
+          "label": "Let’s Play in Tandem (now available as LEAP into Learning)",
+          "displayOrder": 7
+        },
+        {
+          "value": "making_it_real",
+          "label": "Making it REAL",
+          "displayOrder": 8
+        },
+        {
+          "value": "parentchild_plus",
+          "label": "ParentChild+",
+          "displayOrder": 9
+        },
+        {
+          "value": "paft",
+          "label": "Parents as First Teachers (PAFT)",
+          "displayOrder": 10
+        },
+        {
+          "value": "peep_learning_together",
+          "label": "PEEP Learning Together Programme",
+          "displayOrder": 11
+        },
+        {
+          "value": "triple_p_l3_discussion",
+          "label": "Triple P – Level 3 Discussion Groups",
+          "displayOrder": 12
+        },
+        {
+          "value": "triple_p_l4_group",
+          "label": "Triple P – Level 4 Group",
+          "displayOrder": 13
+        },
+        {
+          "value": "triple_p_online",
+          "label": "Triple P – Online",
+          "displayOrder": 14
+        },
+        {
+          "value": "triple_p_stepping_stones",
+          "label": "Triple P – Stepping Stones",
+          "displayOrder": 15
+        },
+        {
+          "value": "not_applicable",
+          "label": "Not applicable",
+          "displayOrder": 16
+        }
+      ]
+    },
+    {
+      "code": "SMD12",
+      "label": "Does this service fall into any wider categories?",
+      "hint": null,
+      "placeholder": null,
+      "questionType": "Radio",
+      "step": 2,
+      "displayOrder": 7,
+      "isRequired": true,
+      "isPredefined": false,
+      "helpTextSummary": null,
+      "helpText": null,
+      "conditionalQuestionCode": "SMD08",
+      "conditionalValue": "wider_services",
+      "isActive": true,
+      "options": [
+        {
+          "value": "activities_for_children_0_5",
+          "label": "Activities for children aged 0-5",
+          "displayOrder": 1
+        },
+        {
+          "value": "birth_registration",
+          "label": "Birth registration",
+          "displayOrder": 2
+        },
+        {
+          "value": "debt_welfare",
+          "label": "Debt and welfare advice",
+          "displayOrder": 3
+        },
+        {
+          "value": "domestic_abuse",
+          "label": "Domestic Abuse support",
+          "displayOrder": 4
+        },
+        {
+          "value": "ecec",
+          "label": "Early Childhood Education and Care (ECEC) and financial support (Tax-Free Childcare, Universal Credit childcare)",
+          "displayOrder": 5
+        },
+        {
+          "value": "health_visiting",
+          "label": "Health visiting 0-5 (inclusive of the Start for Life period)",
+          "displayOrder": 6
+        },
+        {
+          "value": "housing",
+          "label": "Housing",
+          "displayOrder": 7
+        },
+        {
+          "value": "targeted_whole_family",
+          "label": "Targeted whole-family support, delivered by local family help services",
+          "displayOrder": 8
+        },
+        {
+          "value": "la_0_19_public_health",
+          "label": "Local authority 0-19 public health services, based on local needs assessments",
+          "displayOrder": 9
+        },
+        {
+          "value": "mental_health",
+          "label": "Mental health services (beyond Start for Life parent-infant mental health)",
+          "displayOrder": 10
+        },
+        {
+          "value": "midwifery",
+          "label": "Midwifery/maternity",
+          "displayOrder": 11
+        },
+        {
+          "value": "nutrition_weight",
+          "label": "Nutrition and weight management",
+          "displayOrder": 12
+        },
+        {
+          "value": "oral_health",
+          "label": "Oral health improvement",
+          "displayOrder": 13
+        },
+        {
+          "value": "reducing_parental_conflict",
+          "label": "Reducing Parental Conflict",
+          "displayOrder": 14
+        },
+        {
+          "value": "send_support",
+          "label": "SEND support and services (inclusive of the Start for Life period)",
+          "displayOrder": 15
+        },
+        {
+          "value": "stop_smoking",
+          "label": "Stop smoking support",
+          "displayOrder": 16
+        },
+        {
+          "value": "substance_misuse",
+          "label": "Substance (alcohol/drug) misuse support",
+          "displayOrder": 17
+        },
+        {
+          "value": "separating_parents",
+          "label": "Support for separating and separated parents",
+          "displayOrder": 18
+        },
+        {
+          "value": "vaccination",
+          "label": "Vaccination services",
+          "displayOrder": 19
+        },
+        {
+          "value": "youth_justice",
+          "label": "Youth justice services",
+          "displayOrder": 20
+        },
+        {
+          "value": "youth_services",
+          "label": "Youth services - universal and targeted",
+          "displayOrder": 21
+        },
+        {
+          "value": "none_of_these",
+          "label": "None of these",
+          "displayOrder": 22
+        },
+        {
+          "value": "unknown",
+          "label": "Unknown",
+          "displayOrder": 23
+        },
+        {
+          "value": "food_support",
+          "label": "Food support",
+          "displayOrder": 24
+        },
+        {
+          "value": "social_welfare_advice_services",
+          "label": "Social welfare advice services",
+          "displayOrder": 25
+        },
+        {
+          "value": "support_for_school_attendance",
+          "label": "Support for school attendance",
+          "displayOrder": 26
+        }
+      ]
+    },
+    {
+      "code": "SMD13",
+      "label": "What is the lowest age of children expected to benefit from the service?",
+      "hint": null,
+      "placeholder": null,
+      "questionType": "Radio",
+      "step": 2,
+      "displayOrder": 8,
+      "isRequired": true,
+      "isPredefined": false,
+      "helpTextSummary": null,
+      "helpText": null,
+      "conditionalQuestionCode": null,
+      "conditionalValue": null,
+      "isActive": true,
+      "options": [
+        {
+          "value": "up_to_birth",
+          "label": "Up to birth",
+          "displayOrder": 1
+        },
+        {
+          "value": "0_2",
+          "label": "0 - 2",
+          "displayOrder": 2
+        },
+        {
+          "value": "3_4",
+          "label": "3 - 4",
+          "displayOrder": 3
+        },
+        {
+          "value": "5_11",
+          "label": "5 - 11",
+          "displayOrder": 4
+        },
+        {
+          "value": "12_17",
+          "label": "12 - 17",
+          "displayOrder": 5
+        },
+        {
+          "value": "18_25",
+          "label": "18 - 25",
+          "displayOrder": 6
+        },
+        {
+          "value": "26_plus",
+          "label": "26 and older",
+          "displayOrder": 7
+        },
+        {
+          "value": "unknown",
+          "label": "Unknown",
+          "displayOrder": 8
+        }
+      ]
+    },
+    {
+      "code": "SMD14",
+      "label": "What is the highest age of children expected to benefit from the service?",
+      "hint": null,
+      "placeholder": null,
+      "questionType": "Radio",
+      "step": 2,
+      "displayOrder": 9,
+      "isRequired": true,
+      "isPredefined": false,
+      "helpTextSummary": null,
+      "helpText": "Highest age cannot be lower than lowest age.",
+      "conditionalQuestionCode": null,
+      "conditionalValue": null,
+      "isActive": true,
+      "options": [
+        {
+          "value": "up_to_birth",
+          "label": "Up to birth",
+          "displayOrder": 1
+        },
+        {
+          "value": "0_2",
+          "label": "0 - 2",
+          "displayOrder": 2
+        },
+        {
+          "value": "3_4",
+          "label": "3 - 4",
+          "displayOrder": 3
+        },
+        {
+          "value": "5_11",
+          "label": "5 - 11",
+          "displayOrder": 4
+        },
+        {
+          "value": "12_17",
+          "label": "12 - 17",
+          "displayOrder": 5
+        },
+        {
+          "value": "18_25",
+          "label": "18 - 25",
+          "displayOrder": 6
+        },
+        {
+          "value": "26_plus",
+          "label": "26 and older",
+          "displayOrder": 7
+        },
+        {
+          "value": "unknown",
+          "label": "Unknown",
+          "displayOrder": 8
+        }
+      ]
+    },
+    {
+      "code": "SMD15",
+      "label": "Is this a targeted, specialist, or universal service?",
+      "hint": "Select all that apply.",
+      "placeholder": null,
+      "questionType": "Checkbox",
+      "step": 2,
+      "displayOrder": 10,
+      "isRequired": true,
+      "isPredefined": false,
+      "helpTextSummary": null,
+      "helpText": null,
+      "conditionalQuestionCode": null,
+      "conditionalValue": null,
+      "isActive": true,
+      "options": [
+        {
+          "value": "universal",
+          "label": "Universal",
+          "displayOrder": 1
+        },
+        {
+          "value": "targeted",
+          "label": "Targeted",
+          "displayOrder": 2
+        },
+        {
+          "value": "specialist",
+          "label": "Specialist",
+          "displayOrder": 3
+        }
+      ]
+    },
+    {
+      "code": "SMD16",
+      "label": "How is this service delivered?",
+      "hint": "Select all that apply.",
+      "placeholder": null,
+      "questionType": "Checkbox",
+      "step": 2,
+      "displayOrder": 11,
+      "isRequired": true,
+      "isPredefined": false,
+      "helpTextSummary": null,
+      "helpText": null,
+      "conditionalQuestionCode": null,
+      "conditionalValue": null,
+      "isActive": true,
+      "options": [
+        {
+          "value": "in_person_group",
+          "label": "In-person co-ordinator led group session",
+          "displayOrder": 1
+        },
+        {
+          "value": "in_person_1_to_1",
+          "label": "In-person 1:1 session",
+          "displayOrder": 2
+        },
+        {
+          "value": "virtual_group",
+          "label": "Virtual co-ordinator led group session",
+          "displayOrder": 3
+        },
+        {
+          "value": "virtual_1_to_1",
+          "label": "Virtual 1:1 session",
+          "displayOrder": 4
+        },
+        {
+          "value": "clinical",
+          "label": "Clinical appointments or clinical drop-in",
+          "displayOrder": 5
+        },
+        {
+          "value": "community_event",
+          "label": "Community / drop-in / awareness event",
+          "displayOrder": 6
+        },
+        {
+          "value": "home_visits",
+          "label": "Home visits",
+          "displayOrder": 7
+        },
+        {
+          "value": "app",
+          "label": "App",
+          "displayOrder": 8
+        },
+        {
+          "value": "helpline",
+          "label": "Helpline",
+          "displayOrder": 9
+        },
+        {
+          "value": "self_directed_online",
+          "label": "Self-directed online access",
+          "displayOrder": 10
+        },
+        {
+          "value": "peer_support",
+          "label": "Peer support",
+          "displayOrder": 11
+        },
+        {
+          "value": "other",
+          "label": "Other",
+          "displayOrder": 12
+        },
+        {
+          "value": "unknown",
+          "label": "Unknown",
+          "displayOrder": 13
+        }
+      ]
+    },
+    {
+      "code": "SMD17",
+      "label": "Where is this service being delivered?",
+      "hint": "Select all that apply.",
+      "placeholder": null,
+      "questionType": "Checkbox",
+      "step": 2,
+      "displayOrder": 12,
+      "isRequired": true,
+      "isPredefined": false,
+      "helpTextSummary": null,
+      "helpText": null,
+      "conditionalQuestionCode": null,
+      "conditionalValue": null,
+      "isActive": true,
+      "options": [
+        {
+          "value": "all_hub_sites",
+          "label": "All hub sites",
+          "displayOrder": 1
+        },
+        {
+          "value": "all_network_sites",
+          "label": "All network sites",
+          "displayOrder": 2
+        },
+        {
+          "value": "some_hub_or_network_sites",
+          "label": "Some hub or network sites",
+          "displayOrder": 3
+        },
+        {
+          "value": "home_visits",
+          "label": "Home visits",
+          "displayOrder": 4
+        },
+        {
+          "value": "early_years_setting",
+          "label": "Early years setting",
+          "displayOrder": 5
+        },
+        {
+          "value": "primary_school",
+          "label": "Primary school",
+          "displayOrder": 6
+        },
+        {
+          "value": "hospital",
+          "label": "Hospital",
+          "displayOrder": 7
+        },
+        {
+          "value": "virtual",
+          "label": "Virtual",
+          "displayOrder": 8
+        },
+        {
+          "value": "other",
+          "label": "Other",
+          "displayOrder": 9
+        }
+      ]
+    },
+    {
+      "code": "SMD18",
+      "label": "Tell us more about where this service is being delivered (optional)",
+      "hint": null,
+      "placeholder": null,
+      "questionType": "Text",
+      "step": 2,
+      "displayOrder": 13,
+      "isRequired": false,
+      "isPredefined": false,
+      "helpTextSummary": null,
+      "helpText": null,
+      "conditionalQuestionCode": "SMD17",
+      "conditionalValue": "other",
+      "isActive": true,
+      "options": []
+    },
+    {
+      "code": "SMD19",
+      "label": "Which locations offer this service?",
+      "hint": "Select all that apply.",
+      "placeholder": null,
+      "questionType": "Checkbox",
+      "step": 2,
+      "displayOrder": 14,
+      "isRequired": false,
+      "isPredefined": false,
+      "helpTextSummary": null,
+      "helpText": "Options are populated from your organisation's registered locations.",
+      "conditionalQuestionCode": "SMD17",
+      "conditionalValue": "some_hub_or_network_sites",
+      "isActive": true,
+      "options": []
+    },
+    {
+      "code": "SMD20",
+      "label": "Who is responsible for delivering this service?",
+      "hint": "Select all that apply.",
+      "placeholder": null,
+      "questionType": "Checkbox",
+      "step": 2,
+      "displayOrder": 15,
+      "isRequired": true,
+      "isPredefined": false,
+      "helpTextSummary": null,
+      "helpText": null,
+      "conditionalQuestionCode": null,
+      "conditionalValue": null,
+      "isActive": true,
+      "options": [
+        {
+          "value": "commissioned_delivery_partner",
+          "label": "Commissioned delivery partner",
+          "displayOrder": 1
+        },
+        {
+          "value": "commissioned_vcs_partner",
+          "label": "Commissioned VCS partner",
+          "displayOrder": 2
+        },
+        {
+          "value": "icb_nhs",
+          "label": "ICB/NHS",
+          "displayOrder": 3
+        },
+        {
+          "value": "la",
+          "label": "LA",
+          "displayOrder": 4
+        },
+        {
+          "value": "non_commissioned_vcs_partner",
+          "label": "Non-commissioned VCS partner",
+          "displayOrder": 5
+        },
+        {
+          "value": "to_be_confirmed",
+          "label": "To be confirmed",
+          "displayOrder": 6
+        },
+        {
+          "value": "other",
+          "label": "Other",
+          "displayOrder": 7
+        },
+        {
+          "value": "unknown",
+          "label": "Unknown",
+          "displayOrder": 8
+        }
+      ]
+    },
+    {
+      "code": "SMD21",
+      "label": "What is the name of the organisation delivering the service?",
+      "hint": null,
+      "placeholder": "Enter organisation name",
+      "questionType": "Text",
+      "step": 2,
+      "displayOrder": 16,
+      "isRequired": false,
+      "isPredefined": false,
+      "helpTextSummary": null,
+      "helpText": "Only required for funded or partially funded services delivered by an organisation outside of the local authority.",
+      "conditionalQuestionCode": null,
+      "conditionalValue": null,
+      "isActive": true,
+      "options": []
+    }
+  ],
+  "siteFormQuestions": [
+    {
+      "code": "FHS01",
+      "label": "What is the official public name of the location?",
+      "hint": "Enter the name of the location.",
+      "placeholder": "Enter location name",
+      "questionType": "Text",
+      "displayOrder": 1,
+      "isRequired": true,
+      "isPredefined": true,
+      "helpTextSummary": null,
+      "helpText": null,
+      "conditionalQuestionCode": null,
+      "conditionalValue": null,
+      "isActive": true,
+      "options": []
+    },
+    {
+      "code": "FHS02",
+      "label": "What is the location's postcode?",
+      "hint": null,
+      "placeholder": "Enter postcode",
+      "questionType": "Text",
+      "displayOrder": 2,
+      "isRequired": true,
+      "isPredefined": true,
+      "helpTextSummary": null,
+      "helpText": "Address details will be prepopulated from the postcode.",
+      "conditionalQuestionCode": null,
+      "conditionalValue": null,
+      "isActive": true,
+      "options": []
+    },
+    {
+      "code": "FHS03",
+      "label": "What is the location's Unique Property Reference Number (UPRN)?",
+      "hint": null,
+      "placeholder": "Enter UPRN",
+      "questionType": "Text",
+      "displayOrder": 3,
+      "isRequired": false,
+      "isPredefined": true,
+      "helpTextSummary": null,
+      "helpText": "Prepopulated from the postcode and address.",
+      "conditionalQuestionCode": null,
+      "conditionalValue": null,
+      "isActive": true,
+      "options": []
+    },
+    {
+      "code": "FHS16",
+      "label": "Address line 1",
+      "hint": null,
+      "placeholder": "Enter address line 1",
+      "questionType": "Text",
+      "displayOrder": 4,
+      "isRequired": false,
+      "isPredefined": true,
+      "helpTextSummary": null,
+      "helpText": "Prepopulated from the postcode lookup.",
+      "conditionalQuestionCode": null,
+      "conditionalValue": null,
+      "isActive": true,
+      "options": []
+    },
+    {
+      "code": "FHS13",
+      "label": "Address line 2 (optional)",
+      "hint": null,
+      "placeholder": "Enter address line 2",
+      "questionType": "Text",
+      "displayOrder": 5,
+      "isRequired": false,
+      "isPredefined": true,
+      "helpTextSummary": null,
+      "helpText": "Prepopulated from the postcode lookup.",
+      "conditionalQuestionCode": null,
+      "conditionalValue": null,
+      "isActive": true,
+      "options": []
+    },
+    {
+      "code": "FHS14",
+      "label": "Town or city",
+      "hint": null,
+      "placeholder": "Enter town or city",
+      "questionType": "Text",
+      "displayOrder": 6,
+      "isRequired": false,
+      "isPredefined": true,
+      "helpTextSummary": null,
+      "helpText": "Prepopulated from the postcode lookup.",
+      "conditionalQuestionCode": null,
+      "conditionalValue": null,
+      "isActive": true,
+      "options": []
+    },
+    {
+      "code": "FHS15",
+      "label": "County (optional)",
+      "hint": null,
+      "placeholder": "Enter county",
+      "questionType": "Text",
+      "displayOrder": 7,
+      "isRequired": false,
+      "isPredefined": true,
+      "helpTextSummary": null,
+      "helpText": "Prepopulated from the postcode lookup.",
+      "conditionalQuestionCode": null,
+      "conditionalValue": null,
+      "isActive": true,
+      "options": []
+    },
+    {
+      "code": "FHS04",
+      "label": "What is the status of the location?",
+      "hint": null,
+      "placeholder": null,
+      "questionType": "Radio",
+      "displayOrder": 8,
+      "isRequired": true,
+      "isPredefined": false,
+      "helpTextSummary": null,
+      "helpText": null,
+      "conditionalQuestionCode": null,
+      "conditionalValue": null,
+      "isActive": true,
+      "options": [
+        {
+          "value": "active",
+          "label": "The location is currently active",
+          "displayOrder": 1
+        },
+        {
+          "value": "planned",
+          "label": "The location is planned to be opened",
+          "displayOrder": 2
+        },
+        {
+          "value": "closed",
+          "label": "The location has been closed",
+          "displayOrder": 3
+        }
+      ]
+    },
+    {
+      "code": "FHS05",
+      "label": "What date did the location close?",
+      "hint": null,
+      "placeholder": null,
+      "questionType": "Date",
+      "displayOrder": 9,
+      "isRequired": true,
+      "isPredefined": false,
+      "helpTextSummary": null,
+      "helpText": "Has to be a date in the past.",
+      "conditionalQuestionCode": "FHS04",
+      "conditionalValue": "closed",
+      "isActive": true,
+      "options": []
+    },
+    {
+      "code": "FHS06",
+      "label": "Why did the location close (optional)?",
+      "hint": null,
+      "placeholder": null,
+      "questionType": "Text",
+      "displayOrder": 10,
+      "isRequired": false,
+      "isPredefined": false,
+      "helpTextSummary": null,
+      "helpText": null,
+      "conditionalQuestionCode": "FHS04",
+      "conditionalValue": "closed",
+      "isActive": true,
+      "options": []
+    },
+    {
+      "code": "FHS07",
+      "label": "What type of location is it?",
+      "hint": null,
+      "placeholder": null,
+      "questionType": "Radio",
+      "displayOrder": 11,
+      "isRequired": true,
+      "isPredefined": false,
+      "helpTextSummary": null,
+      "helpText": "A Best Start Family Hub is a physical place with BSFH branding, EBIs delivered and SEND professionals in place.",
+      "conditionalQuestionCode": null,
+      "conditionalValue": null,
+      "isActive": true,
+      "options": [
+        {
+          "value": "best_start_family_hub",
+          "label": "A Best Start Family Hub",
+          "displayOrder": 1
+        },
+        {
+          "value": "working_towards_bsfh",
+          "label": "Working towards becoming a Best Start Family Hub",
+          "displayOrder": 2
+        },
+        {
+          "value": "family_hub",
+          "label": "A Family Hub",
+          "displayOrder": 3
+        },
+        {
+          "value": "network_site",
+          "label": "A network site",
+          "displayOrder": 4
+        }
+      ]
+    },
+    {
+      "code": "FHS07A",
+      "label": "When is the location planned to open as a Best Start Family Hub or Network Site?",
+      "hint": null,
+      "placeholder": null,
+      "questionType": "Date",
+      "displayOrder": 12,
+      "isRequired": false,
+      "isPredefined": false,
+      "helpTextSummary": null,
+      "helpText": "Has to be a date in the future.",
+      "conditionalQuestionCode": "FHS04",
+      "conditionalValue": "planned",
+      "isActive": true,
+      "options": []
+    },
+    {
+      "code": "FHS08",
+      "label": "When was the location officially opened as a Best Start Family Hub or Network Site?",
+      "hint": null,
+      "placeholder": null,
+      "questionType": "Date",
+      "displayOrder": 13,
+      "isRequired": false,
+      "isPredefined": false,
+      "helpTextSummary": null,
+      "helpText": "Has to be a date in the past.",
+      "conditionalQuestionCode": null,
+      "conditionalValue": null,
+      "isActive": true,
+      "options": []
+    },
+    {
+      "code": "FHS08A",
+      "label": "Was the location used for another purpose prior to being opened as a Best Start Family Hub?",
+      "hint": null,
+      "placeholder": null,
+      "questionType": "Radio",
+      "displayOrder": 14,
+      "isRequired": false,
+      "isPredefined": false,
+      "helpTextSummary": null,
+      "helpText": null,
+      "conditionalQuestionCode": "FHS07",
+      "conditionalValue": "best_start_family_hub",
+      "isActive": true,
+      "options": [
+        {
+          "value": "yes",
+          "label": "Yes",
+          "displayOrder": 1
+        },
+        {
+          "value": "no",
+          "label": "No",
+          "displayOrder": 2
+        },
+        {
+          "value": "unknown",
+          "label": "Unknown",
+          "displayOrder": 3
+        }
+      ]
+    },
+    {
+      "code": "FHS08B",
+      "label": "What was the previous use of the location?",
+      "hint": null,
+      "placeholder": null,
+      "questionType": "Radio",
+      "displayOrder": 15,
+      "isRequired": false,
+      "isPredefined": false,
+      "helpTextSummary": null,
+      "helpText": null,
+      "conditionalQuestionCode": "FHS08A",
+      "conditionalValue": "yes",
+      "isActive": true,
+      "options": [
+        {
+          "value": "family_hub",
+          "label": "Family Hub",
+          "displayOrder": 1
+        },
+        {
+          "value": "childrens_centre",
+          "label": "Children's Centre",
+          "displayOrder": 2
+        },
+        {
+          "value": "library",
+          "label": "Library",
+          "displayOrder": 3
+        },
+        {
+          "value": "other",
+          "label": "Other",
+          "displayOrder": 4
+        },
+        {
+          "value": "unknown",
+          "label": "Unknown",
+          "displayOrder": 5
+        }
+      ]
+    },
+    {
+      "code": "FHS09",
+      "label": "Has the location used Best Start in Life campaign branding?",
+      "hint": "For example, banners, stickers or other promotional material.",
+      "placeholder": null,
+      "questionType": "Radio",
+      "displayOrder": 16,
+      "isRequired": true,
+      "isPredefined": false,
+      "helpTextSummary": null,
+      "helpText": null,
+      "conditionalQuestionCode": null,
+      "conditionalValue": null,
+      "isActive": true,
+      "options": [
+        {
+          "value": "yes",
+          "label": "Yes",
+          "displayOrder": 1
+        },
+        {
+          "value": "no",
+          "label": "No",
+          "displayOrder": 2
+        },
+        {
+          "value": "not_yet",
+          "label": "Not yet",
+          "displayOrder": 3
+        }
+      ]
+    },
+    {
+      "code": "FHS10",
+      "label": "Does the hub share its location with another community organisation?",
+      "hint": "For example, a library or doctor's surgery.",
+      "placeholder": null,
+      "questionType": "Radio",
+      "displayOrder": 17,
+      "isRequired": true,
+      "isPredefined": false,
+      "helpTextSummary": null,
+      "helpText": null,
+      "conditionalQuestionCode": null,
+      "conditionalValue": null,
+      "isActive": true,
+      "options": [
+        {
+          "value": "yes",
+          "label": "Yes",
+          "displayOrder": 1
+        },
+        {
+          "value": "no",
+          "label": "No",
+          "displayOrder": 2
+        }
+      ]
+    },
+    {
+      "code": "FHS11",
+      "label": "What community location(s) does the hub share its location with?",
+      "hint": "Select all that apply.",
+      "placeholder": null,
+      "questionType": "Checkbox",
+      "displayOrder": 18,
+      "isRequired": true,
+      "isPredefined": false,
+      "helpTextSummary": null,
+      "helpText": null,
+      "conditionalQuestionCode": "FHS10",
+      "conditionalValue": "yes",
+      "isActive": true,
+      "options": [
+        {
+          "value": "nhs_icb_building",
+          "label": "A building with other NHS/ICB services",
+          "displayOrder": 1
+        },
+        {
+          "value": "gp_practice",
+          "label": "A GP practice",
+          "displayOrder": 2
+        },
+        {
+          "value": "hospital",
+          "label": "A hospital",
+          "displayOrder": 3
+        },
+        {
+          "value": "library",
+          "label": "A library",
+          "displayOrder": 4
+        },
+        {
+          "value": "another_la_service",
+          "label": "Another local authority service",
+          "displayOrder": 5
+        },
+        {
+          "value": "school",
+          "label": "A school",
+          "displayOrder": 6
+        },
+        {
+          "value": "school_based_nursery",
+          "label": "A school-based nursery (SBN)",
+          "displayOrder": 7
+        },
+        {
+          "value": "pvi_early_years",
+          "label": "A Private, Voluntary or Independent (PVI) early years setting",
+          "displayOrder": 8
+        },
+        {
+          "value": "multi_aspect_la_building",
+          "label": "A multi-aspect building for local authority services",
+          "displayOrder": 9
+        },
+        {
+          "value": "non_la_nhs_icb_building",
+          "label": "A building with non-LA/non-NHS/non-ICB occupants",
+          "displayOrder": 10
+        },
+        {
+          "value": "other",
+          "label": "Other",
+          "displayOrder": 11
+        }
+      ]
+    },
+    {
+      "code": "FHS12",
+      "label": "Is there anything else we need to know about the hub (optional)?",
+      "hint": null,
+      "placeholder": "Enter comments",
+      "questionType": "Text",
+      "displayOrder": 19,
+      "isRequired": false,
+      "isPredefined": false,
+      "helpTextSummary": null,
+      "helpText": null,
+      "conditionalQuestionCode": null,
+      "conditionalValue": null,
+      "isActive": true,
+      "options": []
+    }
+  ],
+  "serviceCategoryFormQuestions": [
+    {
+      "code": "WSDM01",
+      "label": "Do your delivery locations offer any wider services within this category?",
+      "hint": null,
+      "placeholder": null,
+      "questionType": "Radio",
+      "step": 1,
+      "displayOrder": 1,
+      "isRequired": true,
+      "isPredefined": true,
+      "helpTextSummary": null,
+      "helpText": null,
+      "conditionalQuestionCode": null,
+      "conditionalValue": null,
+      "isActive": true,
+      "options": [
+        {
+          "value": "yes",
+          "label": "Yes",
+          "displayOrder": 1
+        },
+        {
+          "value": "no",
+          "label": "No",
+          "displayOrder": 2
+        }
+      ]
+    },
+    {
+      "code": "WSDM02",
+      "label": "Where are these wider services delivered?",
+      "hint": "Select all delivery locations that apply.",
+      "placeholder": null,
+      "questionType": "Checkbox",
+      "step": 1,
+      "displayOrder": 2,
+      "isRequired": true,
+      "isPredefined": true,
+      "helpTextSummary": null,
+      "helpText": null,
+      "conditionalQuestionCode": "WSDM01",
+      "conditionalValue": "yes",
+      "isActive": true,
+      "options": [
+        {
+          "value": "hub_sites",
+          "label": "Hub site(s)",
+          "displayOrder": 1
+        },
+        {
+          "value": "home_visits",
+          "label": "Home visits",
+          "displayOrder": 2
+        },
+        {
+          "value": "early_years_setting",
+          "label": "Early years setting",
+          "displayOrder": 3
+        },
+        {
+          "value": "hospital",
+          "label": "Hospital",
+          "displayOrder": 4
+        },
+        {
+          "value": "virtual",
+          "label": "Virtual",
+          "displayOrder": 5
+        },
+        {
+          "value": "network_sites",
+          "label": "Network Site(s)",
+          "displayOrder": 6
+        },
+        {
+          "value": "other_locations_la",
+          "label": "Other locations in LA",
+          "displayOrder": 7
+        }
+      ]
+    }
+  ],
+  "widerServiceCategories": [
+    {
+      "entity": "WIDER_SERVICE_CATEGORIES",
+      "value": "activities_for_children_0_5",
+      "description": "Activities for children aged 0-5"
+    },
+    {
+      "entity": "WIDER_SERVICE_CATEGORIES",
+      "value": "birth_registration",
+      "description": "Birth registration"
+    },
+    {
+      "entity": "WIDER_SERVICE_CATEGORIES",
+      "value": "debt_welfare",
+      "description": "Debt and welfare advice"
+    },
+    {
+      "entity": "WIDER_SERVICE_CATEGORIES",
+      "value": "domestic_abuse",
+      "description": "Domestic Abuse support"
+    },
+    {
+      "entity": "WIDER_SERVICE_CATEGORIES",
+      "value": "ecec",
+      "description": "Early Childhood Education and Care (ECEC) and financial support (Tax-Free Childcare, Universal Credit childcare)"
+    },
+    {
+      "entity": "WIDER_SERVICE_CATEGORIES",
+      "value": "food_support",
+      "description": "Food support"
+    },
+    {
+      "entity": "WIDER_SERVICE_CATEGORIES",
+      "value": "health_visiting",
+      "description": "Health visiting 0-5 (inclusive of the Start for Life period)"
+    },
+    {
+      "entity": "WIDER_SERVICE_CATEGORIES",
+      "value": "housing",
+      "description": "Housing"
+    },
+    {
+      "entity": "WIDER_SERVICE_CATEGORIES",
+      "value": "la_0_19_public_health",
+      "description": "Local authority 0-19 public health services, based on local needs assessments"
+    },
+    {
+      "entity": "WIDER_SERVICE_CATEGORIES",
+      "value": "mental_health",
+      "description": "Mental health services (beyond Start for Life parent-infant mental health)"
+    },
+    {
+      "entity": "WIDER_SERVICE_CATEGORIES",
+      "value": "midwifery",
+      "description": "Midwifery/maternity"
+    },
+    {
+      "entity": "WIDER_SERVICE_CATEGORIES",
+      "value": "none_of_these",
+      "description": "None of these"
+    },
+    {
+      "entity": "WIDER_SERVICE_CATEGORIES",
+      "value": "nutrition_weight",
+      "description": "Nutrition and weight management"
+    },
+    {
+      "entity": "WIDER_SERVICE_CATEGORIES",
+      "value": "oral_health",
+      "description": "Oral health improvement"
+    },
+    {
+      "entity": "WIDER_SERVICE_CATEGORIES",
+      "value": "reducing_parental_conflict",
+      "description": "Reducing Parental Conflict"
+    },
+    {
+      "entity": "WIDER_SERVICE_CATEGORIES",
+      "value": "send_support",
+      "description": "SEND support and services (inclusive of the Start for Life period)"
+    },
+    {
+      "entity": "WIDER_SERVICE_CATEGORIES",
+      "value": "separating_parents",
+      "description": "Support for separating and separated parents"
+    },
+    {
+      "entity": "WIDER_SERVICE_CATEGORIES",
+      "value": "social_welfare_advice_services",
+      "description": "Social welfare advice services"
+    },
+    {
+      "entity": "WIDER_SERVICE_CATEGORIES",
+      "value": "stop_smoking",
+      "description": "Stop smoking support"
+    },
+    {
+      "entity": "WIDER_SERVICE_CATEGORIES",
+      "value": "substance_misuse",
+      "description": "Substance (alcohol/drug) misuse support"
+    },
+    {
+      "entity": "WIDER_SERVICE_CATEGORIES",
+      "value": "support_for_school_attendance",
+      "description": "Support for school attendance"
+    },
+    {
+      "entity": "WIDER_SERVICE_CATEGORIES",
+      "value": "targeted_whole_family",
+      "description": "Targeted whole-family support, delivered by local family help services"
+    },
+    {
+      "entity": "WIDER_SERVICE_CATEGORIES",
+      "value": "unknown",
+      "description": "Unknown"
+    },
+    {
+      "entity": "WIDER_SERVICE_CATEGORIES",
+      "value": "vaccination",
+      "description": "Vaccination services"
+    },
+    {
+      "entity": "WIDER_SERVICE_CATEGORIES",
+      "value": "youth_justice",
+      "description": "Youth justice services"
+    },
+    {
+      "entity": "WIDER_SERVICE_CATEGORIES",
+      "value": "youth_services",
+      "description": "Youth services - universal and targeted"
+    }
+  ],
+  "dataCollectionFormModules": [
+    {
+      "code": "healthy-babies",
+      "sectionNumber": 1,
+      "name": "Healthy Babies offer and Parent-Carer Panels",
+      "description": "Tell us about the users who accessed the service over the past 3 months. This information will be included in your quarterly Management Information data collection.",
+      "lastChangedOn": "2026-12-21T00:00:00Z",
+      "isActive": true,
+      "status": "published",
+      "validationSchema": null,
+      "sections": [
+        {
+          "sectionNumber": 1,
+          "title": "Healthy Babies offer",
+          "description": "Tell us about your Healthy Babies offer.",
+          "helpText": null,
+          "helpUrl": null
+        },
+        {
+          "sectionNumber": 2,
+          "title": "Parent-Carer Panel meetings",
+          "description": "Questions about Parent-Carer Panel meetings and engagement.",
+          "helpText": null,
+          "helpUrl": null
+        },
+        {
+          "sectionNumber": 3,
+          "title": "Parent-Carer Panel demographics",
+          "description": "Questions about Parent-Carer Panel membership demographics.",
+          "helpText": null,
+          "helpUrl": null
+        }
+      ],
+      "fields": [
+        {
+          "fieldKey": "SPCP01",
+          "label": "Have you published information about your Healthy Babies offer?",
+          "fieldType": "radio",
+          "displayOrder": 1,
+          "isRequired": true,
+          "placeholder": null,
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": null,
+          "configuration": null,
+          "sectionNumber": 1,
+          "options": [
+            {
+              "value": "yes_both",
+              "label": "Yes - both physically and online",
+              "displayOrder": 1
+            },
+            {
+              "value": "yes_physical",
+              "label": "Yes - physically only",
+              "displayOrder": 2
+            },
+            {
+              "value": "yes_online",
+              "label": "Yes - online only",
+              "displayOrder": 3
+            },
+            {
+              "value": "no",
+              "label": "No",
+              "displayOrder": 4
+            }
+          ]
+        },
+        {
+          "fieldKey": "SPCP04",
+          "label": "How do you engage with parents and carers?",
+          "fieldType": "checkbox",
+          "displayOrder": 2,
+          "isRequired": true,
+          "placeholder": null,
+          "helpText": "Select all that apply.",
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": null,
+          "configuration": null,
+          "sectionNumber": 2,
+          "options": [
+            {
+              "value": "panel_meetings",
+              "label": "Parent-Carer Panel Meetings",
+              "displayOrder": 1
+            },
+            {
+              "value": "online_group",
+              "label": "Online group or forum",
+              "displayOrder": 2
+            },
+            {
+              "value": "feedback_surveys",
+              "label": "Feedback surveys through hubs or services",
+              "displayOrder": 3
+            },
+            {
+              "value": "drop_ins",
+              "label": "Community drop-in events",
+              "displayOrder": 4
+            },
+            {
+              "value": "co_design_sessions",
+              "label": "Co-design sessions",
+              "displayOrder": 5
+            },
+            {
+              "value": "other",
+              "label": "Other",
+              "displayOrder": 6
+            },
+            {
+              "value": "none",
+              "label": "None",
+              "displayOrder": 7
+            }
+          ]
+        },
+        {
+          "fieldKey": "SPCP05",
+          "label": "How many times did the Parent Carer Panel meet in the last quarter (1 January to 31 March 2026)?",
+          "fieldType": "number",
+          "displayOrder": 3,
+          "isRequired": true,
+          "placeholder": "times",
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"panel_meetings\", \"fieldKey\": \"SPCP04\"}, \"parentOption\": \"panel_meetings\", \"displayInline\": true}",
+          "configuration": "{\"min\": 0, \"width\": \"5\", \"suffix\": \"times\"}",
+          "sectionNumber": 2,
+          "options": []
+        },
+        {
+          "fieldKey": "SPCP06",
+          "label": "Have you used feedback from parents and carers to influence service design and delivery?",
+          "fieldType": "radio",
+          "displayOrder": 4,
+          "isRequired": true,
+          "placeholder": null,
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": null,
+          "configuration": null,
+          "sectionNumber": 2,
+          "options": [
+            {
+              "value": "yes",
+              "label": "Yes",
+              "displayOrder": 1
+            },
+            {
+              "value": "no",
+              "label": "No",
+              "displayOrder": 2
+            }
+          ]
+        },
+        {
+          "fieldKey": "SPCP06a",
+          "label": "Would you like to upload a case study about how feedback from parents and carers has informed and influenced your service (optional)?",
+          "fieldType": "file",
+          "displayOrder": 5,
+          "isRequired": false,
+          "placeholder": null,
+          "helpText": "This is optional. If you choose to upload one, use the case study template provided.",
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"SPCP06\"}, \"parentOption\": \"yes\"}",
+          "configuration": null,
+          "sectionNumber": 2,
+          "options": []
+        },
+        {
+          "fieldKey": "SPCP07",
+          "label": "How many parents and carers are on your Parent Carer Panel?",
+          "fieldType": "number",
+          "displayOrder": 6,
+          "isRequired": true,
+          "placeholder": "parents/carers",
+          "helpText": "As of the end of the relevant quarter.",
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"panel_meetings\", \"fieldKey\": \"SPCP04\"}, \"parentOption\": \"panel_meetings\"}",
+          "configuration": "{\"min\": 0, \"width\": \"5\", \"suffix\": \"parents/carers\"}",
+          "sectionNumber": 3,
+          "options": []
+        },
+        {
+          "fieldKey": "SPCP08",
+          "label": "Do you have data about the biological sex of panel members?",
+          "fieldType": "radio",
+          "displayOrder": 7,
+          "isRequired": true,
+          "placeholder": null,
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"panel_meetings\", \"fieldKey\": \"SPCP04\"}, \"parentOption\": \"panel_meetings\"}",
+          "configuration": null,
+          "sectionNumber": 3,
+          "options": [
+            {
+              "value": "yes",
+              "label": "Yes",
+              "displayOrder": 1
+            },
+            {
+              "value": "no",
+              "label": "No",
+              "displayOrder": 2
+            }
+          ]
+        },
+        {
+          "fieldKey": "SPCP08a_male",
+          "label": "Male",
+          "fieldType": "number",
+          "displayOrder": 8,
+          "isRequired": false,
+          "placeholder": "parents/carers",
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"SPCP08\"}, \"parentOption\": \"yes\"}",
+          "configuration": "{\"min\": 0, \"group\": \"SPCP08a\", \"width\": \"5\", \"suffix\": \"parents/carers\", \"sumGroup\": \"sex\", \"groupHint\": \"For each sex, give a figure as of the end of the relevant quarter.\", \"groupLabel\": \"How many panel members are there, by biological sex?\", \"maxSumField\": \"SPCP07\"}",
+          "sectionNumber": 3,
+          "options": []
+        },
+        {
+          "fieldKey": "SPCP08a_female",
+          "label": "Female",
+          "fieldType": "number",
+          "displayOrder": 9,
+          "isRequired": false,
+          "placeholder": "parents/carers",
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"SPCP08\"}, \"parentOption\": \"yes\"}",
+          "configuration": "{\"min\": 0, \"group\": \"SPCP08a\", \"width\": \"5\", \"suffix\": \"parents/carers\", \"sumGroup\": \"sex\", \"maxSumField\": \"SPCP07\"}",
+          "sectionNumber": 3,
+          "options": []
+        },
+        {
+          "fieldKey": "SPCP08a_other",
+          "label": "Other",
+          "fieldType": "number",
+          "displayOrder": 10,
+          "isRequired": false,
+          "placeholder": "parents/carers",
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"SPCP08\"}, \"parentOption\": \"yes\"}",
+          "configuration": "{\"min\": 0, \"group\": \"SPCP08a\", \"width\": \"5\", \"suffix\": \"parents/carers\", \"sumGroup\": \"sex\", \"maxSumField\": \"SPCP07\"}",
+          "sectionNumber": 3,
+          "options": []
+        },
+        {
+          "fieldKey": "SPCP08a_unknown",
+          "label": "Unknown",
+          "fieldType": "number",
+          "displayOrder": 11,
+          "isRequired": false,
+          "placeholder": "parents/carers",
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"SPCP08\"}, \"parentOption\": \"yes\"}",
+          "configuration": "{\"min\": 0, \"group\": \"SPCP08a\", \"width\": \"5\", \"suffix\": \"parents/carers\", \"sumGroup\": \"sex\", \"maxSumField\": \"SPCP07\"}",
+          "sectionNumber": 3,
+          "options": []
+        },
+        {
+          "fieldKey": "SPCP08a_prefer_not_to_say",
+          "label": "Prefer not to say",
+          "fieldType": "number",
+          "displayOrder": 12,
+          "isRequired": false,
+          "placeholder": "parents/carers",
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"SPCP08\"}, \"parentOption\": \"yes\"}",
+          "configuration": "{\"min\": 0, \"group\": \"SPCP08a\", \"width\": \"5\", \"suffix\": \"parents/carers\", \"sumGroup\": \"sex\", \"maxSumField\": \"SPCP07\"}",
+          "sectionNumber": 3,
+          "options": []
+        },
+        {
+          "fieldKey": "SPCP09",
+          "label": "Do you have data about the age of panel members?",
+          "fieldType": "radio",
+          "displayOrder": 13,
+          "isRequired": true,
+          "placeholder": null,
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"panel_meetings\", \"fieldKey\": \"SPCP04\"}, \"parentOption\": \"panel_meetings\"}",
+          "configuration": null,
+          "sectionNumber": 3,
+          "options": [
+            {
+              "value": "yes",
+              "label": "Yes",
+              "displayOrder": 1
+            },
+            {
+              "value": "no",
+              "label": "No",
+              "displayOrder": 2
+            }
+          ]
+        },
+        {
+          "fieldKey": "SPCP09a_18_24",
+          "label": "18-24",
+          "fieldType": "number",
+          "displayOrder": 14,
+          "isRequired": false,
+          "placeholder": "parents/carers",
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"SPCP09\"}, \"parentOption\": \"yes\"}",
+          "configuration": "{\"min\": 0, \"group\": \"SPCP09a\", \"width\": \"5\", \"suffix\": \"parents/carers\", \"sumGroup\": \"age\", \"groupHint\": \"For each age group, give a figure as of the end of the relevant quarter.\", \"groupLabel\": \"How many panel members are there, by age?\", \"maxSumField\": \"SPCP07\"}",
+          "sectionNumber": 3,
+          "options": []
+        },
+        {
+          "fieldKey": "SCPCP09A_PREFER_NOT_TO_SAY",
+          "label": "Prefer not to say",
+          "fieldType": "number",
+          "displayOrder": 14,
+          "isRequired": false,
+          "placeholder": "users",
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"SPCP09\"}, \"parentOption\": \"yes\"}",
+          "configuration": null,
+          "sectionNumber": 3,
+          "options": []
+        },
+        {
+          "fieldKey": "SPCP09a_25_34",
+          "label": "25-34",
+          "fieldType": "number",
+          "displayOrder": 15,
+          "isRequired": false,
+          "placeholder": "parents/carers",
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"SPCP09\"}, \"parentOption\": \"yes\"}",
+          "configuration": "{\"min\": 0, \"group\": \"SPCP09a\", \"width\": \"5\", \"suffix\": \"parents/carers\", \"sumGroup\": \"age\", \"maxSumField\": \"SPCP07\"}",
+          "sectionNumber": 3,
+          "options": []
+        },
+        {
+          "fieldKey": "SPCP010",
+          "label": "Do you have data about the ethnicity of panel members?",
+          "fieldType": "radio",
+          "displayOrder": 15,
+          "isRequired": true,
+          "placeholder": null,
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"panel_meetings\", \"fieldKey\": \"SPCP04\"}, \"parentOption\": \"panel_meetings\"}",
+          "configuration": null,
+          "sectionNumber": 3,
+          "options": [
+            {
+              "value": "yes",
+              "label": "Yes",
+              "displayOrder": 1
+            },
+            {
+              "value": "no",
+              "label": "No",
+              "displayOrder": 2
+            }
+          ]
+        },
+        {
+          "fieldKey": "SPCP09a_35_44",
+          "label": "35-44",
+          "fieldType": "number",
+          "displayOrder": 16,
+          "isRequired": false,
+          "placeholder": "parents/carers",
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"SPCP09\"}, \"parentOption\": \"yes\"}",
+          "configuration": "{\"min\": 0, \"group\": \"SPCP09a\", \"width\": \"5\", \"suffix\": \"parents/carers\", \"sumGroup\": \"age\", \"maxSumField\": \"SPCP07\"}",
+          "sectionNumber": 3,
+          "options": []
+        },
+        {
+          "fieldKey": "SPCP010a_white",
+          "label": "White/White British",
+          "fieldType": "number",
+          "displayOrder": 16,
+          "isRequired": false,
+          "placeholder": "parents/carers",
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"SPCP010\"}}",
+          "configuration": "{\"min\": 0, \"group\": \"SPCP010a\", \"width\": \"5\", \"suffix\": \"parents/carers\", \"sumGroup\": \"ethnicity\", \"groupHint\": \"For each ethnicity, give a figure as of 31 March 2026.\", \"groupLabel\": \"How many members of the Parent Carer Panel are there, broken down by ethnicity?\", \"maxSumField\": \"SPCP07\"}",
+          "sectionNumber": 3,
+          "options": []
+        },
+        {
+          "fieldKey": "SPCP010a_mixed",
+          "label": "Mixed/Multiple ethnic groups",
+          "fieldType": "number",
+          "displayOrder": 17,
+          "isRequired": false,
+          "placeholder": "parents/carers",
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"SPCP010\"}}",
+          "configuration": "{\"min\": 0, \"group\": \"SPCP010a\", \"width\": \"5\", \"suffix\": \"parents/carers\", \"sumGroup\": \"ethnicity\", \"maxSumField\": \"SPCP07\"}",
+          "sectionNumber": 3,
+          "options": []
+        },
+        {
+          "fieldKey": "SPCP09a_45_54",
+          "label": "45-54",
+          "fieldType": "number",
+          "displayOrder": 17,
+          "isRequired": false,
+          "placeholder": "parents/carers",
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"SPCP09\"}, \"parentOption\": \"yes\"}",
+          "configuration": "{\"min\": 0, \"group\": \"SPCP09a\", \"width\": \"5\", \"suffix\": \"parents/carers\", \"sumGroup\": \"age\", \"maxSumField\": \"SPCP07\"}",
+          "sectionNumber": 3,
+          "options": []
+        },
+        {
+          "fieldKey": "SPCP010a_asian",
+          "label": "Asian/Asian British",
+          "fieldType": "number",
+          "displayOrder": 18,
+          "isRequired": false,
+          "placeholder": "parents/carers",
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"SPCP010\"}}",
+          "configuration": "{\"min\": 0, \"group\": \"SPCP010a\", \"width\": \"5\", \"suffix\": \"parents/carers\", \"sumGroup\": \"ethnicity\", \"maxSumField\": \"SPCP07\"}",
+          "sectionNumber": 3,
+          "options": []
+        },
+        {
+          "fieldKey": "SPCP09a_55_64",
+          "label": "55-64",
+          "fieldType": "number",
+          "displayOrder": 18,
+          "isRequired": false,
+          "placeholder": "parents/carers",
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"SPCP09\"}, \"parentOption\": \"yes\"}",
+          "configuration": "{\"min\": 0, \"group\": \"SPCP09a\", \"width\": \"5\", \"suffix\": \"parents/carers\", \"sumGroup\": \"age\", \"maxSumField\": \"SPCP07\"}",
+          "sectionNumber": 3,
+          "options": []
+        },
+        {
+          "fieldKey": "SPCP010a_black",
+          "label": "Black/African/Caribbean/Black British",
+          "fieldType": "number",
+          "displayOrder": 19,
+          "isRequired": false,
+          "placeholder": "parents/carers",
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"SPCP010\"}}",
+          "configuration": "{\"min\": 0, \"group\": \"SPCP010a\", \"width\": \"5\", \"suffix\": \"parents/carers\", \"sumGroup\": \"ethnicity\", \"maxSumField\": \"SPCP07\"}",
+          "sectionNumber": 3,
+          "options": []
+        },
+        {
+          "fieldKey": "SPCP09a_65_plus",
+          "label": "65+",
+          "fieldType": "number",
+          "displayOrder": 19,
+          "isRequired": false,
+          "placeholder": "parents/carers",
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"SPCP09\"}, \"parentOption\": \"yes\"}",
+          "configuration": "{\"min\": 0, \"group\": \"SPCP09a\", \"width\": \"5\", \"suffix\": \"parents/carers\", \"sumGroup\": \"age\", \"maxSumField\": \"SPCP07\"}",
+          "sectionNumber": 3,
+          "options": []
+        },
+        {
+          "fieldKey": "SPCP10",
+          "label": "Do you have data about the ethnicity of panel members?",
+          "fieldType": "radio",
+          "displayOrder": 20,
+          "isRequired": true,
+          "placeholder": null,
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"panel_meetings\", \"fieldKey\": \"SPCP04\"}, \"parentOption\": \"panel_meetings\"}",
+          "configuration": null,
+          "sectionNumber": 3,
+          "options": [
+            {
+              "value": "yes",
+              "label": "Yes",
+              "displayOrder": 1
+            },
+            {
+              "value": "no",
+              "label": "No",
+              "displayOrder": 2
+            }
+          ]
+        },
+        {
+          "fieldKey": "SPCP010a_other",
+          "label": "Other ethnic group",
+          "fieldType": "number",
+          "displayOrder": 20,
+          "isRequired": false,
+          "placeholder": "parents/carers",
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"SPCP010\"}}",
+          "configuration": "{\"min\": 0, \"group\": \"SPCP010a\", \"width\": \"5\", \"suffix\": \"parents/carers\", \"sumGroup\": \"ethnicity\", \"maxSumField\": \"SPCP07\"}",
+          "sectionNumber": 3,
+          "options": []
+        },
+        {
+          "fieldKey": "SPCP010a_prefer_not_to_say",
+          "label": "Prefer not to say",
+          "fieldType": "number",
+          "displayOrder": 21,
+          "isRequired": false,
+          "placeholder": "parents/carers",
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"SPCP010\"}}",
+          "configuration": "{\"min\": 0, \"group\": \"SPCP010a\", \"width\": \"5\", \"suffix\": \"parents/carers\", \"sumGroup\": \"ethnicity\", \"maxSumField\": \"SPCP07\"}",
+          "sectionNumber": 3,
+          "options": []
+        },
+        {
+          "fieldKey": "SPCP10a_white",
+          "label": "White",
+          "fieldType": "number",
+          "displayOrder": 21,
+          "isRequired": false,
+          "placeholder": "parents/carers",
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"SPCP10\"}, \"parentOption\": \"yes\"}",
+          "configuration": "{\"min\": 0, \"group\": \"SPCP10a\", \"width\": \"5\", \"suffix\": \"parents/carers\", \"sumGroup\": \"ethnicity\", \"groupHint\": \"For each ethnicity, give a figure as of the end of the relevant quarter.\", \"groupLabel\": \"How many panel members are there, by ethnicity?\", \"maxSumField\": \"SPCP07\"}",
+          "sectionNumber": 3,
+          "options": []
+        },
+        {
+          "fieldKey": "SPCP10a_mixed",
+          "label": "Mixed / Multiple ethnic groups",
+          "fieldType": "number",
+          "displayOrder": 22,
+          "isRequired": false,
+          "placeholder": "parents/carers",
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"SPCP10\"}, \"parentOption\": \"yes\"}",
+          "configuration": "{\"min\": 0, \"group\": \"SPCP10a\", \"width\": \"5\", \"suffix\": \"parents/carers\", \"sumGroup\": \"ethnicity\", \"maxSumField\": \"SPCP07\"}",
+          "sectionNumber": 3,
+          "options": []
+        },
+        {
+          "fieldKey": "SPCP10a_asian",
+          "label": "Asian / Asian British",
+          "fieldType": "number",
+          "displayOrder": 23,
+          "isRequired": false,
+          "placeholder": "parents/carers",
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"SPCP10\"}, \"parentOption\": \"yes\"}",
+          "configuration": "{\"min\": 0, \"group\": \"SPCP10a\", \"width\": \"5\", \"suffix\": \"parents/carers\", \"sumGroup\": \"ethnicity\", \"maxSumField\": \"SPCP07\"}",
+          "sectionNumber": 3,
+          "options": []
+        },
+        {
+          "fieldKey": "SPCP10a_black",
+          "label": "Black / African / Caribbean / Black British",
+          "fieldType": "number",
+          "displayOrder": 24,
+          "isRequired": false,
+          "placeholder": "parents/carers",
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"SPCP10\"}, \"parentOption\": \"yes\"}",
+          "configuration": "{\"min\": 0, \"group\": \"SPCP10a\", \"width\": \"5\", \"suffix\": \"parents/carers\", \"sumGroup\": \"ethnicity\", \"maxSumField\": \"SPCP07\"}",
+          "sectionNumber": 3,
+          "options": []
+        },
+        {
+          "fieldKey": "SPCP10a_other",
+          "label": "Other ethnic group",
+          "fieldType": "number",
+          "displayOrder": 25,
+          "isRequired": false,
+          "placeholder": "parents/carers",
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"SPCP10\"}, \"parentOption\": \"yes\"}",
+          "configuration": "{\"min\": 0, \"group\": \"SPCP10a\", \"width\": \"5\", \"suffix\": \"parents/carers\", \"sumGroup\": \"ethnicity\", \"maxSumField\": \"SPCP07\"}",
+          "sectionNumber": 3,
+          "options": []
+        },
+        {
+          "fieldKey": "SPCP10a_prefer_not_to_say",
+          "label": "Prefer not to say",
+          "fieldType": "number",
+          "displayOrder": 26,
+          "isRequired": false,
+          "placeholder": "parents/carers",
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"SPCP10\"}, \"parentOption\": \"yes\"}",
+          "configuration": "{\"min\": 0, \"group\": \"SPCP10a\", \"width\": \"5\", \"suffix\": \"parents/carers\", \"sumGroup\": \"ethnicity\", \"maxSumField\": \"SPCP07\"}",
+          "sectionNumber": 3,
+          "options": []
+        }
+      ]
+    },
+    {
+      "code": "service-users",
+      "sectionNumber": 2,
+      "name": "Service users",
+      "description": "Questions about service users",
+      "lastChangedOn": "2026-12-21T00:00:00Z",
+      "isActive": true,
+      "status": "draft",
+      "validationSchema": null,
+      "sections": [
+        {
+          "sectionNumber": 1,
+          "title": "Service delivery",
+          "description": "Tell us if this service was delivered this quarter.",
+          "helpText": null,
+          "helpUrl": null
+        },
+        {
+          "sectionNumber": 2,
+          "title": "User numbers",
+          "description": "Tell us about the number of users who accessed this service.",
+          "helpText": null,
+          "helpUrl": null
+        },
+        {
+          "sectionNumber": 3,
+          "title": "User demographics and data collection",
+          "description": "Tell us about the demographics of users and data collection practices.",
+          "helpText": null,
+          "helpUrl": null
+        },
+        {
+          "sectionNumber": 4,
+          "title": "Clarification comments",
+          "description": "Provide any additional clarification if needed.",
+          "helpText": null,
+          "helpUrl": null
+        }
+      ],
+      "fields": [
+        {
+          "fieldKey": "QSU01",
+          "label": "Was the service delivered for users this quarter?",
+          "fieldType": "radio",
+          "displayOrder": 1,
+          "isRequired": true,
+          "placeholder": null,
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": null,
+          "configuration": null,
+          "sectionNumber": 1,
+          "options": [
+            {
+              "value": "yes",
+              "label": "Yes",
+              "displayOrder": 1
+            },
+            {
+              "value": "no",
+              "label": "No",
+              "displayOrder": 2
+            }
+          ]
+        },
+        {
+          "fieldKey": "QSU02",
+          "label": "Do you have data on how many people use this service?",
+          "fieldType": "radio",
+          "displayOrder": 2,
+          "isRequired": true,
+          "placeholder": null,
+          "helpText": "This includes centrally collected data or any information received from partners.",
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"QSU01\"}, \"parentOption\": \"yes\"}",
+          "configuration": null,
+          "sectionNumber": 1,
+          "options": [
+            {
+              "value": "yes",
+              "label": "Yes",
+              "displayOrder": 1
+            },
+            {
+              "value": "no",
+              "label": "No",
+              "displayOrder": 2
+            }
+          ]
+        },
+        {
+          "fieldKey": "QSU03",
+          "label": "How many people used this service over the relevant quarter?",
+          "fieldType": "number",
+          "displayOrder": 3,
+          "isRequired": true,
+          "placeholder": "users",
+          "helpText": "Give a figure for the last 3 months. This includes service users across all delivery methods.",
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"QSU02\"}, \"parentOption\": \"yes\"}",
+          "configuration": "{\"min\": 0, \"width\": \"5\", \"suffix\": \"users\"}",
+          "sectionNumber": 2,
+          "options": []
+        },
+        {
+          "fieldKey": "QSU04",
+          "label": "How many people used this service online over the relevant quarter?",
+          "fieldType": "number",
+          "displayOrder": 4,
+          "isRequired": true,
+          "placeholder": "users",
+          "helpText": "Should not be higher than the total number of users.",
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"QSU02\"}, \"parentOption\": \"yes\"}",
+          "configuration": "{\"min\": 0, \"width\": \"5\", \"suffix\": \"users\", \"maxSumField\": \"QSU03\"}",
+          "sectionNumber": 2,
+          "options": []
+        },
+        {
+          "fieldKey": "QSU05",
+          "label": "Have you used a method for counting unique individuals who attend this service?",
+          "fieldType": "radio",
+          "displayOrder": 5,
+          "isRequired": true,
+          "placeholder": null,
+          "helpText": "For example, are you able to discount repeat visits?",
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"QSU02\"}, \"parentOption\": \"yes\"}",
+          "configuration": null,
+          "sectionNumber": 2,
+          "options": [
+            {
+              "value": "yes",
+              "label": "Yes",
+              "displayOrder": 1
+            },
+            {
+              "value": "no",
+              "label": "No",
+              "displayOrder": 2
+            }
+          ]
+        },
+        {
+          "fieldKey": "QSU06",
+          "label": "Which types of user are included in your data?",
+          "fieldType": "checkbox",
+          "displayOrder": 6,
+          "isRequired": true,
+          "placeholder": null,
+          "helpText": "Select all that apply. If you don't have the data, select 'Unknown'.",
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"QSU02\"}, \"parentOption\": \"yes\"}",
+          "configuration": "{\"exclusiveOptions\": [\"unknown\"]}",
+          "sectionNumber": 2,
+          "options": [
+            {
+              "value": "primary_carers",
+              "label": "Primary carers",
+              "displayOrder": 1
+            },
+            {
+              "value": "co_parents",
+              "label": "Co-parents/partners/spouses/other adult",
+              "displayOrder": 2
+            },
+            {
+              "value": "children",
+              "label": "Children",
+              "displayOrder": 3
+            },
+            {
+              "value": "siblings",
+              "label": "Siblings",
+              "displayOrder": 4
+            },
+            {
+              "value": "other",
+              "label": "Other",
+              "displayOrder": 5
+            },
+            {
+              "value": "unknown",
+              "label": "Unknown",
+              "displayOrder": 6
+            }
+          ]
+        },
+        {
+          "fieldKey": "QSU07",
+          "label": "Do you have data on how many people used this service in the relevant quarter, by ethnicity?",
+          "fieldType": "radio",
+          "displayOrder": 7,
+          "isRequired": true,
+          "placeholder": null,
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"QSU05\"}, \"parentOption\": \"yes\"}",
+          "configuration": null,
+          "sectionNumber": 3,
+          "options": [
+            {
+              "value": "yes",
+              "label": "Yes",
+              "displayOrder": 1
+            },
+            {
+              "value": "no",
+              "label": "No",
+              "displayOrder": 2
+            }
+          ]
+        },
+        {
+          "fieldKey": "QSU08_white",
+          "label": "White British",
+          "fieldType": "number",
+          "displayOrder": 8,
+          "isRequired": false,
+          "placeholder": "users",
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"QSU07\"}, \"parentOption\": \"yes\"}",
+          "configuration": "{\"min\": 0, \"group\": \"QSU08\", \"width\": \"5\", \"suffix\": \"users\", \"sumGroup\": \"ethnicity\", \"groupHint\": \"The number of users reported for all ethnic groups cannot exceed the total number of service users reported.\", \"groupLabel\": \"How many people used this service, by ethnicity?\", \"maxSumField\": \"QSU03\"}",
+          "sectionNumber": 3,
+          "options": []
+        },
+        {
+          "fieldKey": "QSU08_mixed",
+          "label": "Mixed or multiple ethnic groups",
+          "fieldType": "number",
+          "displayOrder": 9,
+          "isRequired": false,
+          "placeholder": "users",
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"QSU07\"}, \"parentOption\": \"yes\"}",
+          "configuration": "{\"min\": 0, \"group\": \"QSU08\", \"width\": \"5\", \"suffix\": \"users\", \"sumGroup\": \"ethnicity\", \"maxSumField\": \"QSU03\"}",
+          "sectionNumber": 3,
+          "options": []
+        },
+        {
+          "fieldKey": "QSU08_asian",
+          "label": "Asian or Asian British",
+          "fieldType": "number",
+          "displayOrder": 10,
+          "isRequired": false,
+          "placeholder": "users",
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"QSU07\"}, \"parentOption\": \"yes\"}",
+          "configuration": "{\"min\": 0, \"group\": \"QSU08\", \"width\": \"5\", \"suffix\": \"users\", \"sumGroup\": \"ethnicity\", \"maxSumField\": \"QSU03\"}",
+          "sectionNumber": 3,
+          "options": []
+        },
+        {
+          "fieldKey": "QSU08_black",
+          "label": "Black, African, Caribbean or Black British",
+          "fieldType": "number",
+          "displayOrder": 11,
+          "isRequired": false,
+          "placeholder": "users",
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"QSU07\"}, \"parentOption\": \"yes\"}",
+          "configuration": "{\"min\": 0, \"group\": \"QSU08\", \"width\": \"5\", \"suffix\": \"users\", \"sumGroup\": \"ethnicity\", \"maxSumField\": \"QSU03\"}",
+          "sectionNumber": 3,
+          "options": []
+        },
+        {
+          "fieldKey": "QSU08_other",
+          "label": "Other ethnic group",
+          "fieldType": "number",
+          "displayOrder": 12,
+          "isRequired": false,
+          "placeholder": "users",
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"QSU07\"}, \"parentOption\": \"yes\"}",
+          "configuration": "{\"min\": 0, \"group\": \"QSU08\", \"width\": \"5\", \"suffix\": \"users\", \"sumGroup\": \"ethnicity\", \"maxSumField\": \"QSU03\"}",
+          "sectionNumber": 3,
+          "options": []
+        },
+        {
+          "fieldKey": "QSU08_unknown",
+          "label": "Unknown",
+          "fieldType": "number",
+          "displayOrder": 13,
+          "isRequired": false,
+          "placeholder": "users",
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"QSU07\"}, \"parentOption\": \"yes\"}",
+          "configuration": "{\"min\": 0, \"group\": \"QSU08\", \"width\": \"5\", \"suffix\": \"users\", \"sumGroup\": \"ethnicity\", \"maxSumField\": \"QSU03\"}",
+          "sectionNumber": 3,
+          "options": []
+        },
+        {
+          "fieldKey": "QSU08_prefer_not_to_say",
+          "label": "Prefer not to say",
+          "fieldType": "number",
+          "displayOrder": 14,
+          "isRequired": false,
+          "placeholder": "users",
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"QSU07\"}, \"parentOption\": \"yes\"}",
+          "configuration": "{\"min\": 0, \"group\": \"QSU08\", \"width\": \"5\", \"suffix\": \"users\", \"sumGroup\": \"ethnicity\", \"maxSumField\": \"QSU03\"}",
+          "sectionNumber": 3,
+          "options": []
+        },
+        {
+          "fieldKey": "QSU09",
+          "label": "Do you have data on how many people used this service in the relevant quarter, by IDACI decile?",
+          "fieldType": "radio",
+          "displayOrder": 15,
+          "isRequired": true,
+          "placeholder": null,
+          "helpText": "The Income Deprivation Affecting Children Index (IDACI) measures the proportion of all children aged 0 to 15 living in income deprived families.",
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"QSU05\"}, \"parentOption\": \"yes\"}",
+          "configuration": null,
+          "sectionNumber": 3,
+          "options": [
+            {
+              "value": "yes",
+              "label": "Yes",
+              "displayOrder": 1
+            },
+            {
+              "value": "no",
+              "label": "No",
+              "displayOrder": 2
+            }
+          ]
+        },
+        {
+          "fieldKey": "QSU10_decile1",
+          "label": "IDACI Decile 1",
+          "fieldType": "number",
+          "displayOrder": 16,
+          "isRequired": false,
+          "placeholder": "users",
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"QSU09\"}, \"parentOption\": \"yes\"}",
+          "configuration": "{\"min\": 0, \"group\": \"QSU10\", \"width\": \"5\", \"suffix\": \"users\", \"sumGroup\": \"imd\", \"groupHint\": \"The number of users reported for all IDACI deciles cannot exceed the total number of service users reported.\", \"groupLabel\": \"How many people used the service in the relevant quarter, by IDACI decile?\", \"maxSumField\": \"QSU03\"}",
+          "sectionNumber": 3,
+          "options": []
+        },
+        {
+          "fieldKey": "QSU10_decile2",
+          "label": "IDACI Decile 2",
+          "fieldType": "number",
+          "displayOrder": 17,
+          "isRequired": false,
+          "placeholder": "users",
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"QSU09\"}, \"parentOption\": \"yes\"}",
+          "configuration": "{\"min\": 0, \"group\": \"QSU10\", \"width\": \"5\", \"suffix\": \"users\", \"sumGroup\": \"imd\", \"maxSumField\": \"QSU03\"}",
+          "sectionNumber": 3,
+          "options": []
+        },
+        {
+          "fieldKey": "QSU10_decile3",
+          "label": "IDACI Decile 3",
+          "fieldType": "number",
+          "displayOrder": 18,
+          "isRequired": false,
+          "placeholder": "users",
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"QSU09\"}, \"parentOption\": \"yes\"}",
+          "configuration": "{\"min\": 0, \"group\": \"QSU10\", \"width\": \"5\", \"suffix\": \"users\", \"sumGroup\": \"imd\", \"maxSumField\": \"QSU03\"}",
+          "sectionNumber": 3,
+          "options": []
+        },
+        {
+          "fieldKey": "QSU10_decile4",
+          "label": "IDACI Decile 4",
+          "fieldType": "number",
+          "displayOrder": 19,
+          "isRequired": false,
+          "placeholder": "users",
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"QSU09\"}, \"parentOption\": \"yes\"}",
+          "configuration": "{\"min\": 0, \"group\": \"QSU10\", \"width\": \"5\", \"suffix\": \"users\", \"sumGroup\": \"imd\", \"maxSumField\": \"QSU03\"}",
+          "sectionNumber": 3,
+          "options": []
+        },
+        {
+          "fieldKey": "QSU10_decile5",
+          "label": "IDACI Decile 5",
+          "fieldType": "number",
+          "displayOrder": 20,
+          "isRequired": false,
+          "placeholder": "users",
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"QSU09\"}, \"parentOption\": \"yes\"}",
+          "configuration": "{\"min\": 0, \"group\": \"QSU10\", \"width\": \"5\", \"suffix\": \"users\", \"sumGroup\": \"imd\", \"maxSumField\": \"QSU03\"}",
+          "sectionNumber": 3,
+          "options": []
+        },
+        {
+          "fieldKey": "QSU10_decile6",
+          "label": "IDACI Decile 6",
+          "fieldType": "number",
+          "displayOrder": 21,
+          "isRequired": false,
+          "placeholder": "users",
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"QSU09\"}, \"parentOption\": \"yes\"}",
+          "configuration": "{\"min\": 0, \"group\": \"QSU10\", \"width\": \"5\", \"suffix\": \"users\", \"sumGroup\": \"imd\", \"maxSumField\": \"QSU03\"}",
+          "sectionNumber": 3,
+          "options": []
+        },
+        {
+          "fieldKey": "QSU10_decile7",
+          "label": "IDACI Decile 7",
+          "fieldType": "number",
+          "displayOrder": 22,
+          "isRequired": false,
+          "placeholder": "users",
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"QSU09\"}, \"parentOption\": \"yes\"}",
+          "configuration": "{\"min\": 0, \"group\": \"QSU10\", \"width\": \"5\", \"suffix\": \"users\", \"sumGroup\": \"imd\", \"maxSumField\": \"QSU03\"}",
+          "sectionNumber": 3,
+          "options": []
+        },
+        {
+          "fieldKey": "QSU10_decile8",
+          "label": "IDACI Decile 8",
+          "fieldType": "number",
+          "displayOrder": 23,
+          "isRequired": false,
+          "placeholder": "users",
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"QSU09\"}, \"parentOption\": \"yes\"}",
+          "configuration": "{\"min\": 0, \"group\": \"QSU10\", \"width\": \"5\", \"suffix\": \"users\", \"sumGroup\": \"imd\", \"maxSumField\": \"QSU03\"}",
+          "sectionNumber": 3,
+          "options": []
+        },
+        {
+          "fieldKey": "QSU10_decile9",
+          "label": "IDACI Decile 9",
+          "fieldType": "number",
+          "displayOrder": 24,
+          "isRequired": false,
+          "placeholder": "users",
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"QSU09\"}, \"parentOption\": \"yes\"}",
+          "configuration": "{\"min\": 0, \"group\": \"QSU10\", \"width\": \"5\", \"suffix\": \"users\", \"sumGroup\": \"imd\", \"maxSumField\": \"QSU03\"}",
+          "sectionNumber": 3,
+          "options": []
+        },
+        {
+          "fieldKey": "QSU12_UNKNOWN",
+          "label": "Unknown",
+          "fieldType": "number",
+          "displayOrder": 24,
+          "isRequired": false,
+          "placeholder": "users",
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"QSU11\"}, \"parentOption\": \"yes\", \"displayInline\": true}",
+          "configuration": null,
+          "sectionNumber": 3,
+          "options": []
+        },
+        {
+          "fieldKey": "QSU10_decile10",
+          "label": "IDACI Decile 10",
+          "fieldType": "number",
+          "displayOrder": 25,
+          "isRequired": false,
+          "placeholder": "users",
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"QSU09\"}, \"parentOption\": \"yes\"}",
+          "configuration": "{\"min\": 0, \"group\": \"QSU10\", \"width\": \"5\", \"suffix\": \"users\", \"sumGroup\": \"imd\", \"maxSumField\": \"QSU03\"}",
+          "sectionNumber": 3,
+          "options": []
+        },
+        {
+          "fieldKey": "QSU10_unknown",
+          "label": "Unknown",
+          "fieldType": "number",
+          "displayOrder": 26,
+          "isRequired": false,
+          "placeholder": "users",
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"QSU09\"}, \"parentOption\": \"yes\"}",
+          "configuration": "{\"min\": 0, \"group\": \"QSU10\", \"width\": \"5\", \"suffix\": \"users\", \"sumGroup\": \"imd\", \"maxSumField\": \"QSU03\"}",
+          "sectionNumber": 3,
+          "options": []
+        },
+        {
+          "fieldKey": "QSU11",
+          "label": "Do you have data on how many people used this service in the relevant quarter, by biological sex?",
+          "fieldType": "radio",
+          "displayOrder": 27,
+          "isRequired": true,
+          "placeholder": null,
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"QSU05\"}, \"parentOption\": \"yes\"}",
+          "configuration": null,
+          "sectionNumber": 3,
+          "options": [
+            {
+              "value": "yes",
+              "label": "Yes",
+              "displayOrder": 1
+            },
+            {
+              "value": "no",
+              "label": "No",
+              "displayOrder": 2
+            }
+          ]
+        },
+        {
+          "fieldKey": "QSU12_male",
+          "label": "Male",
+          "fieldType": "number",
+          "displayOrder": 28,
+          "isRequired": false,
+          "placeholder": "users",
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"QSU11\"}, \"parentOption\": \"yes\"}",
+          "configuration": "{\"min\": 0, \"group\": \"QSU12\", \"width\": \"5\", \"suffix\": \"users\", \"sumGroup\": \"sex\", \"groupHint\": \"The total for all sexes cannot exceed the total number of users reported for the service.\", \"groupLabel\": \"How many people used your service in the last quarter, by biological sex?\", \"maxSumField\": \"QSU03\"}",
+          "sectionNumber": 3,
+          "options": []
+        },
+        {
+          "fieldKey": "QSU12_female",
+          "label": "Female",
+          "fieldType": "number",
+          "displayOrder": 29,
+          "isRequired": false,
+          "placeholder": "users",
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"QSU11\"}, \"parentOption\": \"yes\"}",
+          "configuration": "{\"min\": 0, \"group\": \"QSU12\", \"width\": \"5\", \"suffix\": \"users\", \"sumGroup\": \"sex\", \"maxSumField\": \"QSU03\"}",
+          "sectionNumber": 3,
+          "options": []
+        },
+        {
+          "fieldKey": "QSU13_11",
+          "label": "12 - 17 years",
+          "fieldType": "number",
+          "displayOrder": 29,
+          "isRequired": false,
+          "placeholder": "users",
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"QSU13A\"}, \"parentOption\": \"yes\"}",
+          "configuration": null,
+          "sectionNumber": 3,
+          "options": []
+        },
+        {
+          "fieldKey": "QSU12_other",
+          "label": "Other",
+          "fieldType": "number",
+          "displayOrder": 30,
+          "isRequired": false,
+          "placeholder": "users",
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"QSU11\"}, \"parentOption\": \"yes\"}",
+          "configuration": "{\"min\": 0, \"group\": \"QSU12\", \"width\": \"5\", \"suffix\": \"users\", \"sumGroup\": \"sex\", \"maxSumField\": \"QSU03\"}",
+          "sectionNumber": 3,
+          "options": []
+        },
+        {
+          "fieldKey": "QSU12_prefer_not_to_say",
+          "label": "Prefer not to say",
+          "fieldType": "number",
+          "displayOrder": 31,
+          "isRequired": false,
+          "placeholder": "users",
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"QSU11\"}, \"parentOption\": \"yes\"}",
+          "configuration": "{\"min\": 0, \"group\": \"QSU12\", \"width\": \"5\", \"suffix\": \"users\", \"sumGroup\": \"sex\", \"maxSumField\": \"QSU03\"}",
+          "sectionNumber": 3,
+          "options": []
+        },
+        {
+          "fieldKey": "QSU12_unknown",
+          "label": "Unknown",
+          "fieldType": "number",
+          "displayOrder": 32,
+          "isRequired": false,
+          "placeholder": "users",
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"QSU11\"}, \"parentOption\": \"yes\"}",
+          "configuration": "{\"min\": 0, \"group\": \"QSU12\", \"width\": \"5\", \"suffix\": \"users\", \"sumGroup\": \"sex\", \"maxSumField\": \"QSU03\"}",
+          "sectionNumber": 3,
+          "options": []
+        },
+        {
+          "fieldKey": "QSU13_UNKNOWN",
+          "label": "Unknown",
+          "fieldType": "number",
+          "displayOrder": 32,
+          "isRequired": false,
+          "placeholder": "users",
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"QSU13A\"}, \"parentOption\": \"yes\", \"displayInline\": true}",
+          "configuration": null,
+          "sectionNumber": 3,
+          "options": []
+        },
+        {
+          "fieldKey": "QSU13A",
+          "label": "Do you have data on how many people used this service in the relevant quarter, by age group?",
+          "fieldType": "radio",
+          "displayOrder": 33,
+          "isRequired": true,
+          "placeholder": null,
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"QSU05\"}, \"parentOption\": \"yes\"}",
+          "configuration": null,
+          "sectionNumber": 3,
+          "options": [
+            {
+              "value": "yes",
+              "label": "Yes",
+              "displayOrder": 1
+            },
+            {
+              "value": "no",
+              "label": "No",
+              "displayOrder": 2
+            }
+          ]
+        },
+        {
+          "fieldKey": "QSU13_02",
+          "label": "0-2 years",
+          "fieldType": "number",
+          "displayOrder": 34,
+          "isRequired": false,
+          "placeholder": "users",
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"QSU13A\"}, \"parentOption\": \"yes\"}",
+          "configuration": "{\"min\": 0, \"group\": \"QSU13\", \"width\": \"5\", \"suffix\": \"users\", \"sumGroup\": \"age\", \"groupHint\": \"The total for all age groups cannot exceed the total number of users reported for the service.\", \"groupLabel\": \"How many people used your service in the relevant quarter, by age?\", \"maxSumField\": \"QSU03\"}",
+          "sectionNumber": 3,
+          "options": []
+        },
+        {
+          "fieldKey": "QSU13_35",
+          "label": "3-5 years",
+          "fieldType": "number",
+          "displayOrder": 35,
+          "isRequired": false,
+          "placeholder": "users",
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"QSU13A\"}, \"parentOption\": \"yes\"}",
+          "configuration": "{\"min\": 0, \"group\": \"QSU13\", \"width\": \"5\", \"suffix\": \"users\", \"sumGroup\": \"age\", \"maxSumField\": \"QSU03\"}",
+          "sectionNumber": 3,
+          "options": []
+        },
+        {
+          "fieldKey": "QSU13_618",
+          "label": "6-18 years",
+          "fieldType": "number",
+          "displayOrder": 36,
+          "isRequired": false,
+          "placeholder": "users",
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"QSU13A\"}, \"parentOption\": \"yes\"}",
+          "configuration": "{\"min\": 0, \"group\": \"QSU13\", \"width\": \"5\", \"suffix\": \"users\", \"sumGroup\": \"age\", \"maxSumField\": \"QSU03\"}",
+          "sectionNumber": 3,
+          "options": []
+        },
+        {
+          "fieldKey": "QSU13_1925",
+          "label": "19-25 years",
+          "fieldType": "number",
+          "displayOrder": 37,
+          "isRequired": false,
+          "placeholder": "users",
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"QSU13A\"}, \"parentOption\": \"yes\"}",
+          "configuration": "{\"min\": 0, \"group\": \"QSU13\", \"width\": \"5\", \"suffix\": \"users\", \"sumGroup\": \"age\", \"maxSumField\": \"QSU03\"}",
+          "sectionNumber": 3,
+          "options": []
+        },
+        {
+          "fieldKey": "QSU13_26",
+          "label": "26 and older",
+          "fieldType": "number",
+          "displayOrder": 38,
+          "isRequired": false,
+          "placeholder": "users",
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"QSU13A\"}, \"parentOption\": \"yes\"}",
+          "configuration": "{\"min\": 0, \"group\": \"QSU13\", \"width\": \"5\", \"suffix\": \"users\", \"sumGroup\": \"age\", \"maxSumField\": \"QSU03\"}",
+          "sectionNumber": 3,
+          "options": []
+        },
+        {
+          "fieldKey": "QSU13_unknown",
+          "label": "Unknown",
+          "fieldType": "number",
+          "displayOrder": 39,
+          "isRequired": false,
+          "placeholder": "users",
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"QSU13A\"}, \"parentOption\": \"yes\"}",
+          "configuration": "{\"min\": 0, \"group\": \"QSU13\", \"width\": \"5\", \"suffix\": \"users\", \"sumGroup\": \"age\", \"maxSumField\": \"QSU03\"}",
+          "sectionNumber": 3,
+          "options": []
+        },
+        {
+          "fieldKey": "QSU13",
+          "label": "Did the service provider collect pre and post outcome scores for users who accessed this service this quarter?",
+          "fieldType": "radio",
+          "displayOrder": 40,
+          "isRequired": true,
+          "placeholder": null,
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"QSU01\"}, \"parentOption\": \"yes\"}",
+          "configuration": null,
+          "sectionNumber": 3,
+          "options": [
+            {
+              "value": "yes",
+              "label": "Yes",
+              "displayOrder": 1
+            },
+            {
+              "value": "no",
+              "label": "No",
+              "displayOrder": 2
+            }
+          ]
+        },
+        {
+          "fieldKey": "QSU14",
+          "label": "How many service users completed a pre- and post- outcome score for this service in the relevant quarter?",
+          "fieldType": "number",
+          "displayOrder": 41,
+          "isRequired": false,
+          "placeholder": "users",
+          "helpText": "Cannot be higher than the total number of users.",
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"QSU13\"}, \"parentOption\": \"yes\"}",
+          "configuration": "{\"min\": 0, \"width\": \"5\", \"suffix\": \"users\", \"maxSumField\": \"QSU03\"}",
+          "sectionNumber": 3,
+          "options": []
+        },
+        {
+          "fieldKey": "QSU15",
+          "label": "Do you have data on waiting times for this service?",
+          "fieldType": "radio",
+          "displayOrder": 42,
+          "isRequired": false,
+          "placeholder": null,
+          "helpText": "Waiting times should be provided for services funded by the Perinatal Mental Health, Parent Infant Relationship and Infant Feeding strands.",
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"QSU01\"}, \"parentOption\": \"yes\"}",
+          "configuration": null,
+          "sectionNumber": 3,
+          "options": [
+            {
+              "value": "yes",
+              "label": "Yes",
+              "displayOrder": 1
+            },
+            {
+              "value": "no",
+              "label": "No",
+              "displayOrder": 2
+            }
+          ]
+        },
+        {
+          "fieldKey": "QSU16",
+          "label": "What was the average waiting time from referral to first appointment?",
+          "fieldType": "number",
+          "displayOrder": 43,
+          "isRequired": true,
+          "placeholder": "days",
+          "helpText": "Provide the average for the relevant quarter in days.",
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"QSU15\"}, \"parentOption\": \"yes\"}",
+          "configuration": "{\"min\": 0, \"width\": \"5\", \"suffix\": \"days\"}",
+          "sectionNumber": 3,
+          "options": []
+        },
+        {
+          "fieldKey": "QSU17",
+          "label": "Provide more information about waiting times (optional)",
+          "fieldType": "textarea",
+          "displayOrder": 44,
+          "isRequired": false,
+          "placeholder": null,
+          "helpText": "Your comments from previous quarterly collections are shown for reference. Update them if needed.",
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"QSU01\"}, \"parentOption\": \"yes\"}",
+          "configuration": null,
+          "sectionNumber": 4,
+          "options": []
+        }
+      ]
+    },
+    {
+      "code": "wider-service-users",
+      "sectionNumber": 3,
+      "name": "Wider service users",
+      "description": "Questions about wider service users",
+      "lastChangedOn": "2026-12-21T00:00:00Z",
+      "isActive": true,
+      "status": "published",
+      "validationSchema": null,
+      "sections": [
+        {
+          "sectionNumber": 1,
+          "title": "Wider Service Users",
+          "description": "Provide data for {widerServiceCategoryName}",
+          "helpText": null,
+          "helpUrl": null
+        }
+      ],
+      "fields": [
+        {
+          "fieldKey": "QWSU01",
+          "label": "How many people have used wider services in this category in the last 3 months?",
+          "fieldType": "number",
+          "displayOrder": 1,
+          "isRequired": true,
+          "placeholder": "users",
+          "helpText": "Give numbers of unique users for the relevant quarter. This should not include service user numbers for any services reported under section 2.",
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": null,
+          "configuration": "{\"min\": 0, \"width\": \"5\", \"suffix\": \"users\"}",
+          "sectionNumber": 1,
+          "options": []
+        }
+      ]
+    },
+    {
+      "code": "outcome-scores",
+      "sectionNumber": 4,
+      "name": "Outcome scores",
+      "description": "Questions about outcome scores",
+      "lastChangedOn": "2026-12-21T00:00:00Z",
+      "isActive": true,
+      "status": "published",
+      "validationSchema": null,
+      "sections": [
+        {
+          "sectionNumber": 1,
+          "title": "Service selection",
+          "description": "Select the service this outcome relates to.",
+          "helpText": null,
+          "helpUrl": null
+        },
+        {
+          "sectionNumber": 2,
+          "title": "Outcome measures",
+          "description": "Tell us which outcome measure(s) the parent or carer completed.",
+          "helpText": null,
+          "helpUrl": null
+        },
+        {
+          "sectionNumber": 3,
+          "title": "User demographics",
+          "description": "Tell us about the demographics of the user.",
+          "helpText": null,
+          "helpUrl": null
+        },
+        {
+          "sectionNumber": 4,
+          "title": "Intervention scores",
+          "description": "Provide the user's pre- and post-intervention scores.",
+          "helpText": null,
+          "helpUrl": null
+        },
+        {
+          "sectionNumber": 5,
+          "title": "Clarification comments",
+          "description": "Provide any additional clarification if needed.",
+          "helpText": null,
+          "helpUrl": null
+        }
+      ],
+      "fields": [
+        {
+          "fieldKey": "PPS01",
+          "label": "What service does the outcome measure relate to?",
+          "fieldType": "select",
+          "displayOrder": 1,
+          "isRequired": true,
+          "placeholder": null,
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": null,
+          "configuration": "{\"placeholder\": \"Select a service...\", \"dynamicOptions\": \"services\"}",
+          "sectionNumber": 1,
+          "options": []
+        },
+        {
+          "fieldKey": "PPS02",
+          "label": "What outcome measure(s) did this parent or carer complete?",
+          "fieldType": "checkbox",
+          "displayOrder": 2,
+          "isRequired": true,
+          "placeholder": null,
+          "helpText": "Select all that apply.",
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": null,
+          "configuration": null,
+          "sectionNumber": 2,
+          "options": [
+            {
+              "value": "phq9",
+              "label": "PHQ-9",
+              "displayOrder": 1
+            },
+            {
+              "value": "gad7",
+              "label": "GAD-7",
+              "displayOrder": 2
+            },
+            {
+              "value": "swemwbs",
+              "label": "SWEMWBS",
+              "displayOrder": 3
+            },
+            {
+              "value": "mors_sf",
+              "label": "MORS-SF",
+              "displayOrder": 4
+            },
+            {
+              "value": "asq3",
+              "label": "ASQ-3",
+              "displayOrder": 5
+            },
+            {
+              "value": "kpcs",
+              "label": "KPCS",
+              "displayOrder": 6
+            },
+            {
+              "value": "hle",
+              "label": "HLE",
+              "displayOrder": 7
+            },
+            {
+              "value": "pss",
+              "label": "PSS",
+              "displayOrder": 8
+            },
+            {
+              "value": "cprs_sf",
+              "label": "CPRS-SF",
+              "displayOrder": 9
+            },
+            {
+              "value": "other",
+              "label": "Other",
+              "displayOrder": 10
+            },
+            {
+              "value": "unknown",
+              "label": "Unknown",
+              "displayOrder": 11
+            }
+          ]
+        },
+        {
+          "fieldKey": "PPS03",
+          "label": "What is the user's ethnicity?",
+          "fieldType": "radio",
+          "displayOrder": 3,
+          "isRequired": true,
+          "placeholder": null,
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": null,
+          "configuration": null,
+          "sectionNumber": 3,
+          "options": [
+            {
+              "value": "white",
+              "label": "White British",
+              "displayOrder": 1
+            },
+            {
+              "value": "mixed",
+              "label": "Mixed or multiple ethnic groups",
+              "displayOrder": 2
+            },
+            {
+              "value": "asian",
+              "label": "Asian or Asian British",
+              "displayOrder": 3
+            },
+            {
+              "value": "black",
+              "label": "Black, African, Caribbean or Black British",
+              "displayOrder": 4
+            },
+            {
+              "value": "other",
+              "label": "Other ethnic group",
+              "displayOrder": 5
+            },
+            {
+              "value": "prefer_not_to_say",
+              "label": "Prefer not to say",
+              "displayOrder": 6
+            },
+            {
+              "value": "unknown",
+              "label": "Unknown",
+              "displayOrder": 7
+            }
+          ]
+        },
+        {
+          "fieldKey": "PPS04",
+          "label": "What is the user's biological sex?",
+          "fieldType": "radio",
+          "displayOrder": 4,
+          "isRequired": true,
+          "placeholder": null,
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": null,
+          "configuration": null,
+          "sectionNumber": 3,
+          "options": [
+            {
+              "value": "female",
+              "label": "Female",
+              "displayOrder": 1
+            },
+            {
+              "value": "male",
+              "label": "Male",
+              "displayOrder": 2
+            },
+            {
+              "value": "other",
+              "label": "Other",
+              "displayOrder": 3
+            },
+            {
+              "value": "unknown",
+              "label": "Unknown",
+              "displayOrder": 4
+            }
+          ]
+        },
+        {
+          "fieldKey": "PPS05",
+          "label": "What is the user's IDACI decile?",
+          "fieldType": "select",
+          "displayOrder": 5,
+          "isRequired": true,
+          "placeholder": null,
+          "helpText": "Must be a number between 1 and 10.",
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": null,
+          "configuration": "{\"placeholder\": \"Select a decile...\"}",
+          "sectionNumber": 3,
+          "options": [
+            {
+              "value": "1",
+              "label": "1 (most deprived)",
+              "displayOrder": 1
+            },
+            {
+              "value": "2",
+              "label": "2",
+              "displayOrder": 2
+            },
+            {
+              "value": "3",
+              "label": "3",
+              "displayOrder": 3
+            },
+            {
+              "value": "4",
+              "label": "4",
+              "displayOrder": 4
+            },
+            {
+              "value": "5",
+              "label": "5",
+              "displayOrder": 5
+            },
+            {
+              "value": "6",
+              "label": "6",
+              "displayOrder": 6
+            },
+            {
+              "value": "7",
+              "label": "7",
+              "displayOrder": 7
+            },
+            {
+              "value": "8",
+              "label": "8",
+              "displayOrder": 8
+            },
+            {
+              "value": "9",
+              "label": "9",
+              "displayOrder": 9
+            },
+            {
+              "value": "10",
+              "label": "10 (least deprived)",
+              "displayOrder": 10
+            },
+            {
+              "value": "unknown",
+              "label": "Unknown",
+              "displayOrder": 11
+            }
+          ]
+        },
+        {
+          "fieldKey": "PPS06_pre",
+          "label": "Pre-intervention ASQ-3 score",
+          "fieldType": "number",
+          "displayOrder": 6,
+          "isRequired": false,
+          "placeholder": null,
+          "helpText": "Number between 0 and 60.",
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"asq3\", \"fieldKey\": \"PPS02\"}, \"parentOption\": \"asq3\"}",
+          "configuration": "{\"max\": 60, \"min\": 0, \"group\": \"PPS06\", \"width\": \"5\", \"groupLabel\": \"What were this parent or carer's ASQ-3 scores pre- and post-intervention?\"}",
+          "sectionNumber": 4,
+          "options": []
+        },
+        {
+          "fieldKey": "PPS06_post",
+          "label": "Post-intervention ASQ-3 score",
+          "fieldType": "number",
+          "displayOrder": 7,
+          "isRequired": false,
+          "placeholder": null,
+          "helpText": "Number between 0 and 60.",
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"asq3\", \"fieldKey\": \"PPS02\"}, \"parentOption\": \"asq3\"}",
+          "configuration": "{\"max\": 60, \"min\": 0, \"group\": \"PPS06\", \"width\": \"5\"}",
+          "sectionNumber": 4,
+          "options": []
+        },
+        {
+          "fieldKey": "PPS07_pre",
+          "label": "Pre-intervention CPRS-SF score",
+          "fieldType": "number",
+          "displayOrder": 8,
+          "isRequired": false,
+          "placeholder": null,
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"cprs_sf\", \"fieldKey\": \"PPS02\"}, \"parentOption\": \"cprs_sf\"}",
+          "configuration": "{\"min\": 0, \"group\": \"PPS07\", \"width\": \"5\", \"groupLabel\": \"What were this parent or carer's CPRS-SF scores pre- and post-intervention?\"}",
+          "sectionNumber": 4,
+          "options": []
+        },
+        {
+          "fieldKey": "PPS07_post",
+          "label": "Post-intervention CPRS-SF score",
+          "fieldType": "number",
+          "displayOrder": 9,
+          "isRequired": false,
+          "placeholder": null,
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"cprs_sf\", \"fieldKey\": \"PPS02\"}, \"parentOption\": \"cprs_sf\"}",
+          "configuration": "{\"min\": 0, \"group\": \"PPS07\", \"width\": \"5\"}",
+          "sectionNumber": 4,
+          "options": []
+        },
+        {
+          "fieldKey": "PPS08_pre",
+          "label": "Pre-intervention GAD-7 score",
+          "fieldType": "number",
+          "displayOrder": 10,
+          "isRequired": false,
+          "placeholder": null,
+          "helpText": "Number between 0 and 21.",
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"gad7\", \"fieldKey\": \"PPS02\"}, \"parentOption\": \"gad7\"}",
+          "configuration": "{\"max\": 21, \"min\": 0, \"group\": \"PPS08\", \"width\": \"5\", \"groupLabel\": \"What were this parent or carer's GAD-7 scores pre- and post-intervention?\"}",
+          "sectionNumber": 4,
+          "options": []
+        },
+        {
+          "fieldKey": "PPS08_post",
+          "label": "Post-intervention GAD-7 score",
+          "fieldType": "number",
+          "displayOrder": 11,
+          "isRequired": false,
+          "placeholder": null,
+          "helpText": "Number between 0 and 21.",
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"gad7\", \"fieldKey\": \"PPS02\"}, \"parentOption\": \"gad7\"}",
+          "configuration": "{\"max\": 21, \"min\": 0, \"group\": \"PPS08\", \"width\": \"5\"}",
+          "sectionNumber": 4,
+          "options": []
+        },
+        {
+          "fieldKey": "PPS09_pre",
+          "label": "Pre-intervention HLE score",
+          "fieldType": "number",
+          "displayOrder": 12,
+          "isRequired": false,
+          "placeholder": null,
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"hle\", \"fieldKey\": \"PPS02\"}, \"parentOption\": \"hle\"}",
+          "configuration": "{\"min\": 0, \"group\": \"PPS09\", \"width\": \"5\", \"groupLabel\": \"What were this parent or carer's HLE scores pre- and post-intervention?\"}",
+          "sectionNumber": 4,
+          "options": []
+        },
+        {
+          "fieldKey": "PPS09_post",
+          "label": "Post-intervention HLE score",
+          "fieldType": "number",
+          "displayOrder": 13,
+          "isRequired": false,
+          "placeholder": null,
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"hle\", \"fieldKey\": \"PPS02\"}, \"parentOption\": \"hle\"}",
+          "configuration": "{\"min\": 0, \"group\": \"PPS09\", \"width\": \"5\"}",
+          "sectionNumber": 4,
+          "options": []
+        },
+        {
+          "fieldKey": "PPS10_pre",
+          "label": "Pre-intervention KPCS score",
+          "fieldType": "number",
+          "displayOrder": 14,
+          "isRequired": false,
+          "placeholder": null,
+          "helpText": "Number between 0 and 45.",
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"kpcs\", \"fieldKey\": \"PPS02\"}, \"parentOption\": \"kpcs\"}",
+          "configuration": "{\"max\": 45, \"min\": 0, \"group\": \"PPS10\", \"width\": \"5\", \"groupLabel\": \"What were this parent or carer's KPCS scores pre- and post-intervention?\"}",
+          "sectionNumber": 4,
+          "options": []
+        },
+        {
+          "fieldKey": "PPS10_post",
+          "label": "Post-intervention KPCS score",
+          "fieldType": "number",
+          "displayOrder": 15,
+          "isRequired": false,
+          "placeholder": null,
+          "helpText": "Number between 0 and 45.",
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"kpcs\", \"fieldKey\": \"PPS02\"}, \"parentOption\": \"kpcs\"}",
+          "configuration": "{\"max\": 45, \"min\": 0, \"group\": \"PPS10\", \"width\": \"5\"}",
+          "sectionNumber": 4,
+          "options": []
+        },
+        {
+          "fieldKey": "PPS11_pre",
+          "label": "Pre-intervention MORS-SF score",
+          "fieldType": "number",
+          "displayOrder": 16,
+          "isRequired": false,
+          "placeholder": null,
+          "helpText": "Number between 0 and 35.",
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"mors_sf\", \"fieldKey\": \"PPS02\"}, \"parentOption\": \"mors_sf\"}",
+          "configuration": "{\"max\": 35, \"min\": 0, \"group\": \"PPS11\", \"width\": \"5\", \"groupLabel\": \"What were this parent or carer's MORS-SF scores pre- and post-intervention?\"}",
+          "sectionNumber": 4,
+          "options": []
+        },
+        {
+          "fieldKey": "PPS11_post",
+          "label": "Post-intervention MORS-SF score",
+          "fieldType": "number",
+          "displayOrder": 17,
+          "isRequired": false,
+          "placeholder": null,
+          "helpText": "Number between 0 and 35.",
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"mors_sf\", \"fieldKey\": \"PPS02\"}, \"parentOption\": \"mors_sf\"}",
+          "configuration": "{\"max\": 35, \"min\": 0, \"group\": \"PPS11\", \"width\": \"5\"}",
+          "sectionNumber": 4,
+          "options": []
+        },
+        {
+          "fieldKey": "PPS12_pre",
+          "label": "Pre-intervention PHQ-9 score",
+          "fieldType": "number",
+          "displayOrder": 18,
+          "isRequired": false,
+          "placeholder": null,
+          "helpText": "Number between 0 and 27.",
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"phq9\", \"fieldKey\": \"PPS02\"}, \"parentOption\": \"phq9\"}",
+          "configuration": "{\"max\": 27, \"min\": 0, \"group\": \"PPS12\", \"width\": \"5\", \"groupLabel\": \"What were this parent or carer's PHQ-9 scores pre- and post-intervention?\"}",
+          "sectionNumber": 4,
+          "options": []
+        },
+        {
+          "fieldKey": "PPS12_post",
+          "label": "Post-intervention PHQ-9 score",
+          "fieldType": "number",
+          "displayOrder": 19,
+          "isRequired": false,
+          "placeholder": null,
+          "helpText": "Number between 0 and 27.",
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"phq9\", \"fieldKey\": \"PPS02\"}, \"parentOption\": \"phq9\"}",
+          "configuration": "{\"max\": 27, \"min\": 0, \"group\": \"PPS12\", \"width\": \"5\"}",
+          "sectionNumber": 4,
+          "options": []
+        },
+        {
+          "fieldKey": "PPS13_pre",
+          "label": "Pre-intervention PSS score",
+          "fieldType": "number",
+          "displayOrder": 20,
+          "isRequired": false,
+          "placeholder": null,
+          "helpText": "Number between 0 and 40.",
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"pss\", \"fieldKey\": \"PPS02\"}, \"parentOption\": \"pss\"}",
+          "configuration": "{\"max\": 40, \"min\": 0, \"group\": \"PPS13\", \"width\": \"5\", \"groupLabel\": \"What were this parent or carer's PSS scores pre- and post-intervention?\"}",
+          "sectionNumber": 4,
+          "options": []
+        },
+        {
+          "fieldKey": "PPS13_post",
+          "label": "Post-intervention PSS score",
+          "fieldType": "number",
+          "displayOrder": 21,
+          "isRequired": false,
+          "placeholder": null,
+          "helpText": "Number between 0 and 40.",
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"pss\", \"fieldKey\": \"PPS02\"}, \"parentOption\": \"pss\"}",
+          "configuration": "{\"max\": 40, \"min\": 0, \"group\": \"PPS13\", \"width\": \"5\"}",
+          "sectionNumber": 4,
+          "options": []
+        },
+        {
+          "fieldKey": "PPS14_pre",
+          "label": "Pre-intervention SWEMWBS score",
+          "fieldType": "number",
+          "displayOrder": 22,
+          "isRequired": false,
+          "placeholder": null,
+          "helpText": "Number between 7 and 35.",
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"swemwbs\", \"fieldKey\": \"PPS02\"}, \"parentOption\": \"swemwbs\"}",
+          "configuration": "{\"max\": 35, \"min\": 7, \"group\": \"PPS14\", \"width\": \"5\", \"groupLabel\": \"What were this parent or carer's SWEMWBS scores pre- and post-intervention?\"}",
+          "sectionNumber": 4,
+          "options": []
+        },
+        {
+          "fieldKey": "PPS14_post",
+          "label": "Post-intervention SWEMWBS score",
+          "fieldType": "number",
+          "displayOrder": 23,
+          "isRequired": false,
+          "placeholder": null,
+          "helpText": "Number between 7 and 35.",
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"swemwbs\", \"fieldKey\": \"PPS02\"}, \"parentOption\": \"swemwbs\"}",
+          "configuration": "{\"max\": 35, \"min\": 7, \"group\": \"PPS14\", \"width\": \"5\"}",
+          "sectionNumber": 4,
+          "options": []
+        },
+        {
+          "fieldKey": "PPS15_pre",
+          "label": "Pre-intervention 'Other' score",
+          "fieldType": "number",
+          "displayOrder": 24,
+          "isRequired": false,
+          "placeholder": null,
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"other\", \"fieldKey\": \"PPS02\"}, \"parentOption\": \"other\"}",
+          "configuration": "{\"min\": 0, \"group\": \"PPS15\", \"width\": \"5\", \"groupLabel\": \"What were this parent or carer's 'Other' scores pre- and post-intervention?\"}",
+          "sectionNumber": 4,
+          "options": []
+        },
+        {
+          "fieldKey": "PPS15_post",
+          "label": "Post-intervention 'Other' score",
+          "fieldType": "number",
+          "displayOrder": 25,
+          "isRequired": false,
+          "placeholder": null,
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"other\", \"fieldKey\": \"PPS02\"}, \"parentOption\": \"other\"}",
+          "configuration": "{\"min\": 0, \"group\": \"PPS15\", \"width\": \"5\"}",
+          "sectionNumber": 4,
+          "options": []
+        },
+        {
+          "fieldKey": "PPS16",
+          "label": "Would you like to upload a case study (optional)?",
+          "fieldType": "file",
+          "displayOrder": 26,
+          "isRequired": false,
+          "placeholder": null,
+          "helpText": "If you have evidence or examples of approaches which have improved user outcomes, you can upload them here. For example, you might like to tell us about how you have brought different services together to create better outcomes or how you have tested new approaches. Use the case study template to create your case study.",
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": null,
+          "configuration": null,
+          "sectionNumber": 5,
+          "options": []
+        },
+        {
+          "fieldKey": "PPS17",
+          "label": "Provide more information about outcome scores (optional)",
+          "fieldType": "textarea",
+          "displayOrder": 27,
+          "isRequired": false,
+          "placeholder": null,
+          "helpText": "Your comments from previous quarterly collections are shown for reference. Update them if needed.",
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": null,
+          "configuration": null,
+          "sectionNumber": 5,
+          "options": []
+        }
+      ]
+    },
+    {
+      "code": "breastfeeding-rates",
+      "sectionNumber": 5,
+      "name": "Breastfeeding rates",
+      "description": "Questions about breastfeeding rates",
+      "lastChangedOn": "2026-12-21T00:00:00Z",
+      "isActive": true,
+      "status": "published",
+      "validationSchema": null,
+      "sections": [
+        {
+          "sectionNumber": 1,
+          "title": "Breastfeeding Rates",
+          "description": "Tell us about breastfeeding rates in your local authority over the past 3 months.",
+          "helpText": null,
+          "helpUrl": null
+        },
+        {
+          "sectionNumber": 2,
+          "title": "Clarification comments",
+          "description": "Provide any additional information about breastfeeding rates.",
+          "helpText": null,
+          "helpUrl": null
+        }
+      ],
+      "fields": [
+        {
+          "fieldKey": "BR01",
+          "label": "Do you have data on average breastfeeding rates at initiation over the last quarter?",
+          "fieldType": "radio",
+          "displayOrder": 1,
+          "isRequired": true,
+          "placeholder": null,
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": null,
+          "configuration": null,
+          "sectionNumber": 1,
+          "options": [
+            {
+              "value": "yes",
+              "label": "Yes",
+              "displayOrder": 1
+            },
+            {
+              "value": "no",
+              "label": "No",
+              "displayOrder": 2
+            }
+          ]
+        },
+        {
+          "fieldKey": "BR01a",
+          "label": "What were the average breastfeeding rates at initiation over the last quarter (optional)?",
+          "fieldType": "number",
+          "displayOrder": 2,
+          "isRequired": false,
+          "placeholder": null,
+          "helpText": "Provide an overall figure for your local authority for the relevant quarter. Enter a whole number between 0 and 100 without a percentage sign.",
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"BR01\"}, \"parentOption\": \"yes\", \"displayInline\": true}",
+          "configuration": "{\"max\": 100, \"min\": 0, \"width\": \"3\", \"suffix\": \"%\"}",
+          "sectionNumber": 1,
+          "options": []
+        },
+        {
+          "fieldKey": "BR02",
+          "label": "Do you have data on the average breastfeeding rates at 6-8 weeks over the last quarter?",
+          "fieldType": "radio",
+          "displayOrder": 3,
+          "isRequired": true,
+          "placeholder": null,
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": null,
+          "configuration": null,
+          "sectionNumber": 1,
+          "options": [
+            {
+              "value": "yes",
+              "label": "Yes",
+              "displayOrder": 1
+            },
+            {
+              "value": "no",
+              "label": "No",
+              "displayOrder": 2
+            }
+          ]
+        },
+        {
+          "fieldKey": "BR02a",
+          "label": "What were the average breastfeeding rates at 6-8 weeks over the last quarter (optional)?",
+          "fieldType": "number",
+          "displayOrder": 4,
+          "isRequired": false,
+          "placeholder": null,
+          "helpText": "Provide an overall figure for your local authority for the relevant quarter. Enter a whole number between 0 and 100 without a percentage sign.",
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"BR02\"}, \"parentOption\": \"yes\", \"displayInline\": true}",
+          "configuration": "{\"max\": 100, \"min\": 0, \"width\": \"3\", \"suffix\": \"%\"}",
+          "sectionNumber": 1,
+          "options": []
+        },
+        {
+          "fieldKey": "BR03",
+          "label": "Provide more information about breastfeeding rates (optional)",
+          "fieldType": "textarea",
+          "displayOrder": 5,
+          "isRequired": false,
+          "placeholder": null,
+          "helpText": "Your comments from previous quarterly collections are shown for reference. Update them if needed.",
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": null,
+          "configuration": null,
+          "sectionNumber": 2,
+          "options": []
+        }
+      ]
+    },
+    {
+      "code": "workforce-training",
+      "sectionNumber": 6,
+      "name": "Workforce training",
+      "description": "Tell us about training activities offered to staff. This information will be included in your annual workforce data collection.",
+      "lastChangedOn": "2026-12-21T00:00:00Z",
+      "isActive": true,
+      "status": "draft",
+      "validationSchema": null,
+      "sections": [
+        {
+          "sectionNumber": 1,
+          "title": "Training activity",
+          "description": "Tell us about each training activity or course offered to staff.",
+          "helpText": null,
+          "helpUrl": null
+        },
+        {
+          "sectionNumber": 2,
+          "title": "Clarification comments",
+          "description": "Provide any additional information about workforce training.",
+          "helpText": null,
+          "helpUrl": null
+        }
+      ],
+      "fields": [
+        {
+          "fieldKey": "WT01",
+          "label": "What is the title of the activity or course?",
+          "fieldType": "text",
+          "displayOrder": 1,
+          "isRequired": true,
+          "placeholder": "Enter training title",
+          "helpText": "If the training activity does not have a title, give a short description.",
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": null,
+          "configuration": null,
+          "sectionNumber": 1,
+          "options": []
+        },
+        {
+          "fieldKey": "WT02",
+          "label": "Is the training still being offered?",
+          "fieldType": "radio",
+          "displayOrder": 2,
+          "isRequired": true,
+          "placeholder": null,
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": null,
+          "configuration": null,
+          "sectionNumber": 1,
+          "options": [
+            {
+              "value": "yes_same_description",
+              "label": "Yes and the training description is the same",
+              "displayOrder": 1
+            },
+            {
+              "value": "yes_changed_description",
+              "label": "Yes and I have changed the training description",
+              "displayOrder": 2
+            },
+            {
+              "value": "no",
+              "label": "No - the training activity is no longer offered",
+              "displayOrder": 3
+            },
+            {
+              "value": "new",
+              "label": "N/A - this is a new training activity",
+              "displayOrder": 4
+            }
+          ]
+        },
+        {
+          "fieldKey": "WT03",
+          "label": "Which services does the training support staff with?",
+          "fieldType": "checkbox",
+          "displayOrder": 3,
+          "isRequired": true,
+          "placeholder": null,
+          "helpText": "This could also include Family Hub transformation. Select all that apply.",
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": null,
+          "configuration": "{\"dynamicOptions\": \"services\"}",
+          "sectionNumber": 1,
+          "options": [
+            {
+              "value": "family_hub_transformation",
+              "label": "Family Hub Transformation",
+              "displayOrder": 1
+            }
+          ]
+        },
+        {
+          "fieldKey": "WT04",
+          "label": "How many staff took part in this training in the last 3 months?",
+          "fieldType": "number",
+          "displayOrder": 4,
+          "isRequired": true,
+          "placeholder": "attendees",
+          "helpText": "Give the total number of attendees for the relevant quarter.",
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": null,
+          "configuration": "{\"min\": 0, \"width\": \"5\", \"suffix\": \"attendees\"}",
+          "sectionNumber": 1,
+          "options": []
+        },
+        {
+          "fieldKey": "WT05",
+          "label": "Provide more information (optional)",
+          "fieldType": "textarea",
+          "displayOrder": 5,
+          "isRequired": false,
+          "placeholder": null,
+          "helpText": "For example, tell us if the information you entered does not properly capture information about your training. Your comments from previous quarterly collections are shown for reference. Update them if needed.",
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": null,
+          "configuration": null,
+          "sectionNumber": 2,
+          "options": []
+        }
+      ]
+    },
+    {
+      "code": "funded-workforce",
+      "sectionNumber": 7,
+      "name": "Funded total workforce",
+      "description": "Tell us about your workforce numbers. This information will be included in your annual workforce data collection.",
+      "lastChangedOn": "2026-12-21T00:00:00Z",
+      "isActive": true,
+      "status": "draft",
+      "validationSchema": null,
+      "sections": [
+        {
+          "sectionNumber": 1,
+          "title": "Family Hubs Transformation staff",
+          "description": "Tell us about the staff supporting Family Hubs Transformation across the local authority and at delivery locations.",
+          "helpText": null,
+          "helpUrl": null
+        },
+        {
+          "sectionNumber": 2,
+          "title": "Family Hubs Workforce",
+          "description": "Tell us about the staff working in Family Hub roles across the local authority and at delivery locations.",
+          "helpText": null,
+          "helpUrl": null
+        },
+        {
+          "sectionNumber": 3,
+          "title": "Clarification comments",
+          "description": "Provide any additional information about workforce numbers.",
+          "helpText": null,
+          "helpUrl": null
+        }
+      ],
+      "fields": [
+        {
+          "fieldKey": "FTW14_programme_coordinator",
+          "label": "Programme co-ordinator",
+          "fieldType": "number",
+          "displayOrder": 1,
+          "isRequired": false,
+          "placeholder": "staff",
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": null,
+          "configuration": "{\"min\": 0, \"group\": \"FTW14\", \"width\": \"5\", \"suffix\": \"staff\", \"groupHint\": \"Tell us how many people worked for your local authority on the relevant date.\", \"groupLabel\": \"How many staff do you have in your local authority, by type?\"}",
+          "sectionNumber": 1,
+          "options": []
+        },
+        {
+          "fieldKey": "FTW14_change_manager",
+          "label": "Change manager",
+          "fieldType": "number",
+          "displayOrder": 2,
+          "isRequired": false,
+          "placeholder": "staff",
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": null,
+          "configuration": "{\"min\": 0, \"group\": \"FTW14\", \"width\": \"5\", \"suffix\": \"staff\"}",
+          "sectionNumber": 1,
+          "options": []
+        },
+        {
+          "fieldKey": "FTW14_data_lead",
+          "label": "Data lead",
+          "fieldType": "number",
+          "displayOrder": 3,
+          "isRequired": false,
+          "placeholder": "staff",
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": null,
+          "configuration": "{\"min\": 0, \"group\": \"FTW14\", \"width\": \"5\", \"suffix\": \"staff\"}",
+          "sectionNumber": 1,
+          "options": []
+        },
+        {
+          "fieldKey": "FTW14_support_officer",
+          "label": "Support officer",
+          "fieldType": "number",
+          "displayOrder": 4,
+          "isRequired": false,
+          "placeholder": "staff",
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": null,
+          "configuration": "{\"min\": 0, \"group\": \"FTW14\", \"width\": \"5\", \"suffix\": \"staff\"}",
+          "sectionNumber": 1,
+          "options": []
+        },
+        {
+          "fieldKey": "FTW14_analytical_support",
+          "label": "Analytical support",
+          "fieldType": "number",
+          "displayOrder": 5,
+          "isRequired": false,
+          "placeholder": "staff",
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": null,
+          "configuration": "{\"min\": 0, \"group\": \"FTW14\", \"width\": \"5\", \"suffix\": \"staff\"}",
+          "sectionNumber": 1,
+          "options": []
+        },
+        {
+          "fieldKey": "FTW14_digital_support",
+          "label": "Digital support",
+          "fieldType": "number",
+          "displayOrder": 6,
+          "isRequired": false,
+          "placeholder": "staff",
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": null,
+          "configuration": "{\"min\": 0, \"group\": \"FTW14\", \"width\": \"5\", \"suffix\": \"staff\"}",
+          "sectionNumber": 1,
+          "options": []
+        },
+        {
+          "fieldKey": "FTW14_other",
+          "label": "Other",
+          "fieldType": "number",
+          "displayOrder": 7,
+          "isRequired": false,
+          "placeholder": "staff",
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": null,
+          "configuration": "{\"min\": 0, \"group\": \"FTW14\", \"width\": \"5\", \"suffix\": \"staff\"}",
+          "sectionNumber": 1,
+          "options": []
+        },
+        {
+          "fieldKey": "FTW15_programme_coordinator",
+          "label": "Programme co-ordinator",
+          "fieldType": "number",
+          "displayOrder": 8,
+          "isRequired": false,
+          "placeholder": "staff",
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": null,
+          "configuration": "{\"min\": 0, \"group\": \"FTW15\", \"width\": \"5\", \"suffix\": \"staff\", \"groupHint\": \"Tell us how many people worked for Best Start Family Hubs on the relevant date.\", \"groupLabel\": \"How many staff do you have working for your delivery locations, by type?\", \"maxSumField\": \"FTW14_programme_coordinator\"}",
+          "sectionNumber": 1,
+          "options": []
+        },
+        {
+          "fieldKey": "FTW15_change_manager",
+          "label": "Change manager",
+          "fieldType": "number",
+          "displayOrder": 9,
+          "isRequired": false,
+          "placeholder": "staff",
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": null,
+          "configuration": "{\"min\": 0, \"group\": \"FTW15\", \"width\": \"5\", \"suffix\": \"staff\", \"maxSumField\": \"FTW14_change_manager\"}",
+          "sectionNumber": 1,
+          "options": []
+        },
+        {
+          "fieldKey": "FTW15_data_lead",
+          "label": "Data lead",
+          "fieldType": "number",
+          "displayOrder": 10,
+          "isRequired": false,
+          "placeholder": "staff",
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": null,
+          "configuration": "{\"min\": 0, \"group\": \"FTW15\", \"width\": \"5\", \"suffix\": \"staff\", \"maxSumField\": \"FTW14_data_lead\"}",
+          "sectionNumber": 1,
+          "options": []
+        },
+        {
+          "fieldKey": "FTW15_support_officer",
+          "label": "Support officer",
+          "fieldType": "number",
+          "displayOrder": 11,
+          "isRequired": false,
+          "placeholder": "staff",
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": null,
+          "configuration": "{\"min\": 0, \"group\": \"FTW15\", \"width\": \"5\", \"suffix\": \"staff\", \"maxSumField\": \"FTW14_support_officer\"}",
+          "sectionNumber": 1,
+          "options": []
+        },
+        {
+          "fieldKey": "FTW15_analytical_support",
+          "label": "Analytical support",
+          "fieldType": "number",
+          "displayOrder": 12,
+          "isRequired": false,
+          "placeholder": "staff",
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": null,
+          "configuration": "{\"min\": 0, \"group\": \"FTW15\", \"width\": \"5\", \"suffix\": \"staff\", \"maxSumField\": \"FTW14_analytical_support\"}",
+          "sectionNumber": 1,
+          "options": []
+        },
+        {
+          "fieldKey": "FTW15_digital_support",
+          "label": "Digital support",
+          "fieldType": "number",
+          "displayOrder": 13,
+          "isRequired": false,
+          "placeholder": "staff",
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": null,
+          "configuration": "{\"min\": 0, \"group\": \"FTW15\", \"width\": \"5\", \"suffix\": \"staff\", \"maxSumField\": \"FTW14_digital_support\"}",
+          "sectionNumber": 1,
+          "options": []
+        },
+        {
+          "fieldKey": "FTW15_other",
+          "label": "Other",
+          "fieldType": "number",
+          "displayOrder": 14,
+          "isRequired": false,
+          "placeholder": "staff",
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": null,
+          "configuration": "{\"min\": 0, \"group\": \"FTW15\", \"width\": \"5\", \"suffix\": \"staff\", \"maxSumField\": \"FTW14_other\"}",
+          "sectionNumber": 1,
+          "options": []
+        },
+        {
+          "fieldKey": "FTW16",
+          "label": "Provide more information (optional)",
+          "fieldType": "textarea",
+          "displayOrder": 15,
+          "isRequired": false,
+          "placeholder": null,
+          "helpText": "For example, tell us if the information you entered does not properly capture your staffing numbers. Your comments from previous quarterly collections are shown for reference. Update them if needed.",
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": null,
+          "configuration": null,
+          "sectionNumber": 3,
+          "options": []
+        },
+        {
+          "fieldKey": "FTW17_family_hub_management",
+          "label": "Family Hub management",
+          "fieldType": "number",
+          "displayOrder": 16,
+          "isRequired": false,
+          "placeholder": "staff",
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": null,
+          "configuration": "{\"min\": 0, \"group\": \"FTW17\", \"width\": \"5\", \"suffix\": \"staff\", \"groupHint\": \"Tell us how many people worked for your local authority on the relevant date.\", \"groupLabel\": \"How many staff do you have in your local authority, by type?\"}",
+          "sectionNumber": 2,
+          "options": []
+        },
+        {
+          "fieldKey": "FTW17_family_navigators",
+          "label": "Family navigators",
+          "fieldType": "number",
+          "displayOrder": 17,
+          "isRequired": false,
+          "placeholder": "staff",
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": null,
+          "configuration": "{\"min\": 0, \"group\": \"FTW17\", \"width\": \"5\", \"suffix\": \"staff\"}",
+          "sectionNumber": 2,
+          "options": []
+        },
+        {
+          "fieldKey": "FTW17_receptionist",
+          "label": "Family Hub receptionist/front of house staff",
+          "fieldType": "number",
+          "displayOrder": 18,
+          "isRequired": false,
+          "placeholder": "staff",
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": null,
+          "configuration": "{\"min\": 0, \"group\": \"FTW17\", \"width\": \"5\", \"suffix\": \"staff\"}",
+          "sectionNumber": 2,
+          "options": []
+        },
+        {
+          "fieldKey": "FTW17_other",
+          "label": "Other",
+          "fieldType": "number",
+          "displayOrder": 19,
+          "isRequired": false,
+          "placeholder": "staff",
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": null,
+          "configuration": "{\"min\": 0, \"group\": \"FTW17\", \"width\": \"5\", \"suffix\": \"staff\"}",
+          "sectionNumber": 2,
+          "options": []
+        },
+        {
+          "fieldKey": "FTW18_family_hub_management",
+          "label": "Family Hub management",
+          "fieldType": "number",
+          "displayOrder": 20,
+          "isRequired": false,
+          "placeholder": "staff",
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": null,
+          "configuration": "{\"min\": 0, \"group\": \"FTW18\", \"width\": \"5\", \"suffix\": \"staff\", \"groupHint\": \"Tell us how many people worked for Best Start Family Hubs on the relevant date.\", \"groupLabel\": \"How many staff do you have in your delivery locations, by type?\", \"maxSumField\": \"FTW17_family_hub_management\"}",
+          "sectionNumber": 2,
+          "options": []
+        },
+        {
+          "fieldKey": "FTW18_family_navigators",
+          "label": "Family navigators",
+          "fieldType": "number",
+          "displayOrder": 21,
+          "isRequired": false,
+          "placeholder": "staff",
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": null,
+          "configuration": "{\"min\": 0, \"group\": \"FTW18\", \"width\": \"5\", \"suffix\": \"staff\", \"maxSumField\": \"FTW17_family_navigators\"}",
+          "sectionNumber": 2,
+          "options": []
+        },
+        {
+          "fieldKey": "FTW18_receptionist",
+          "label": "Family Hub receptionist/front of house staff",
+          "fieldType": "number",
+          "displayOrder": 22,
+          "isRequired": false,
+          "placeholder": "staff",
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": null,
+          "configuration": "{\"min\": 0, \"group\": \"FTW18\", \"width\": \"5\", \"suffix\": \"staff\", \"maxSumField\": \"FTW17_receptionist\"}",
+          "sectionNumber": 2,
+          "options": []
+        },
+        {
+          "fieldKey": "FTW18_other",
+          "label": "Other",
+          "fieldType": "number",
+          "displayOrder": 23,
+          "isRequired": false,
+          "placeholder": "staff",
+          "helpText": null,
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": null,
+          "configuration": "{\"min\": 0, \"group\": \"FTW18\", \"width\": \"5\", \"suffix\": \"staff\", \"maxSumField\": \"FTW17_other\"}",
+          "sectionNumber": 2,
+          "options": []
+        },
+        {
+          "fieldKey": "FTW19",
+          "label": "Provide more information (optional)",
+          "fieldType": "textarea",
+          "displayOrder": 24,
+          "isRequired": false,
+          "placeholder": null,
+          "helpText": "For example, tell us if the information you entered does not properly capture your staffing numbers. Your comments from previous quarterly collections are shown for reference. Update them if needed.",
+          "defaultValue": null,
+          "validationRules": null,
+          "conditionalRules": null,
+          "configuration": null,
+          "sectionNumber": 3,
+          "options": []
+        }
+      ]
+    }
+  ],
+  "exportedAt": "2026-04-30T09:59:59.9498378Z",
+  "environment": "Unknown"
+}

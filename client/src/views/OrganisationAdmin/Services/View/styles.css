@@ -1,0 +1,139 @@
+/* View service page - extends GOV.UK styles */
+.view-service-page {
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+}
+
+/* Back link */
+.view-service-back-link {
+  display: inline-flex;
+  align-items: center;
+  color: #0b0c0c;
+  text-decoration: underline;
+  font-size: 16px;
+}
+
+.view-service-back-link svg {
+  margin-right: 5px;
+}
+
+.view-service-back-link:hover {
+  color: #0b0c0c;
+}
+
+/* Header */
+.view-service-header {
+  display: flex;
+  flex-direction: column;
+  max-width: 630px;
+}
+
+.view-service-caption {
+  font-size: 24px;
+  line-height: 30px;
+  font-weight: 300;
+  color: #505a5f;
+}
+
+.view-service-title {
+  font-size: 36px;
+  line-height: 40px;
+  font-weight: 700;
+  color: #0b0c0c;
+  margin: 0;
+}
+
+/* Description */
+.view-service-description {
+  max-width: 630px;
+}
+
+.view-service-description p {
+  font-size: 19px;
+  line-height: 25px;
+  color: #0b0c0c;
+  margin: 0 0 10px 0;
+}
+
+.view-service-description p:last-child {
+  margin-bottom: 0;
+}
+
+/* Summary card - GOV.UK summary card style */
+.view-service-summary-card {
+  border: 1px solid #b1b4b6;
+  background-color: #ffffff;
+}
+
+/* Card header */
+.view-service-card-header {
+  background-color: #f3f2f1;
+  border-bottom: 1px solid #b1b4b6;
+  padding: 20px;
+  display: flex;
+  justify-content: flex-end;
+}
+
+.view-service-card-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 19px;
+  line-height: 25px;
+}
+
+/* Action links - GOV.UK link style */
+.view-service-action-link {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 19px;
+  line-height: 25px;
+  font-weight: 700;
+  color: #1d70b8;
+  text-decoration: underline;
+}
+
+.view-service-action-link:hover {
+  color: #003078;
+}
+
+.view-service-action-separator {
+  color: #b1b4b6;
+  font-weight: 300;
+}
+
+/* Summary rows - GOV.UK summary list style */
+.view-service-summary-rows {
+  padding: 0 20px;
+}
+
+.view-service-summary-row {
+  display: flex;
+  gap: 20px;
+  padding: 10px 0;
+  border-bottom: 1px solid #b1b4b6;
+}
+
+.view-service-summary-row:last-child {
+  border-bottom: 1px solid #b1b4b6;
+}
+
+.view-service-summary-key {
+  flex: 1;
+  font-size: 19px;
+  line-height: 25px;
+  font-weight: 700;
+  color: #0b0c0c;
+}
+
+.view-service-summary-value {
+  flex: 1;
+  font-size: 19px;
+  line-height: 25px;
+  font-weight: 300;
+  color: #0b0c0c;
+}

@@ -1,0 +1,56 @@
+/* Manage Services List Styles */
+
+/* Template download card - icon + content layout */
+.services-template {
+  display: flex;
+  align-items: flex-start;
+  gap: 15px;
+  margin-top: 20px;
+  margin-bottom: 30px;
+}
+
+.services-template__downloads {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+/* Header with actions - layout not available in govuk-frontend */
+.services-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+.services-header__actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: nowrap;
+}
+
+/* Action links with vertical dividers */
+.services-actions {
+  display: inline-flex;
+  gap: 10px;
+  align-items: center;
+  justify-content: flex-end;
+  white-space: nowrap;
+}
+
+.services-actions__divider {
+  color: #b1b4b6;
+}
+
+/* Force no visited state on action links - override browser defaults */
+.services-actions__link,
+.services-actions__link:visited {
+  color: #1d70b8 !important;
+}
+
+.services-actions__link:hover,
+.services-actions__link:visited:hover {
+  color: #003078 !important;
+}

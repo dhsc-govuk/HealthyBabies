@@ -1,0 +1,15 @@
+/* Service Categories List Styles */
+
+/* Files Section - flex layout for icon + content */
+.service-categories-files__item {
+  display: flex;
+  gap: 15px;
+  margin-top: 30px;
+  margin-bottom: 30px;
+}
+
+.service-categories-files__downloads {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}

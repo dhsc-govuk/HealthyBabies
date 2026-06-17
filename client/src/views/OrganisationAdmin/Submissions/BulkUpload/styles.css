@@ -1,0 +1,343 @@
+/* Bulk Upload - Custom styles only where govuk-frontend classes are not available */
+/* Uses GOV.UK colour palette and design patterns */
+
+/* Container - needed for max-width constraint */
+.bulk-upload-container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding-bottom: 40px;
+}
+
+/* File upload dropzone - not available in govuk-frontend */
+.bulk-upload-file__dropzone {
+  border: 2px dashed #b1b4b6; /* govuk-border-colour */
+  background-color: #ffffff;
+  padding: 25px;
+}
+
+.bulk-upload-file__dropzone:focus-within {
+  outline: 3px solid #ffdd00; /* govuk-focus-colour */
+  outline-offset: 0;
+}
+
+.bulk-upload-file__status {
+  background-color: #bbd4ea;
+  color: #0c2d4a;
+  padding: 15px 10px;
+  font-size: 19px;
+  line-height: 25px;
+  margin-bottom: 0;
+}
+
+.bulk-upload-file__status--success {
+  background-color: #cce2d8;
+  color: #005a30;
+}
+
+.bulk-upload-file__controls {
+  display: flex;
+  align-items: baseline;
+  gap: 15px;
+  margin-top: 15px;
+}
+
+.bulk-upload-file__button {
+  background-color: #f3f2f1; /* govuk-colour("light-grey") */
+  border: none;
+  border-bottom: 2px solid #929191;
+  color: #0b0c0c; /* govuk-text-colour */
+  font-size: 19px;
+  line-height: 25px;
+  padding: 8px 12px 7px;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.bulk-upload-file__button:hover {
+  background-color: #dbdad9;
+}
+
+.bulk-upload-file__button:focus {
+  outline: 3px solid #ffdd00; /* govuk-focus-colour */
+  outline-offset: 0;
+  background-color: #ffdd00;
+}
+
+.bulk-upload-file__or-text {
+  font-size: 19px;
+  line-height: 25px;
+  color: #0b0c0c; /* govuk-text-colour */
+}
+
+/* Table wrapper - needed for scrollable table with max-height */
+.bulk-upload-table__wrapper {
+  overflow-x: auto;
+  max-height: 600px;
+  border: 1px solid #b1b4b6; /* govuk-border-colour */
+}
+
+/* Custom table styling for editable data grid - not available in govuk-frontend */
+.bulk-upload-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 19px;
+  line-height: 25px;
+}
+
+.bulk-upload-table th,
+.bulk-upload-table td {
+  padding: 8px;
+  text-align: left;
+  border: 1px solid #b1b4b6; /* govuk-border-colour */
+  vertical-align: top;
+}
+
+.bulk-upload-table th {
+  background-color: #f3f2f1; /* govuk-colour("light-grey") */
+  font-weight: 700;
+}
+
+/* Table header with flex layout for label + button */
+.bulk-upload-table-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 15px;
+}
+
+/* Table header code display */
+.bulk-upload-table__header-code {
+  font-size: 16px;
+  font-weight: 400;
+  color: #505a5f; /* govuk-secondary-text-colour */
+  display: block;
+}
+
+/* Required field header styling - no red color, just bold */
+.bulk-upload-table__header--required {
+  font-weight: 700;
+}
+
+.bulk-upload-table__header--required .bulk-upload-table__header-code {
+  font-weight: 700;
+}
+
+/* Row number column */
+.bulk-upload-table__row-number {
+  width: 50px;
+  text-align: center;
+  color: #505a5f; /* govuk-secondary-text-colour */
+  background-color: #f3f2f1; /* govuk-colour("light-grey") */
+}
+
+/* Processing state */
+.bulk-upload__processing {
+  min-height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 0;
+}
+
+/* Cell with error */
+.bulk-upload-table__cell--error {
+  background-color: #fdf3f3;
+  border-left: 4px solid #d5281b !important; /* govuk-colour("red") */
+  color: #d5281b; /* govuk-colour("red") */
+}
+
+/* Editable cell - subtle hover indicator */
+.bulk-upload-table__cell--editable {
+  cursor: cell;
+  transition: background-color 0.1s ease;
+}
+
+.bulk-upload-table__cell--editable:hover {
+  background-color: #f3f2f1; /* govuk-colour("light-grey") */
+}
+
+/* Cell in edit mode - contains the input */
+.bulk-upload-table__cell--editing {
+  padding: 0 !important;
+  outline: 3px solid #ffdd00; /* govuk-focus-colour */
+  outline-offset: -3px;
+}
+
+/* Error cell maintains its styling even when editable */
+.bulk-upload-table__cell--error.bulk-upload-table__cell--editable:hover {
+  background-color: #fce8e8;
+}
+
+.bulk-upload-table__cell--error.bulk-upload-table__cell--editing {
+  border-left: 4px solid #d5281b !important; /* govuk-colour("red") */
+}
+
+/* Cell Editor Styles */
+.cell-editor {
+  position: relative;
+  min-width: 200px;
+}
+
+.cell-editor__error-message {
+  background-color: #d5281b; /* govuk-colour("red") */
+  color: #ffffff;
+  padding: 6px 10px;
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 0;
+}
+
+.cell-editor__content {
+  display: flex;
+  align-items: stretch;
+  background-color: #ffffff;
+  border: 3px solid #ffdd00; /* govuk-focus-colour */
+}
+
+.cell-editor__input,
+.cell-editor__select {
+  flex: 1;
+  min-width: 120px;
+  padding: 8px;
+  border: none;
+  outline: none;
+  font-size: 16px;
+  font-family: inherit;
+  background-color: #ffffff;
+}
+
+.cell-editor__input:focus,
+.cell-editor__select:focus {
+  outline: none;
+}
+
+.cell-editor__select {
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath fill='%230b0c0c' d='M1.41 0L6 4.58 10.59 0 12 1.41l-6 6-6-6z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+  padding-right: 28px;
+}
+
+.cell-editor__actions {
+  display: flex;
+  flex-shrink: 0;
+}
+
+.cell-editor__btn {
+  width: 36px;
+  height: 36px;
+  border: none;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cell-editor__btn:focus {
+  outline: 3px solid #ffdd00; /* govuk-focus-colour */
+  outline-offset: 0;
+}
+
+.cell-editor__btn--save {
+  background-color: #00703c; /* govuk-colour("green") */
+  color: #ffffff;
+}
+
+.cell-editor__btn--save:hover {
+  background-color: #005a30;
+}
+
+.cell-editor__btn--cancel {
+  background-color: #0b0c0c; /* govuk-text-colour */
+  color: #ffffff;
+}
+
+.cell-editor__btn--cancel:hover {
+  background-color: #333333;
+}
+
+/* Summary list for service selection - custom layout not available in govuk-frontend */
+.bulk-upload-summary-list {
+  margin-bottom: 30px;
+}
+
+.bulk-upload-summary-list__row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 20px 0;
+  border-bottom: 1px solid #b1b4b6; /* govuk-border-colour */
+}
+
+.bulk-upload-summary-list__row:first-child {
+  border-top: 1px solid #b1b4b6; /* govuk-border-colour */
+}
+
+.bulk-upload-summary-list__key {
+  flex: 0 0 200px;
+  padding-right: 20px;
+}
+
+.bulk-upload-summary-list__value {
+  flex: 1;
+  display: flex;
+  justify-content: space-between;
+  gap: 40px;
+}
+
+.bulk-upload-summary-list__option {
+  flex: 1;
+}
+
+/* Checkbox multi-select list in cell editor */
+.cell-editor__checkbox-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px;
+  max-height: 200px;
+  overflow-y: auto;
+  background-color: #ffffff;
+}
+
+.cell-editor__checkbox-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  cursor: pointer;
+  font-size: 16px;
+}
+
+.cell-editor__checkbox-item input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+}
+
+.cell-editor__checkbox-item:hover {
+  background-color: #f3f2f1; /* govuk-colour("light-grey") */
+}
+
+/* Conditionally required field styling */
+.cell-editor--required .cell-editor__content {
+  border-color: #d5281b; /* govuk-colour("red") */
+}
+
+.cell-editor__input--required {
+  border-left: 4px solid #d5281b !important; /* govuk-colour("red") */
+}
+
+/* Conditionally required cell highlight in table */
+.bulk-upload-table__cell--conditional-required {
+  background-color: #fdf3f3;
+  border-left: 4px solid #d5281b !important; /* govuk-colour("red") */
+}
+
+.bulk-upload-table__cell--conditional-required:not(.bulk-upload-table__cell--error) {
+  color: #0b0c0c; /* Keep text readable */
+}

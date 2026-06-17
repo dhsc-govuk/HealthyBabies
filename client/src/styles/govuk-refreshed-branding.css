@@ -1,0 +1,229 @@
+/* GOV.UK Refreshed Branding - Figma Design */
+/* Blue header with no border, green dot in logo */
+/* Only applies to unauthorized pages: SignIn, MFA, Help */
+
+/* Override govuk-frontend font paths to use locally hosted fonts */
+@font-face {
+  font-family: "GDS Transport";
+  font-style: normal;
+  font-weight: 400;
+  src: url("/fonts/light-94a07e06a1-v2.woff2") format("woff2"),
+       url("/fonts/light-f591b13f7d-v2.woff") format("woff");
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "GDS Transport";
+  font-style: normal;
+  font-weight: 700;
+  src: url("/fonts/bold-b542beb274-v2.woff2") format("woff2"),
+       url("/fonts/bold-affa96571d-v2.woff") format("woff");
+  font-display: swap;
+}
+
+/* Global font application - GOV.UK Design System requires GDS Transport everywhere */
+/* Apply to all elements including form controls that don't inherit by default */
+*,
+*::before,
+*::after {
+  font-family: "GDS Transport", arial, sans-serif;
+}
+
+html {
+  font-family: "GDS Transport", arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  font-family: "GDS Transport", arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Ensure form elements use GDS Transport (they don't inherit by default) */
+button,
+input,
+select,
+textarea,
+optgroup {
+  font-family: "GDS Transport", arial, sans-serif;
+}
+
+/* Global link styling - GOV.UK Design System */
+/* Ensures all links have consistent GOV.UK styling */
+/* Excludes navigation links that have their own styling */
+a:not(.govuk-header__link):not(.govuk-footer__link):not(.govuk-skip-link):not(.govuk-back-link):not(.govuk-breadcrumbs__link):not(.govuk-button):not(.govuk-tabs__tab):not(.govuk-service-navigation__link):not(.app-subnav__link) {
+  color: #1d70b8;
+  text-decoration: underline;
+  text-decoration-thickness: max(1px, .0625rem);
+  text-underline-offset: .1578em;
+}
+
+a:not(.govuk-header__link):not(.govuk-footer__link):not(.govuk-skip-link):not(.govuk-back-link):not(.govuk-breadcrumbs__link):not(.govuk-button):not(.govuk-tabs__tab):not(.govuk-service-navigation__link):not(.app-subnav__link):visited {
+  color: #4c2c92;
+}
+
+a:not(.govuk-header__link):not(.govuk-footer__link):not(.govuk-skip-link):not(.govuk-back-link):not(.govuk-breadcrumbs__link):not(.govuk-button):not(.govuk-tabs__tab):not(.govuk-service-navigation__link):not(.app-subnav__link):hover {
+  color: #003078;
+  text-decoration-thickness: max(3px, .1875rem, .12em);
+  text-decoration-skip-ink: none;
+}
+
+a:not(.govuk-header__link):not(.govuk-footer__link):not(.govuk-skip-link):not(.govuk-back-link):not(.govuk-breadcrumbs__link):not(.govuk-button):not(.govuk-tabs__tab):not(.govuk-service-navigation__link):not(.app-subnav__link):focus {
+  outline: 3px solid transparent;
+  color: #0b0c0c;
+  background-color: #ffdd00;
+  box-shadow: 0 -2px #ffdd00, 0 4px #0b0c0c;
+  text-decoration: none;
+}
+
+a:not(.govuk-header__link):not(.govuk-footer__link):not(.govuk-skip-link):not(.govuk-back-link):not(.govuk-breadcrumbs__link):not(.govuk-button):not(.govuk-tabs__tab):not(.govuk-service-navigation__link):not(.app-subnav__link):active {
+  color: #0b0c0c;
+}
+
+.signin-page .govuk-header,
+.mfa-page .govuk-header,
+.help-page .govuk-header,
+.acceptable-use-policy-page .govuk-header {
+  background: #1d70b8 !important;
+  background-color: #1d70b8 !important;
+  border-bottom: none !important;
+  padding: 10px 0 !important;
+}
+
+/* Breadcrumbs — governed entirely by govuk-frontend. No overrides here.
+   govuk-frontend v6 uses ::before on each li for the chevron separator and
+   sets link colour to var(--_govuk-text-colour, #0b0c0c). */
+
+/* Page-specific breadcrumb overrides */
+.signin-page .govuk-breadcrumbs,
+.mfa-page .govuk-breadcrumbs,
+.help-page .govuk-breadcrumbs,
+.acceptable-use-policy-page .govuk-breadcrumbs {
+  text-align: left !important;
+}
+
+.signin-page .govuk-header__container,
+.mfa-page .govuk-header__container,
+.help-page .govuk-header__container,
+.acceptable-use-policy-page .govuk-header__container {
+  border-bottom: none !important;
+}
+
+.signin-page .govuk-header__link,
+.signin-page .govuk-header__link:link,
+.signin-page .govuk-header__link:visited,
+.signin-page .govuk-header__link:active,
+.mfa-page .govuk-header__link,
+.mfa-page .govuk-header__link:link,
+.mfa-page .govuk-header__link:visited,
+.mfa-page .govuk-header__link:active,
+.help-page .govuk-header__link,
+.help-page .govuk-header__link:link,
+.help-page .govuk-header__link:visited,
+.help-page .govuk-header__link:active,
+.acceptable-use-policy-page .govuk-header__link,
+.acceptable-use-policy-page .govuk-header__link:link,
+.acceptable-use-policy-page .govuk-header__link:visited,
+.acceptable-use-policy-page .govuk-header__link:active {
+  color: #ffffff !important;
+}
+
+.signin-page .govuk-header__link:hover,
+.mfa-page .govuk-header__link:hover,
+.help-page .govuk-header__link:hover,
+.acceptable-use-policy-page .govuk-header__link:hover {
+  text-decoration: underline !important;
+  color: #ffffff !important;
+}
+
+.signin-page .govuk-header__link:focus,
+.mfa-page .govuk-header__link:focus,
+.help-page .govuk-header__link:focus,
+.acceptable-use-policy-page .govuk-header__link:focus {
+  color: #0b0c0c !important;
+}
+
+/* SVG logo styling - white with green dot */
+.signin-page .govuk-header svg,
+.signin-page .govuk-header__logotype,
+.mfa-page .govuk-header svg,
+.mfa-page .govuk-header__logotype,
+.help-page .govuk-header svg,
+.help-page .govuk-header__logotype,
+.acceptable-use-policy-page .govuk-header svg,
+.acceptable-use-policy-page .govuk-header__logotype {
+  fill: #ffffff !important;
+}
+
+/* Green dot between GOV and UK */
+.signin-page .govuk-header .govuk-logo-dot,
+.mfa-page .govuk-header .govuk-logo-dot,
+.help-page .govuk-header .govuk-logo-dot,
+.acceptable-use-policy-page .govuk-header .govuk-logo-dot {
+  fill: #00703c !important;
+}
+
+/* GOV.UK Heading Styles - ensure consistent typography */
+.govuk-heading-xl {
+  font-family: "GDS Transport", arial, sans-serif;
+  font-weight: 700;
+  font-size: 48px;
+  line-height: 1.0416666667;
+  color: #0b0c0c;
+  margin-top: 0;
+  margin-bottom: 30px;
+}
+
+.govuk-heading-l {
+  font-family: "GDS Transport", arial, sans-serif;
+  font-weight: 700;
+  font-size: 36px;
+  line-height: 1.1111111111;
+  color: #0b0c0c;
+  margin-top: 0;
+  margin-bottom: 20px;
+}
+
+.govuk-heading-m {
+  font-family: "GDS Transport", arial, sans-serif;
+  font-weight: 700;
+  font-size: 24px;
+  line-height: 1.25;
+  color: #0b0c0c;
+  margin-top: 0;
+  margin-bottom: 15px;
+}
+
+.govuk-heading-s {
+  font-family: "GDS Transport", arial, sans-serif;
+  font-weight: 700;
+  font-size: 19px;
+  line-height: 1.3157894737;
+  color: #0b0c0c;
+  margin-top: 0;
+  margin-bottom: 15px;
+}
+
+@media (max-width: 640px) {
+  .govuk-heading-xl {
+    font-size: 32px;
+    line-height: 1.09375;
+  }
+  
+  .govuk-heading-l {
+    font-size: 27px;
+    line-height: 1.1111111111;
+  }
+  
+  .govuk-heading-m {
+    font-size: 18px;
+    line-height: 1.1111111111;
+  }
+  
+  .govuk-heading-s {
+    font-size: 16px;
+    line-height: 1.25;
+  }
+}

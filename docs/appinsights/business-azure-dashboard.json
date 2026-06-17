@@ -1,0 +1,313 @@
+{
+  "properties": {
+    "lenses": [
+      {
+        "order": 0,
+        "parts": [
+          {
+            "position": { "x": 0, "y": 0, "colSpan": 2, "rowSpan": 1 },
+            "metadata": {
+              "inputs": [
+                { "name": "id", "value": "/subscriptions/YOUR_SUBSCRIPTION_ID/resourceGroups/YOUR_RESOURCE_GROUP/providers/Microsoft.Insights/components/YOUR_APP_INSIGHTS_NAME" },
+                { "name": "Version", "value": "1.0" }
+              ],
+              "type": "Extension/AppInsightsExtension/PartType/AspNetOverviewPinnedPart",
+              "asset": { "idInputName": "id", "type": "ApplicationInsights" },
+              "defaultMenuItemId": "overview"
+            }
+          },
+          {
+            "position": { "x": 2, "y": 0, "colSpan": 1, "rowSpan": 1 },
+            "metadata": {
+              "inputs": [
+                {
+                  "name": "ComponentId",
+                  "value": { "Name": "YOUR_APP_INSIGHTS_NAME", "SubscriptionId": "YOUR_SUBSCRIPTION_ID", "ResourceGroup": "YOUR_RESOURCE_GROUP" }
+                },
+                {
+                  "name": "TimeContext",
+                  "value": { "durationMs": 86400000, "endTime": null, "createdTime": "2018-05-04T01:22:35.782Z", "isInitialTime": true, "grain": 1, "useDashboardTimeRange": false }
+                }
+              ],
+              "type": "Extension/AppInsightsExtension/PartType/UsageUsersOverviewPart",
+              "asset": { "idInputName": "ComponentId", "type": "ApplicationInsights" }
+            }
+          },
+          {
+            "position": { "x": 0, "y": 1, "colSpan": 8, "rowSpan": 1 },
+            "metadata": {
+              "inputs": [],
+              "type": "Extension/HubsExtension/PartType/MarkdownPart",
+              "settings": { "content": { "settings": { "content": "# Users & Sessions", "title": "", "subtitle": "" } } }
+            }
+          },
+          {
+            "position": { "x": 8, "y": 1, "colSpan": 8, "rowSpan": 1 },
+            "metadata": {
+              "inputs": [],
+              "type": "Extension/HubsExtension/PartType/MarkdownPart",
+              "settings": { "content": { "settings": { "content": "# Page Activity", "title": "", "subtitle": "" } } }
+            }
+          },
+          {
+            "position": { "x": 0, "y": 2, "colSpan": 4, "rowSpan": 3 },
+            "metadata": {
+              "inputs": [
+                {
+                  "name": "options",
+                  "value": {
+                    "chart": {
+                      "metrics": [
+                        {
+                          "resourceMetadata": { "id": "/subscriptions/YOUR_SUBSCRIPTION_ID/resourceGroups/YOUR_RESOURCE_GROUP/providers/Microsoft.Insights/components/YOUR_APP_INSIGHTS_NAME" },
+                          "name": "sessions/count",
+                          "aggregationType": 5,
+                          "namespace": "microsoft.insights/components/kusto",
+                          "metricVisualization": { "displayName": "Sessions (Unique)", "color": "#47BDF5" }
+                        }
+                      ],
+                      "title": "Unique Sessions",
+                      "visualization": { "chartType": 2, "legendVisualization": { "isVisible": true, "position": 2, "hideSubtitle": false }, "axisVisualization": { "x": { "isVisible": true, "axisType": 2 }, "y": { "isVisible": true, "axisType": 1 } } }
+                    }
+                  }
+                },
+                { "name": "sharedTimeRange", "isOptional": true }
+              ],
+              "type": "Extension/HubsExtension/PartType/MonitorChartPart",
+              "settings": {
+                "content": {
+                  "options": {
+                    "chart": {
+                      "metrics": [
+                        {
+                          "resourceMetadata": { "id": "/subscriptions/YOUR_SUBSCRIPTION_ID/resourceGroups/YOUR_RESOURCE_GROUP/providers/Microsoft.Insights/components/YOUR_APP_INSIGHTS_NAME" },
+                          "name": "sessions/count",
+                          "aggregationType": 5,
+                          "namespace": "microsoft.insights/components/kusto",
+                          "metricVisualization": { "displayName": "Sessions (Unique)", "color": "#47BDF5" }
+                        }
+                      ],
+                      "title": "Unique Sessions",
+                      "visualization": { "chartType": 2, "legendVisualization": { "isVisible": true, "position": 2, "hideSubtitle": false }, "axisVisualization": { "x": { "isVisible": true, "axisType": 2 }, "y": { "isVisible": true, "axisType": 1 } }, "disablePinning": true }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "position": { "x": 4, "y": 2, "colSpan": 4, "rowSpan": 3 },
+            "metadata": {
+              "inputs": [
+                {
+                  "name": "options",
+                  "value": {
+                    "chart": {
+                      "metrics": [
+                        {
+                          "resourceMetadata": { "id": "/subscriptions/YOUR_SUBSCRIPTION_ID/resourceGroups/YOUR_RESOURCE_GROUP/providers/Microsoft.Insights/components/YOUR_APP_INSIGHTS_NAME" },
+                          "name": "users/count",
+                          "aggregationType": 5,
+                          "namespace": "microsoft.insights/components/kusto",
+                          "metricVisualization": { "displayName": "Users (Unique)", "color": "#7E58FF" }
+                        }
+                      ],
+                      "title": "Unique Users",
+                      "visualization": { "chartType": 2, "legendVisualization": { "isVisible": true, "position": 2, "hideSubtitle": false }, "axisVisualization": { "x": { "isVisible": true, "axisType": 2 }, "y": { "isVisible": true, "axisType": 1 } } }
+                    }
+                  }
+                },
+                { "name": "sharedTimeRange", "isOptional": true }
+              ],
+              "type": "Extension/HubsExtension/PartType/MonitorChartPart",
+              "settings": {
+                "content": {
+                  "options": {
+                    "chart": {
+                      "metrics": [
+                        {
+                          "resourceMetadata": { "id": "/subscriptions/YOUR_SUBSCRIPTION_ID/resourceGroups/YOUR_RESOURCE_GROUP/providers/Microsoft.Insights/components/YOUR_APP_INSIGHTS_NAME" },
+                          "name": "users/count",
+                          "aggregationType": 5,
+                          "namespace": "microsoft.insights/components/kusto",
+                          "metricVisualization": { "displayName": "Users (Unique)", "color": "#7E58FF" }
+                        }
+                      ],
+                      "title": "Unique Users",
+                      "visualization": { "chartType": 2, "legendVisualization": { "isVisible": true, "position": 2, "hideSubtitle": false }, "axisVisualization": { "x": { "isVisible": true, "axisType": 2 }, "y": { "isVisible": true, "axisType": 1 } }, "disablePinning": true }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "position": { "x": 8, "y": 2, "colSpan": 4, "rowSpan": 3 },
+            "metadata": {
+              "inputs": [
+                {
+                  "name": "options",
+                  "value": {
+                    "chart": {
+                      "metrics": [
+                        {
+                          "resourceMetadata": { "id": "/subscriptions/YOUR_SUBSCRIPTION_ID/resourceGroups/YOUR_RESOURCE_GROUP/providers/Microsoft.Insights/components/YOUR_APP_INSIGHTS_NAME" },
+                          "name": "pageViews/count",
+                          "aggregationType": 7,
+                          "namespace": "microsoft.insights/components",
+                          "metricVisualization": { "displayName": "Page views", "color": "#00BCF2" }
+                        }
+                      ],
+                      "title": "Page Views",
+                      "visualization": { "chartType": 2, "legendVisualization": { "isVisible": true, "position": 2, "hideSubtitle": false }, "axisVisualization": { "x": { "isVisible": true, "axisType": 2 }, "y": { "isVisible": true, "axisType": 1 } } }
+                    }
+                  }
+                },
+                { "name": "sharedTimeRange", "isOptional": true }
+              ],
+              "type": "Extension/HubsExtension/PartType/MonitorChartPart",
+              "settings": {
+                "content": {
+                  "options": {
+                    "chart": {
+                      "metrics": [
+                        {
+                          "resourceMetadata": { "id": "/subscriptions/YOUR_SUBSCRIPTION_ID/resourceGroups/YOUR_RESOURCE_GROUP/providers/Microsoft.Insights/components/YOUR_APP_INSIGHTS_NAME" },
+                          "name": "pageViews/count",
+                          "aggregationType": 7,
+                          "namespace": "microsoft.insights/components",
+                          "metricVisualization": { "displayName": "Page views", "color": "#00BCF2" }
+                        }
+                      ],
+                      "title": "Page Views",
+                      "visualization": { "chartType": 2, "legendVisualization": { "isVisible": true, "position": 2, "hideSubtitle": false }, "axisVisualization": { "x": { "isVisible": true, "axisType": 2 }, "y": { "isVisible": true, "axisType": 1 } }, "disablePinning": true }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "position": { "x": 12, "y": 2, "colSpan": 4, "rowSpan": 3 },
+            "metadata": {
+              "inputs": [
+                {
+                  "name": "options",
+                  "value": {
+                    "chart": {
+                      "metrics": [
+                        {
+                          "resourceMetadata": { "id": "/subscriptions/YOUR_SUBSCRIPTION_ID/resourceGroups/YOUR_RESOURCE_GROUP/providers/Microsoft.Insights/components/YOUR_APP_INSIGHTS_NAME" },
+                          "name": "browserTimings/totalDuration",
+                          "aggregationType": 4,
+                          "namespace": "microsoft.insights/components",
+                          "metricVisualization": { "displayName": "Page load time (avg)", "color": "#EB9371" }
+                        }
+                      ],
+                      "title": "Avg Page Load Time (ms)",
+                      "visualization": { "chartType": 2, "legendVisualization": { "isVisible": true, "position": 2, "hideSubtitle": false }, "axisVisualization": { "x": { "isVisible": true, "axisType": 2 }, "y": { "isVisible": true, "axisType": 1 } } }
+                    }
+                  }
+                },
+                { "name": "sharedTimeRange", "isOptional": true }
+              ],
+              "type": "Extension/HubsExtension/PartType/MonitorChartPart",
+              "settings": {
+                "content": {
+                  "options": {
+                    "chart": {
+                      "metrics": [
+                        {
+                          "resourceMetadata": { "id": "/subscriptions/YOUR_SUBSCRIPTION_ID/resourceGroups/YOUR_RESOURCE_GROUP/providers/Microsoft.Insights/components/YOUR_APP_INSIGHTS_NAME" },
+                          "name": "browserTimings/totalDuration",
+                          "aggregationType": 4,
+                          "namespace": "microsoft.insights/components",
+                          "metricVisualization": { "displayName": "Page load time (avg)", "color": "#EB9371" }
+                        }
+                      ],
+                      "title": "Avg Page Load Time (ms)",
+                      "visualization": { "chartType": 2, "legendVisualization": { "isVisible": true, "position": 2, "hideSubtitle": false }, "axisVisualization": { "x": { "isVisible": true, "axisType": 2 }, "y": { "isVisible": true, "axisType": 1 } }, "disablePinning": true }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "position": { "x": 0, "y": 5, "colSpan": 16, "rowSpan": 1 },
+            "metadata": {
+              "inputs": [],
+              "type": "Extension/HubsExtension/PartType/MarkdownPart",
+              "settings": { "content": { "settings": { "content": "# Form Analytics — save the Business Dashboard workbook, then replace REPLACE_WITH_BUSINESS_WORKBOOK_ID below and re-upload this dashboard", "title": "", "subtitle": "" } } }
+            }
+          },
+          {
+            "position": { "x": 0, "y": 6, "colSpan": 8, "rowSpan": 4 },
+            "metadata": {
+              "inputs": [
+                {
+                  "name": "ComponentId",
+                  "value": {
+                    "SubscriptionId": "YOUR_SUBSCRIPTION_ID",
+                    "ResourceGroup": "YOUR_RESOURCE_GROUP",
+                    "Name": "YOUR_APP_INSIGHTS_NAME",
+                    "LinkedApplicationType": 0,
+                    "ResourceId": "/subscriptions/YOUR_SUBSCRIPTION_ID/resourceGroups/YOUR_RESOURCE_GROUP/providers/Microsoft.Insights/components/YOUR_APP_INSIGHTS_NAME",
+                    "ResourceType": "microsoft.insights/components",
+                    "IsAzureFirst": false
+                  }
+                },
+                {
+                  "name": "ResourceIds",
+                  "value": ["/subscriptions/YOUR_SUBSCRIPTION_ID/resourceGroups/YOUR_RESOURCE_GROUP/providers/Microsoft.Insights/components/YOUR_APP_INSIGHTS_NAME"],
+                  "isOptional": true
+                },
+                { "name": "Type", "value": "workbook", "isOptional": true },
+                { "name": "TimeContext", "isOptional": true },
+                {
+                  "name": "ConfigurationId",
+                  "value": "/subscriptions/YOUR_SUBSCRIPTION_ID/resourcegroups/YOUR_RESOURCE_GROUP/providers/microsoft.insights/workbooks/YOUR_WORKBOOK_ID",
+                  "isOptional": true
+                },
+                { "name": "ViewerMode", "value": false, "isOptional": true },
+                { "name": "GalleryResourceType", "value": "microsoft.insights/components", "isOptional": true },
+                { "name": "NotebookParams", "value": "{\"TimeRange\":{\"durationMs\":604800000}}", "isOptional": true },
+                { "name": "Location", "value": "uksouth", "isOptional": true },
+                { "name": "Version", "value": "1.0", "isOptional": true }
+              ],
+              "type": "Extension/AppInsightsExtension/PartType/NotebookPinnedPart",
+              "viewState": {
+                "content": {
+                  "configurationId": "/subscriptions/YOUR_SUBSCRIPTION_ID/resourcegroups/YOUR_RESOURCE_GROUP/providers/microsoft.insights/workbooks/YOUR_WORKBOOK_ID"
+                }
+              }
+            }
+          }
+        ]
+      }
+    ],
+    "metadata": {
+      "model": {
+        "timeRange": {
+          "value": { "relative": { "duration": 168, "timeUnit": 1 } },
+          "type": "MsPortalFx.Composition.Configuration.ValueTypes.TimeRange"
+        },
+        "filterLocale": { "value": "en-us" },
+        "filters": {
+          "value": {
+            "MsPortalFx_TimeRange": {
+              "model": { "format": "utc", "granularity": "auto", "relative": "7d" },
+              "displayCache": { "name": "UTC Time", "value": "Past 7 days" },
+              "filteredPartIds": []
+            }
+          }
+        }
+      }
+    }
+  },
+  "name": "Family Hubs — Business Dashboard",
+  "type": "Microsoft.Portal/dashboards",
+  "location": "INSERT LOCATION",
+  "tags": { "hidden-title": "Family Hubs — Business Dashboard" },
+  "apiVersion": "2022-12-01-preview"
+}

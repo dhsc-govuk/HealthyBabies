@@ -1,0 +1,427 @@
+{
+  "version": "Notebook/1.0",
+  "items": [
+    {
+      "type": 9,
+      "content": {
+        "version": "KqlParameterItem/1.0",
+        "parameters": [
+          {
+            "id": "c1d2e3f4-a5b6-7c8d-9e0f-a1b2c3d4e5f6",
+            "version": "KqlParameterItem/1.0",
+            "name": "TimeRange",
+            "type": 4,
+            "value": { "durationMs": 604800000 },
+            "typeSettings": {
+              "selectableValues": [
+                { "durationMs": 1800000 },
+                { "durationMs": 3600000 },
+                { "durationMs": 14400000 },
+                { "durationMs": 43200000 },
+                { "durationMs": 86400000 },
+                { "durationMs": 259200000 },
+                { "durationMs": 604800000 },
+                { "durationMs": 2592000000 }
+              ]
+            },
+            "label": "Time Range"
+          }
+        ],
+        "style": "pills",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components"
+      },
+      "name": "parameters-0"
+    },
+    {
+      "type": 1,
+      "content": { "json": "## Form Journey" },
+      "name": "form-journey-heading"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where name == 'form_started'\n| count",
+        "size": 4,
+        "title": "Sessions Started",
+        "timeContext": { "durationMs": 0 },
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "tiles",
+        "tileSettings": {
+          "showBorder": false,
+          "titleContent": { "columnMatch": "Count", "formatter": 1 },
+          "leftContent": {
+            "columnMatch": "Count",
+            "formatter": 12,
+            "formatOptions": { "palette": "blue" }
+          }
+        }
+      },
+      "customWidth": "25",
+      "name": "stat-sessions-started"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where name == 'form_submitted'\n| count",
+        "size": 4,
+        "title": "Forms Submitted",
+        "timeContext": { "durationMs": 0 },
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "tiles",
+        "tileSettings": {
+          "showBorder": false,
+          "titleContent": { "columnMatch": "Count", "formatter": 1 },
+          "leftContent": {
+            "columnMatch": "Count",
+            "formatter": 12,
+            "formatOptions": { "palette": "green" }
+          }
+        }
+      },
+      "customWidth": "25",
+      "name": "stat-forms-submitted"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "let started = toscalar(customEvents | where name == 'form_started' | count);\nlet submitted = toscalar(customEvents | where name == 'form_submitted' | count);\nprint rate = iif(started > 0, round(todouble(submitted) / todouble(started) * 100, 1), 0.0)",
+        "size": 4,
+        "title": "Submission Rate %",
+        "timeContext": { "durationMs": 0 },
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "tiles",
+        "tileSettings": {
+          "showBorder": false,
+          "titleContent": { "columnMatch": "rate", "formatter": 1 },
+          "leftContent": {
+            "columnMatch": "rate",
+            "formatter": 12,
+            "formatOptions": { "palette": "green" },
+            "numberFormat": { "unit": 1, "options": { "style": "decimal", "maximumFractionDigits": 1 } }
+          }
+        }
+      },
+      "customWidth": "25",
+      "name": "stat-submission-rate"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where name == 'form_abandoned'\n| count",
+        "size": 4,
+        "title": "Abandonments",
+        "timeContext": { "durationMs": 0 },
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "tiles",
+        "tileSettings": {
+          "showBorder": false,
+          "titleContent": { "columnMatch": "Count", "formatter": 1 },
+          "leftContent": {
+            "columnMatch": "Count",
+            "formatter": 12,
+            "formatOptions": { "palette": "orange" }
+          }
+        }
+      },
+      "customWidth": "25",
+      "name": "stat-abandonments"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "let order = datatable(name:string, sort_order:int)[\n  'form_started', 1,\n  'form_section_completed', 2,\n  'form_review_reached', 3,\n  'form_submit_attempted', 4,\n  'form_submitted', 5,\n  'form_abandoned', 6,\n  'form_draft_saved', 7\n];\ncustomEvents\n| where name in ('form_started','form_section_completed','form_review_reached','form_submit_attempted','form_submitted','form_abandoned','form_draft_saved')\n| summarize count = count() by name\n| join kind=leftouter order on name\n| order by sort_order asc\n| project name, count",
+        "size": 0,
+        "title": "Form Funnel (All Forms)",
+        "timeContext": { "durationMs": 0 },
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "categoricalbar"
+      },
+      "customWidth": "50",
+      "name": "chart-form-funnel"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where name in ('form_started','form_submitted','form_abandoned')\n| summarize count() by name, bin(timestamp, 1h)",
+        "size": 0,
+        "title": "Form Events Over Time",
+        "timeContext": { "durationMs": 0 },
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "timechart"
+      },
+      "customWidth": "50",
+      "name": "chart-form-events-over-time"
+    },
+    {
+      "type": 1,
+      "content": { "json": "## Completion by Form Type\n\nTracks the four submission form types:\n- **service_user_submission** — Service user data form per service\n- **outcome_score_submission** — Outcome score record form\n- **wider_service_submission** — Wider service users count form\n- **bulk_upload_submission** — CSV bulk upload" },
+      "name": "by-form-type-heading"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "let started = customEvents\n  | where name == 'form_started'\n  | extend formType = tostring(customDimensions.formType)\n  | summarize started = count() by formType;\nlet submitted = customEvents\n  | where name == 'form_submitted'\n  | extend formType = tostring(customDimensions.formType)\n  | summarize submitted = count() by formType;\nlet abandoned = customEvents\n  | where name == 'form_abandoned'\n  | extend formType = tostring(customDimensions.formType)\n  | summarize abandoned = count() by formType;\nlet draft = customEvents\n  | where name == 'form_draft_saved'\n  | extend formType = tostring(customDimensions.formType)\n  | summarize drafts_saved = count() by formType;\nstarted\n| join kind=leftouter submitted on formType\n| join kind=leftouter abandoned on formType\n| join kind=leftouter draft on formType\n| extend completion_rate = iif(started > 0, round(todouble(submitted) / todouble(started) * 100, 1), 0.0)\n| project formType, started, submitted, abandoned, drafts_saved, completion_rate\n| order by formType asc",
+        "size": 0,
+        "title": "Submission Completion by Form Type",
+        "timeContext": { "durationMs": 0 },
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "table",
+        "gridSettings": {
+          "formatters": [
+            {
+              "columnMatch": "completion_rate",
+              "formatter": 8,
+              "formatOptions": {
+                "palette": "greenRed",
+                "customColumnWidthSetting": "120px"
+              }
+            },
+            {
+              "columnMatch": "abandoned",
+              "formatter": 8,
+              "formatOptions": {
+                "palette": "redGreen",
+                "customColumnWidthSetting": "90px"
+              }
+            }
+          ],
+          "sortBy": [ { "itemKey": "formType", "sortOrder": 1 } ]
+        }
+      },
+      "customWidth": "60",
+      "name": "table-completion-by-form-type"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "let order = datatable(name:string, sort_order:int)[\n  'form_started', 1,\n  'form_section_completed', 2,\n  'form_review_reached', 3,\n  'form_submit_attempted', 4,\n  'form_submitted', 5,\n  'form_abandoned', 6,\n  'form_draft_saved', 7\n];\ncustomEvents\n| where name in ('form_started','form_section_completed','form_review_reached','form_submit_attempted','form_submitted','form_abandoned','form_draft_saved')\n| extend formType = tostring(customDimensions.formType)\n| summarize count = count() by name, formType\n| join kind=leftouter order on name\n| order by sort_order asc, formType asc\n| project name, formType, count",
+        "size": 0,
+        "title": "Funnel by Form Type",
+        "timeContext": { "durationMs": 0 },
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "table",
+        "gridSettings": {
+          "formatters": [
+            {
+              "columnMatch": "count",
+              "formatter": 8,
+              "formatOptions": {
+                "palette": "blue",
+                "customColumnWidthSetting": "90px"
+              }
+            }
+          ],
+          "sortBy": []
+        }
+      },
+      "customWidth": "40",
+      "name": "table-funnel-by-form-type"
+    },
+    {
+      "type": 1,
+      "content": { "json": "## All Events" },
+      "name": "all-events-heading"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| summarize Count = count() by name\n| order by Count desc",
+        "size": 0,
+        "title": "Event Summary",
+        "timeContext": { "durationMs": 0 },
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "table",
+        "gridSettings": {
+          "formatters": [
+            {
+              "columnMatch": "Count",
+              "formatter": 8,
+              "formatOptions": {
+                "palette": "blue",
+                "customColumnWidthSetting": "100px"
+              }
+            }
+          ],
+          "sortBy": [ { "itemKey": "Count", "sortOrder": 2 } ]
+        }
+      },
+      "name": "table-event-summary"
+    },
+    {
+      "type": 1,
+      "content": { "json": "## Validation Failures" },
+      "name": "validation-heading"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where name == 'validation_failed'\n| count",
+        "size": 4,
+        "title": "Total Failures",
+        "timeContext": { "durationMs": 0 },
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "tiles",
+        "tileSettings": {
+          "showBorder": false,
+          "titleContent": { "columnMatch": "Count", "formatter": 1 },
+          "leftContent": {
+            "columnMatch": "Count",
+            "formatter": 12,
+            "formatOptions": { "palette": "redBright" }
+          }
+        }
+      },
+      "customWidth": "33",
+      "name": "stat-total-failures"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where name == 'validation_failed'\n| extend field = tostring(customDimensions.field)\n| summarize dcount(field)",
+        "size": 4,
+        "title": "Unique Failing Fields",
+        "timeContext": { "durationMs": 0 },
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "tiles",
+        "tileSettings": {
+          "showBorder": false,
+          "titleContent": { "columnMatch": "dcount_field", "formatter": 1 },
+          "leftContent": {
+            "columnMatch": "dcount_field",
+            "formatter": 12,
+            "formatOptions": { "palette": "blue" }
+          }
+        }
+      },
+      "customWidth": "33",
+      "name": "stat-unique-failing-fields"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where name == 'validation_failed'\n| extend formType = tostring(customDimensions.formType)\n| summarize dcount(formType)",
+        "size": 4,
+        "title": "Form Types with Failures",
+        "timeContext": { "durationMs": 0 },
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "tiles",
+        "tileSettings": {
+          "showBorder": false,
+          "titleContent": { "columnMatch": "dcount_formType", "formatter": 1 },
+          "leftContent": {
+            "columnMatch": "dcount_formType",
+            "formatter": 12,
+            "formatOptions": { "palette": "purple" }
+          }
+        }
+      },
+      "customWidth": "34",
+      "name": "stat-form-types-with-failures"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where name == 'validation_failed'\n| summarize failures = count() by bin(timestamp, 1h)",
+        "size": 0,
+        "title": "Validation Failures Over Time",
+        "timeContext": { "durationMs": 0 },
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "timechart"
+      },
+      "name": "chart-validation-failures-over-time"
+    },
+    {
+      "type": 1,
+      "content": { "json": "## Failure Detail" },
+      "name": "validation-detail-heading"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where name == 'validation_failed'\n| extend field = tostring(customDimensions.field)\n| extend formType = tostring(customDimensions.formType)\n| summarize failures = count() by field, formType\n| order by failures desc\n| take 15",
+        "size": 0,
+        "title": "Top Failing Fields",
+        "timeContext": { "durationMs": 0 },
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "categoricalbar"
+      },
+      "customWidth": "40",
+      "name": "chart-top-failing-fields"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "customEvents\n| where name == 'validation_failed'\n| extend field = tostring(customDimensions.field)\n| extend rule = tostring(customDimensions.rule)\n| extend formType = tostring(customDimensions.formType)\n| summarize failures = count() by field, rule, formType\n| order by failures desc",
+        "size": 0,
+        "title": "Failures by Field, Rule and Form Type",
+        "timeContext": { "durationMs": 0 },
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "table",
+        "gridSettings": {
+          "formatters": [
+            {
+              "columnMatch": "failures",
+              "formatter": 8,
+              "formatOptions": {
+                "palette": "redGreen",
+                "customColumnWidthSetting": "90px"
+              }
+            }
+          ],
+          "sortBy": [ { "itemKey": "failures", "sortOrder": 2 } ]
+        }
+      },
+      "customWidth": "60",
+      "name": "table-failures-by-field-rule-formtype"
+    }
+  ],
+  "styleSettings": {},
+  "fallbackResourceIds": [],
+  "$schema": "https://github.com/Microsoft/Application-Insights-Workbooks/blob/master/schema/workbook.json"
+}

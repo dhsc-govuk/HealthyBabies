@@ -1,0 +1,81 @@
+.la-form {
+  max-width: 100%;
+}
+
+.la-form-back-link {
+  display: inline-block;
+  margin-bottom: 15px;
+}
+
+.la-form-back-link::before {
+  content: "‹ ";
+}
+
+.la-form-section-heading {
+  margin-top: 40px;
+  margin-bottom: 20px;
+}
+
+.la-form-contact-group {
+  margin-bottom: 30px;
+  padding-top: 20px;
+}
+
+.la-form-contact-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.la-form-contact-header h2 {
+  margin-bottom: 0;
+}
+
+.la-form-remove-contact {
+  margin-bottom: 0;
+}
+
+.la-form-role-title {
+  margin-left: 20px;
+  padding-left: 15px;
+  border-left: 4px solid #b1b4b6;
+}
+
+.la-form-add-contact {
+  margin-top: 10px;
+  margin-bottom: 30px;
+}
+
+.la-form-checkbox-group {
+  margin-top: 20px;
+  margin-bottom: 30px;
+}
+
+.la-form-actions {
+  margin-top: 30px;
+}
+
+.la-form-review {
+  max-width: 100%;
+}
+
+.la-form-review-list {
+  border: none !important;
+  border-top: none !important;
+}
+
+.la-form-review-list,
+.la-form-review-list * {
+  border-left: none !important;
+  border-right: none !important;
+}
+
+.la-form-review-list .govuk-summary-list__row {
+  border-top: none !important;
+  border-bottom: 1px solid #b1b4b6;
+}
+
+.la-form-review-list .govuk-summary-list__row:last-child {
+  border-bottom: 1px solid #b1b4b6;
+}

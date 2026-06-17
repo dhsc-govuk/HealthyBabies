@@ -1,0 +1,39 @@
+.core-data-layout {
+  display: flex;
+  gap: 30px;
+  padding-top: 10px;
+}
+
+/* Core data nav - uses app-subnav styles from GovUKSideNavigation component */
+/* Only layout-specific overrides here */
+.core-data-nav {
+  flex-shrink: 0;
+  width: 210px;
+}
+
+/* Override margin-bottom for core data context */
+.core-data-nav.app-subnav {
+  margin-bottom: 0;
+}
+
+.core-data-content {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Page title now uses govuk-heading-l class */
+
+@media (max-width: 640px) {
+  .core-data-layout {
+    flex-direction: column;
+  }
+
+  .core-data-nav {
+    width: 100%;
+    margin-bottom: 20px;
+  }
+
+  .core-data-content {
+    padding-top: 20px;
+  }
+}

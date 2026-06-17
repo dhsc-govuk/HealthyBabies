@@ -1,0 +1,251 @@
+/*
+ * Service navigation — brand-colour overrides on top of govuk-frontend v6 base styles.
+ *
+ * govuk-frontend ships the structural CSS (container, flex layout, spacing, typography
+ * resets).  These rules only touch colours, the mobile toggle widget, and the
+ * active-item indicator so they exactly match the project's design tokens.
+ *
+ * Colour tokens used throughout this file:
+ *   Link:               #1a65a6
+ *   Link hover:         #0f385c
+ *   Link active:        #0b0c0c
+ *   Active border:      #1a65a6
+ *   Surface bg:         #f4f8fb
+ *   Surface border:     #8eb8dc
+ *   Focus bg:           #ffdd00
+ *   Focus text:         #0b0c0c
+ */
+
+/* ── Surface ──────────────────────────────────────────────────────────────── */
+
+.govuk-service-navigation {
+  background-color: #f4f8fb;
+  border-bottom: 1px solid #8eb8dc;
+  /* Remove govuk-frontend's default box-shadow bottom border if present */
+  box-shadow: none;
+}
+
+/* ── Service name link ────────────────────────────────────────────────────── */
+
+/*
+ * govuk-frontend already sets:
+ *   :link/:visited → #0b0c0c  via CSS variable
+ *   :not(:hover):not(:active) → text-decoration: none
+ * We only need to assert font-weight (govuk-frontend doesn't bold the service name).
+ */
+.govuk-service-navigation__service-name .govuk-service-navigation__link {
+  color: #0b0c0c;
+  font-weight: 700;
+}
+
+.govuk-service-navigation__service-name .govuk-service-navigation__link:visited {
+  color: #0b0c0c;
+}
+
+/* ── Nav links ────────────────────────────────────────────────────────────── */
+
+/*
+ * govuk-frontend v6 sets text-decoration: underline on the base rule and then
+ * hides it with :not(:hover):not(:active) { text-decoration: none }.
+ * We must NOT set text-decoration: none here — that interferes with the
+ * :not() rule and prevents the underline from appearing on hover.
+ * We only override colours; the underline logic is owned by govuk-frontend.
+ */
+.govuk-service-navigation__wrapper .govuk-service-navigation__link {
+  color: #1a65a6;
+}
+
+.govuk-service-navigation__wrapper .govuk-service-navigation__link:visited {
+  color: #1a65a6;
+}
+
+/*
+ * Hover: govuk-frontend does NOT add text-decoration: underline here —
+ * it thickens the underline that was already declared on the base rule.
+ * Match that exactly: thickness + skip-ink, no explicit text-decoration toggle.
+ */
+.govuk-service-navigation__wrapper .govuk-service-navigation__link:hover {
+  color: #0f385c;
+  text-decoration-thickness: max(3px, .1875rem, .12em);
+  -webkit-text-decoration-skip-ink: none;
+  text-decoration-skip-ink: none;
+  -webkit-text-decoration-skip: none;
+  text-decoration-skip: none;
+}
+
+.govuk-service-navigation__wrapper .govuk-service-navigation__link:active {
+  color: #0b0c0c;
+}
+
+.govuk-service-navigation__wrapper .govuk-service-navigation__link:focus {
+  background-color: #ffdd00;
+  color: #0b0c0c;
+  outline: 3px solid transparent;
+  text-decoration: none;
+  box-shadow: 0 -2px #ffdd00, 0 4px #0b0c0c;
+}
+
+/* ── Active-item fallback <strong> — must NOT be bold (no-JS only) ────────── */
+
+.govuk-service-navigation__active-fallback {
+  font-weight: inherit;
+}
+
+/* ── Desktop layout (≥ 641px) ────────────────────────────────────────────── */
+
+@media (min-width: 641px) {
+  .govuk-service-navigation__list {
+    display: flex;
+    flex-wrap: wrap;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .govuk-service-navigation__item {
+    padding: 15px 0;
+    margin-right: 20px;
+    line-height: calc(29 / 19);
+  }
+
+  .govuk-service-navigation__item:last-child {
+    margin-right: 0;
+  }
+
+  /* Active item: bottom border indicator — 5px per govuk-frontend v6 */
+  .govuk-service-navigation__item--active {
+    border-bottom: 5px solid #1a65a6;
+    /* Compensate so total height stays consistent: 15px padding − 5px border */
+    padding-bottom: 10px;
+  }
+
+  /* Hide the mobile toggle entirely on desktop */
+  .govuk-js-service-navigation-toggle {
+    display: none !important;
+  }
+}
+
+/* ── Mobile layout (< 641px) ─────────────────────────────────────────────── */
+
+@media (max-width: 640px) {
+  /* Stack service name above the nav wrapper */
+  .govuk-service-navigation__container {
+    display: flex;
+    flex-direction: column;
+    align-items: start;
+  }
+
+  /* List: vertical stack, no flex */
+  .govuk-service-navigation__list {
+    list-style: none;
+    margin: 0;
+    margin-bottom: 15px; /* govuk-spacing(3) */
+    padding: 0;
+  }
+
+  /*
+   * Each item carries the border declaration up-front so the active state
+   * only needs to change border-left-width — colour and style are inherited.
+   */
+  .govuk-service-navigation__item {
+    position: relative;
+    margin: 10px 0; /* govuk-spacing(2) */
+    border-width: 0;
+    border-style: solid;
+    border-color: #1a65a6;
+  }
+
+  /*
+   * Active item: left-border indicator.
+   * margin-left = −(govuk-spacing(2) + border-width) = −(10px + 5px) = −15px
+   * padding-left = govuk-spacing(2) = 10px
+   */
+  .govuk-service-navigation__item--active {
+    margin-left: -15px;
+    padding-left: 10px;
+    border-left-width: 5px; /* govuk-spacing(1) = $govuk-service-navigation-active-link-border-width */
+  }
+
+  /*
+   * Mobile show/hide via CSS sibling combinator.
+   *
+   * Default (JS not yet loaded): toggle has [hidden] → list shows (no-JS fallback).
+   * After mount: [hidden] is removed, aria-expanded="false" → list hidden.
+   * Toggle click: aria-expanded="true" → list shown.
+   */
+  .govuk-service-navigation__wrapper .govuk-service-navigation__list {
+    display: none;
+  }
+
+  /* List visible when toggle is open */
+  .govuk-js-service-navigation-toggle[aria-expanded="true"]
+    ~ .govuk-service-navigation__list {
+    display: block;
+  }
+
+  /* No-JS fallback: toggle still has [hidden] — always show list */
+  .govuk-js-service-navigation-toggle[hidden]
+    ~ .govuk-service-navigation__list {
+    display: block;
+  }
+
+  /* ── Toggle button ──────────────────────────────────────────────────────── */
+
+  .govuk-js-service-navigation-toggle {
+    display: inline-flex;
+    align-items: center;
+    margin: 10px 0; /* govuk-spacing(2) */
+    padding: 0;
+    border: 0;
+    background: none;
+    color: #1a65a6;
+    font-family: "GDS Transport", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    font-size: 19px;
+    font-weight: 700;
+    word-break: break-all;
+    cursor: pointer;
+  }
+
+  /*
+   * When a service name immediately precedes the nav wrapper, remove the
+   * toggle's top margin so there is no double spacing between them.
+   */
+  .govuk-service-navigation__service-name ~ .govuk-service-navigation__wrapper
+    .govuk-js-service-navigation-toggle {
+    margin-top: 0;
+  }
+
+  /* ── Arrow (down state — nav closed) ────────────────────────────────────── */
+
+  .govuk-js-service-navigation-toggle::after {
+    content: '';
+    display: inline-block;
+    width: 0;
+    height: 0;
+    margin-left: 5px; /* govuk-spacing(1) */
+    border-style: solid;
+    border-color: transparent;
+    border-width: 8.66px 5px 0 5px;
+    border-top-color: inherit;
+    clip-path: polygon(0% 0%, 50% 100%, 100% 0%);
+  }
+
+  /* ── Arrow (up state — nav open) ────────────────────────────────────────── */
+
+  .govuk-js-service-navigation-toggle[aria-expanded="true"]::after {
+    border-width: 0 5px 8.66px 5px;
+    border-top-color: transparent;
+    border-bottom-color: inherit;
+    clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+  }
+
+  /* ── Toggle focus ───────────────────────────────────────────────────────── */
+
+  .govuk-js-service-navigation-toggle:focus {
+    outline: 3px solid transparent;
+    color: #0b0c0c;
+    background-color: #ffdd00;
+    box-shadow: 0 -2px #ffdd00, 0 4px #0b0c0c;
+    text-decoration: none;
+  }
+}

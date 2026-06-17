@@ -1,0 +1,87 @@
+/* Service Users Module Styles */
+/* Only custom styles not available in GOV.UK Design System */
+
+/* Header with actions - layout not available in govuk-frontend */
+.service-users__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 15px;
+}
+
+.service-users__actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: nowrap;
+}
+
+/* Secondary button variant - uses govuk colours */
+.service-users__button--secondary {
+  border: 1px solid #0b0c0c;
+  background-color: #ffffff;
+  color: #0b0c0c;
+}
+
+/* Conditional field indentation - matches GOV.UK conditional reveal pattern */
+.service-form__conditional-field {
+  margin-left: 33px;
+  padding-left: 15px;
+  border-left: 4px solid #b1b4b6;
+}
+
+/* Delete confirmation panel - custom component not in GOV.UK DS */
+.service-form-view__delete-confirm {
+  background-color: #1d70b8;
+  color: #ffffff;
+  padding: 30px;
+  margin-top: 20px;
+}
+
+.service-form-view__delete-heading {
+  color: #ffffff;
+}
+
+.service-form-view__delete-confirm .govuk-body {
+  color: #ffffff;
+}
+
+.service-form-view__delete-actions {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-top: 20px;
+}
+
+.service-form-view__delete-actions .govuk-button {
+  background-color: #ffffff;
+  color: #0b0c0c;
+  margin-bottom: 0;
+}
+
+.service-form-view__delete-actions .govuk-button:hover {
+  background-color: #f3f2f1;
+}
+
+/* Go back link styled as button for delete panel */
+.service-form-view__go-back-link {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+  color: #ffffff;
+  text-decoration: none;
+}
+
+.service-form-view__go-back-link:hover {
+  text-decoration: underline;
+}
+
+.service-form-view__go-back-link:focus {
+  outline: 3px solid #ffdd00;
+  outline-offset: 0;
+  background-color: #ffdd00;
+  color: #0b0c0c;
+}

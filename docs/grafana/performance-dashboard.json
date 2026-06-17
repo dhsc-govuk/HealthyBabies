@@ -1,0 +1,349 @@
+{
+  "__inputs": [
+    {
+      "name": "DS_AZURE_MONITOR",
+      "label": "Azure Monitor",
+      "description": "",
+      "type": "datasource",
+      "pluginId": "grafana-azure-monitor-datasource",
+      "pluginName": "Azure Monitor"
+    }
+  ],
+  "__elements": {},
+  "__requires": [
+    {
+      "type": "datasource",
+      "id": "grafana-azure-monitor-datasource",
+      "name": "Azure Monitor",
+      "version": "1.0.0"
+    },
+    {
+      "type": "grafana",
+      "id": "grafana",
+      "name": "Grafana",
+      "version": "10.0.0"
+    }
+  ],
+  "annotations": {
+    "list": [
+      {
+        "builtIn": 1,
+        "datasource": { "type": "grafana", "uid": "-- Grafana --" },
+        "enable": true,
+        "hide": true,
+        "iconColor": "rgba(0, 211, 255, 1)",
+        "name": "Annotations & Alerts",
+        "type": "dashboard"
+      }
+    ]
+  },
+  "description": "Request and dependency performance — P50/P95/P99 latencies, slowest endpoints, dependency breakdown. Audience: tech team.",
+  "editable": true,
+  "fiscalYearStartMonth": 0,
+  "graphTooltip": 1,
+  "id": null,
+  "links": [],
+  "refresh": "5m",
+  "schemaVersion": 38,
+  "tags": ["family-hubs", "performance"],
+  "templating": {
+    "list": [
+      {
+        "current": { "selected": false, "text": "", "value": "" },
+        "description": "Full Azure resource URI — /subscriptions/{subId}/resourceGroups/{rg}/providers/microsoft.insights/components/{name}",
+        "hide": 0,
+        "label": "App Insights Resource URI",
+        "name": "appinsights_resource",
+        "options": [],
+        "query": "",
+        "skipUrlSync": false,
+        "type": "textbox"
+      }
+    ]
+  },
+  "time": { "from": "now-3h", "to": "now" },
+  "timepicker": {},
+  "timezone": "browser",
+  "title": "Family Hubs — Performance",
+  "uid": "fh-perf-v1",
+  "version": 1,
+  "weekStart": "",
+  "panels": [
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 0 },
+      "id": 1,
+      "title": "Request Performance",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "grafana-azure-monitor-datasource", "uid": "${DS_AZURE_MONITOR}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 500 },
+              { "color": "red", "value": 1000 }
+            ]
+          },
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 8, "x": 0, "y": 1 },
+      "id": 2,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto"
+      },
+      "title": "P50 Request Duration",
+      "type": "stat",
+      "targets": [
+        {
+          "datasource": { "type": "grafana-azure-monitor-datasource", "uid": "${DS_AZURE_MONITOR}" },
+          "queryType": "Azure Log Analytics",
+          "azureLogAnalytics": {
+            "query": "requests\n| where $__timeFilter(timestamp)\n| summarize round(percentile(duration, 50), 1)",
+            "resources": ["${appinsights_resource}"],
+            "resultFormat": "table"
+          },
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "grafana-azure-monitor-datasource", "uid": "${DS_AZURE_MONITOR}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1000 },
+              { "color": "red", "value": 2000 }
+            ]
+          },
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 8, "x": 8, "y": 1 },
+      "id": 3,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto"
+      },
+      "title": "P95 Request Duration",
+      "type": "stat",
+      "targets": [
+        {
+          "datasource": { "type": "grafana-azure-monitor-datasource", "uid": "${DS_AZURE_MONITOR}" },
+          "queryType": "Azure Log Analytics",
+          "azureLogAnalytics": {
+            "query": "requests\n| where $__timeFilter(timestamp)\n| summarize round(percentile(duration, 95), 1)",
+            "resources": ["${appinsights_resource}"],
+            "resultFormat": "table"
+          },
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "grafana-azure-monitor-datasource", "uid": "${DS_AZURE_MONITOR}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "thresholds" },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 2000 },
+              { "color": "red", "value": 5000 }
+            ]
+          },
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 4, "w": 8, "x": 16, "y": 1 },
+      "id": 4,
+      "options": {
+        "colorMode": "background",
+        "graphMode": "none",
+        "justifyMode": "center",
+        "orientation": "auto",
+        "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false },
+        "textMode": "auto"
+      },
+      "title": "P99 Request Duration",
+      "type": "stat",
+      "targets": [
+        {
+          "datasource": { "type": "grafana-azure-monitor-datasource", "uid": "${DS_AZURE_MONITOR}" },
+          "queryType": "Azure Log Analytics",
+          "azureLogAnalytics": {
+            "query": "requests\n| where $__timeFilter(timestamp)\n| summarize round(percentile(duration, 99), 1)",
+            "resources": ["${appinsights_resource}"],
+            "resultFormat": "table"
+          },
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "grafana-azure-monitor-datasource", "uid": "${DS_AZURE_MONITOR}" },
+      "fieldConfig": {
+        "defaults": {
+          "color": { "mode": "palette-classic" },
+          "custom": {
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "lineInterpolation": "smooth",
+            "lineWidth": 2,
+            "pointSize": 5,
+            "showPoints": "never",
+            "spanNulls": false
+          },
+          "unit": "ms"
+        },
+        "overrides": []
+      },
+      "gridPos": { "h": 10, "w": 24, "x": 0, "y": 5 },
+      "id": 5,
+      "options": {
+        "legend": { "calcs": ["mean", "max"], "displayMode": "list", "placement": "bottom", "showLegend": true },
+        "tooltip": { "mode": "multi", "sort": "none" }
+      },
+      "title": "Request Duration Percentiles Over Time",
+      "type": "timeseries",
+      "targets": [
+        {
+          "datasource": { "type": "grafana-azure-monitor-datasource", "uid": "${DS_AZURE_MONITOR}" },
+          "queryType": "Azure Log Analytics",
+          "azureLogAnalytics": {
+            "query": "requests\n| where $__timeFilter(timestamp)\n| summarize p50=round(percentile(duration,50),1), p95=round(percentile(duration,95),1), p99=round(percentile(duration,99),1) by bin(timestamp, 5m)",
+            "resources": ["${appinsights_resource}"],
+            "resultFormat": "time_series"
+          },
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "collapsed": false,
+      "gridPos": { "h": 1, "w": 24, "x": 0, "y": 15 },
+      "id": 6,
+      "title": "Slowest Operations",
+      "type": "row"
+    },
+    {
+      "datasource": { "type": "grafana-azure-monitor-datasource", "uid": "${DS_AZURE_MONITOR}" },
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "align": "auto", "cellOptions": { "type": "auto" }, "inspect": false },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "p95" },
+            "properties": [
+              { "id": "displayName", "value": "P95 (ms)" },
+              { "id": "unit", "value": "ms" },
+              { "id": "custom.width", "value": 110 },
+              { "id": "custom.cellOptions", "value": { "type": "color-background" } },
+              { "id": "thresholds", "value": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 1000 }, { "color": "red", "value": 2000 }] } }
+            ]
+          },
+          { "matcher": { "id": "byName", "options": "count" }, "properties": [{ "id": "displayName", "value": "Requests" }, { "id": "custom.width", "value": 100 }] },
+          { "matcher": { "id": "byName", "options": "operation_Name" }, "properties": [{ "id": "displayName", "value": "Operation" }] }
+        ]
+      },
+      "gridPos": { "h": 12, "w": 12, "x": 0, "y": 16 },
+      "id": 7,
+      "options": {
+        "cellHeight": "sm",
+        "footer": { "countRows": false, "reducer": ["sum"], "show": false },
+        "showHeader": true,
+        "sortBy": [{ "desc": true, "displayName": "P95 (ms)" }]
+      },
+      "title": "Slowest Endpoints (P95)",
+      "type": "table",
+      "targets": [
+        {
+          "datasource": { "type": "grafana-azure-monitor-datasource", "uid": "${DS_AZURE_MONITOR}" },
+          "queryType": "Azure Log Analytics",
+          "azureLogAnalytics": {
+            "query": "requests\n| where $__timeFilter(timestamp)\n| summarize count = count(), p95 = round(percentile(duration, 95), 1) by operation_Name\n| order by p95 desc\n| take 20",
+            "resources": ["${appinsights_resource}"],
+            "resultFormat": "table"
+          },
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "datasource": { "type": "grafana-azure-monitor-datasource", "uid": "${DS_AZURE_MONITOR}" },
+      "fieldConfig": {
+        "defaults": {
+          "custom": { "align": "auto", "cellOptions": { "type": "auto" }, "inspect": false },
+          "mappings": [],
+          "thresholds": { "mode": "absolute", "steps": [{ "color": "green", "value": null }] }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "p95" },
+            "properties": [
+              { "id": "displayName", "value": "P95 (ms)" },
+              { "id": "unit", "value": "ms" },
+              { "id": "custom.width", "value": 110 },
+              { "id": "custom.cellOptions", "value": { "type": "color-background" } },
+              { "id": "thresholds", "value": { "mode": "absolute", "steps": [{ "color": "green", "value": null }, { "color": "yellow", "value": 200 }, { "color": "red", "value": 1000 }] } }
+            ]
+          },
+          { "matcher": { "id": "byName", "options": "p50" }, "properties": [{ "id": "displayName", "value": "P50 (ms)" }, { "id": "unit", "value": "ms" }, { "id": "custom.width", "value": 110 }] },
+          { "matcher": { "id": "byName", "options": "count" }, "properties": [{ "id": "displayName", "value": "Calls" }, { "id": "custom.width", "value": 80 }] },
+          { "matcher": { "id": "byName", "options": "type" }, "properties": [{ "id": "displayName", "value": "Type" }, { "id": "custom.width", "value": 100 }] },
+          { "matcher": { "id": "byName", "options": "target" }, "properties": [{ "id": "displayName", "value": "Target" }] }
+        ]
+      },
+      "gridPos": { "h": 12, "w": 12, "x": 12, "y": 16 },
+      "id": 8,
+      "options": {
+        "cellHeight": "sm",
+        "footer": { "countRows": false, "reducer": ["sum"], "show": false },
+        "showHeader": true,
+        "sortBy": [{ "desc": true, "displayName": "P95 (ms)" }]
+      },
+      "title": "Dependency Performance (P95)",
+      "type": "table",
+      "targets": [
+        {
+          "datasource": { "type": "grafana-azure-monitor-datasource", "uid": "${DS_AZURE_MONITOR}" },
+          "queryType": "Azure Log Analytics",
+          "azureLogAnalytics": {
+            "query": "dependencies\n| where $__timeFilter(timestamp)\n| summarize count = count(), p50 = round(percentile(duration,50),1), p95 = round(percentile(duration,95),1) by type, target\n| order by p95 desc\n| take 20",
+            "resources": ["${appinsights_resource}"],
+            "resultFormat": "table"
+          },
+          "refId": "A"
+        }
+      ]
+    }
+  ]
+}

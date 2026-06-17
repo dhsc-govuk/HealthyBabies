@@ -1,0 +1,49 @@
+.users-page__tabs {
+  margin-top: 20px;
+}
+
+.users-page__tabs ul {
+  display: flex;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-bottom: 1px solid #b1b4b6;
+}
+
+.users-page__tabs li {
+  position: relative;
+  margin-bottom: -1px;
+}
+
+.users-page__tabs a {
+  display: block;
+  padding: 10px 20px;
+  text-decoration: none;
+  color: #0b0c0c;
+  background-color: #f3f2f1;
+  border: 1px solid #b1b4b6;
+  border-bottom: 0;
+  font-family: "GDS Transport", arial, sans-serif;
+  font-size: 19px;
+  font-weight: 400;
+}
+
+.users-page__tabs a:hover {
+  color: #0b0c0c;
+  background-color: #dbdad9;
+}
+
+.users-page__tabs a[aria-selected="true"] {
+  background-color: #fff;
+  border-bottom-color: #fff;
+  padding-bottom: 11px;
+  margin-bottom: -1px;
+}
+
+.users-page__tabs section {
+  padding-top: 30px;
+}
+
+.users-page__tabs h2 {
+  margin-top: 0;
+}

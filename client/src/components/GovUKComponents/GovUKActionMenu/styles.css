@@ -1,0 +1,86 @@
+/*
+ * GovUK Action Menu
+ * Custom component - no equivalent in GOV.UK Design System
+ * Uses govuk-button--secondary for the trigger button
+ * See: https://design-system.service.gov.uk/components/button/
+ */
+.govuk-action-menu {
+  position: relative;
+  display: inline-block;
+}
+
+/*
+ * Override only the margin-bottom that govuk-button adds,
+ * so the button sits flush when used inline in a header bar.
+ */
+.govuk-action-menu__button.govuk-button {
+  margin-bottom: 0;
+}
+
+.govuk-action-menu__chevron {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+  margin-left: 8px;
+  transition: transform 0.2s ease;
+}
+
+.govuk-action-menu__chevron--open {
+  transform: rotate(180deg);
+}
+
+.govuk-action-menu__list {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 100;
+  min-width: 220px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  background-color: #f3f2f1; /* govuk-colour("light-grey") */
+}
+
+/*
+ * Menu items styled consistent with govuk-link
+ */
+.govuk-action-menu__item {
+  display: block;
+  width: 100%;
+  padding: 10px 15px;
+  font-family: "GDS Transport", arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-size: 16px;
+  line-height: 1.25;
+  text-align: left;
+  color: #0b0c0c; /* govuk-text-colour */
+  background-color: transparent;
+  border: none;
+  border-bottom: 1.5px solid #b1b4b6; /* $govuk-border-colour */
+  cursor: pointer;
+  text-decoration: none;
+}
+
+.govuk-action-menu__list li:last-child .govuk-action-menu__item {
+  border-bottom: none;
+}
+
+.govuk-action-menu__item:hover {
+  background-color: #e5e5e5; /* slightly darker grey for hover */
+  color: #0b0c0c;
+}
+
+/* Focus state follows GOV.UK focus pattern */
+.govuk-action-menu__item:focus {
+  outline: 3px solid #ffdd00; /* $govuk-focus-colour */
+  outline-offset: -3px;
+  background-color: #ffdd00;
+  color: #0b0c0c;
+}
+
+.govuk-action-menu__divider {
+  border: none;
+  margin: 0;
+  padding: 1;
+}

@@ -1,0 +1,85 @@
+.knowledge-hub-row {
+  display: flex;
+  align-items: flex-start;
+}
+
+.knowledge-hub-sidebar-column {
+  position: sticky;
+  top: 20px;
+  align-self: flex-start;
+}
+
+.knowledge-hub-sidebar {
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  padding-right: 15px;
+}
+
+.knowledge-hub-sidebar::-webkit-scrollbar {
+  width: 4px;
+}
+
+.knowledge-hub-sidebar::-webkit-scrollbar-track {
+  background: #f3f2f1;
+}
+
+.knowledge-hub-sidebar::-webkit-scrollbar-thumb {
+  background: #b1b4b6;
+  border-radius: 2px;
+}
+
+.knowledge-hub-sidebar::-webkit-scrollbar-thumb:hover {
+  background: #505a5f;
+}
+
+.knowledge-hub-content {
+  outline: none;
+}
+
+.knowledge-hub-content:focus {
+  outline: 3px solid #ffdd00;
+  outline-offset: 0;
+}
+
+.knowledge-hub-content article {
+  scroll-margin-top: 20px;
+}
+
+.knowledge-hub-content article:focus {
+  outline: none;
+}
+
+.knowledge-hub-content article:target {
+  animation: highlight-fade 2s ease-out;
+}
+
+@keyframes highlight-fade {
+  0% {
+    background-color: #ffdd00;
+  }
+  100% {
+    background-color: transparent;
+  }
+}
+
+.govuk-skip-link {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
+
+.govuk-skip-link:focus {
+  position: static;
+  width: auto;
+  height: auto;
+  margin: 0;
+  padding: 10px 15px;
+  background-color: #ffdd00;
+  color: #0b0c0c;
+  text-decoration: none;
+  outline: 3px solid #ffdd00;
+  outline-offset: 0;
+  display: inline-block;
+}

@@ -1,0 +1,64 @@
+.la-manager {
+  margin-top: 30px;
+  padding-top: 20px;
+  border-top: 1px solid #b1b4b6;
+}
+
+.la-manager__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.la-manager__header h2 {
+  margin-bottom: 0;
+}
+
+.la-manager__actions {
+  margin-top: 20px;
+}
+
+/* GOV.UK Task List status tag styling - light background, no border */
+/* Override default tag styles for task list appearance */
+.la-manager__end-date-tag {
+  display: inline-block;
+  padding: 5px 8px;
+  font-family: "GDS Transport", arial, sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.25;
+  text-align: center;
+  text-decoration: none;
+  color: #0b0c0c;
+  background-color: #d2e2f1; /* Light blue background */
+  border: none;
+}
+
+.la-manager__end-date-tag--red {
+  background-color: #f3d9d9; /* Light red background */
+}
+
+
+/* Actions cell with Edit and Remove links */
+.la-manager__actions-cell {
+  display: flex;
+  gap: 15px;
+  justify-content: flex-end;
+  align-items: center;
+}
+
+/* GOV.UK visually hidden class for screen reader only content */
+/* Based on GOV.UK Design System accessibility patterns */
+.govuk-visually-hidden {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  margin: 0 !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  clip: rect(0 0 0 0) !important;
+  clip-path: inset(50%) !important;
+  border: 0 !important;
+  white-space: nowrap !important;
+}

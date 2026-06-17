@@ -1,0 +1,373 @@
+{
+  "version": "Notebook/1.0",
+  "items": [
+    {
+      "type": 9,
+      "content": {
+        "version": "KqlParameterItem/1.0",
+        "parameters": [
+          {
+            "id": "b1c2d3e4-f5a6-7b8c-9d0e-f1a2b3c4d5e6",
+            "version": "KqlParameterItem/1.0",
+            "name": "TimeRange",
+            "type": 4,
+            "value": { "durationMs": 3600000 },
+            "typeSettings": {
+              "selectableValues": [
+                { "durationMs": 300000 },
+                { "durationMs": 900000 },
+                { "durationMs": 1800000 },
+                { "durationMs": 3600000 },
+                { "durationMs": 14400000 },
+                { "durationMs": 43200000 },
+                { "durationMs": 86400000 },
+                { "durationMs": 604800000 }
+              ]
+            },
+            "label": "Time Range"
+          }
+        ],
+        "style": "pills",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components"
+      },
+      "name": "parameters-0"
+    },
+    {
+      "type": 1,
+      "content": { "json": "## Errors & Failures" },
+      "name": "errors-heading"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "requests\n| where success == false\n| count",
+        "size": 4,
+        "title": "Failed Requests",
+        "timeContext": { "durationMs": 0 },
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "tiles",
+        "tileSettings": {
+          "showBorder": false,
+          "titleContent": { "columnMatch": "Count", "formatter": 1 },
+          "leftContent": {
+            "columnMatch": "Count",
+            "formatter": 12,
+            "formatOptions": { "palette": "redBright" }
+          }
+        }
+      },
+      "customWidth": "25",
+      "name": "stat-failed-requests"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "requests\n| summarize total = count(), failed = countif(success == false)\n| extend rate = round(todouble(failed) / todouble(total) * 100, 2)\n| project rate",
+        "size": 4,
+        "title": "Error Rate %",
+        "timeContext": { "durationMs": 0 },
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "tiles",
+        "tileSettings": {
+          "showBorder": false,
+          "titleContent": { "columnMatch": "rate", "formatter": 1 },
+          "leftContent": {
+            "columnMatch": "rate",
+            "formatter": 12,
+            "formatOptions": { "palette": "redBright" },
+            "numberFormat": { "unit": 1, "options": { "style": "decimal", "maximumFractionDigits": 2 } }
+          }
+        }
+      },
+      "customWidth": "25",
+      "name": "stat-error-rate"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "exceptions\n| count",
+        "size": 4,
+        "title": "Exceptions",
+        "timeContext": { "durationMs": 0 },
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "tiles",
+        "tileSettings": {
+          "showBorder": false,
+          "titleContent": { "columnMatch": "Count", "formatter": 1 },
+          "leftContent": {
+            "columnMatch": "Count",
+            "formatter": 12,
+            "formatOptions": { "palette": "orange" }
+          }
+        }
+      },
+      "customWidth": "25",
+      "name": "stat-exceptions"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "requests\n| summarize total = count(), succeeded = countif(success == true)\n| extend rate = round(todouble(succeeded) / todouble(total) * 100, 2)\n| project rate",
+        "size": 4,
+        "title": "Success Rate %",
+        "timeContext": { "durationMs": 0 },
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "tiles",
+        "tileSettings": {
+          "showBorder": false,
+          "titleContent": { "columnMatch": "rate", "formatter": 1 },
+          "leftContent": {
+            "columnMatch": "rate",
+            "formatter": 12,
+            "formatOptions": { "palette": "green" },
+            "numberFormat": { "unit": 1, "options": { "style": "decimal", "maximumFractionDigits": 2 } }
+          }
+        }
+      },
+      "customWidth": "25",
+      "name": "stat-success-rate"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "requests\n| summarize total = count(), failed = countif(success == false) by bin(timestamp, 5m)\n| extend error_rate = round(todouble(failed) / todouble(total) * 100, 2)\n| project timestamp, error_rate",
+        "size": 0,
+        "title": "Error Rate Over Time",
+        "timeContext": { "durationMs": 0 },
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "timechart"
+      },
+      "name": "chart-error-rate-over-time"
+    },
+    {
+      "type": 1,
+      "content": { "json": "## Failure Detail" },
+      "name": "failure-detail-heading"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "requests\n| where success == false\n| summarize failures = count() by operation_Name, resultCode\n| order by failures desc\n| take 20",
+        "size": 0,
+        "title": "Top Failing Operations",
+        "timeContext": { "durationMs": 0 },
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "table",
+        "gridSettings": {
+          "formatters": [
+            {
+              "columnMatch": "failures",
+              "formatter": 8,
+              "formatOptions": {
+                "palette": "redGreen",
+                "customColumnWidthSetting": "90px"
+              }
+            }
+          ],
+          "sortBy": [ { "itemKey": "failures", "sortOrder": 2 } ]
+        }
+      },
+      "customWidth": "50",
+      "name": "table-top-failing-ops"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "exceptions\n| summarize Count = count() by type, outerMessage\n| order by Count desc\n| take 20",
+        "size": 0,
+        "title": "Top Exceptions",
+        "timeContext": { "durationMs": 0 },
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "table",
+        "gridSettings": {
+          "sortBy": [ { "itemKey": "Count", "sortOrder": 2 } ]
+        }
+      },
+      "customWidth": "50",
+      "name": "table-top-exceptions"
+    },
+    {
+      "type": 1,
+      "content": { "json": "## Performance" },
+      "name": "performance-heading"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "requests\n| summarize p50 = round(percentile(duration, 50), 1)",
+        "size": 4,
+        "title": "P50 Request Duration (ms)",
+        "timeContext": { "durationMs": 0 },
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "tiles",
+        "tileSettings": {
+          "showBorder": false,
+          "titleContent": { "columnMatch": "p50", "formatter": 1 },
+          "leftContent": {
+            "columnMatch": "p50",
+            "formatter": 12,
+            "formatOptions": { "palette": "green" }
+          }
+        }
+      },
+      "customWidth": "33",
+      "name": "stat-p50"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "requests\n| summarize p95 = round(percentile(duration, 95), 1)",
+        "size": 4,
+        "title": "P95 Request Duration (ms)",
+        "timeContext": { "durationMs": 0 },
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "tiles",
+        "tileSettings": {
+          "showBorder": false,
+          "titleContent": { "columnMatch": "p95", "formatter": 1 },
+          "leftContent": {
+            "columnMatch": "p95",
+            "formatter": 12,
+            "formatOptions": { "palette": "yellow" }
+          }
+        }
+      },
+      "customWidth": "33",
+      "name": "stat-p95"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "requests\n| summarize p99 = round(percentile(duration, 99), 1)",
+        "size": 4,
+        "title": "P99 Request Duration (ms)",
+        "timeContext": { "durationMs": 0 },
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "tiles",
+        "tileSettings": {
+          "showBorder": false,
+          "titleContent": { "columnMatch": "p99", "formatter": 1 },
+          "leftContent": {
+            "columnMatch": "p99",
+            "formatter": 12,
+            "formatOptions": { "palette": "redBright" }
+          }
+        }
+      },
+      "customWidth": "34",
+      "name": "stat-p99"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "requests\n| summarize p50 = round(percentile(duration, 50), 1), p95 = round(percentile(duration, 95), 1), p99 = round(percentile(duration, 99), 1) by bin(timestamp, 5m)",
+        "size": 0,
+        "title": "Request Duration Percentiles Over Time",
+        "timeContext": { "durationMs": 0 },
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "timechart"
+      },
+      "name": "chart-duration-percentiles"
+    },
+    {
+      "type": 1,
+      "content": { "json": "## Slowest Operations" },
+      "name": "slowest-ops-heading"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "requests\n| summarize count = count(), p95 = round(percentile(duration, 95), 1) by operation_Name\n| order by p95 desc\n| take 20",
+        "size": 0,
+        "title": "Slowest Endpoints (P95)",
+        "timeContext": { "durationMs": 0 },
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "table",
+        "gridSettings": {
+          "formatters": [
+            {
+              "columnMatch": "p95",
+              "formatter": 8,
+              "formatOptions": {
+                "palette": "yellowRed",
+                "customColumnWidthSetting": "110px"
+              }
+            }
+          ],
+          "sortBy": [ { "itemKey": "p95", "sortOrder": 2 } ]
+        }
+      },
+      "customWidth": "50",
+      "name": "table-slowest-endpoints"
+    },
+    {
+      "type": 3,
+      "content": {
+        "version": "KqlItem/1.0",
+        "query": "dependencies\n| summarize count = count(), p50 = round(percentile(duration, 50), 1), p95 = round(percentile(duration, 95), 1) by type, target\n| order by p95 desc\n| take 20",
+        "size": 0,
+        "title": "Dependency Performance (P95)",
+        "timeContext": { "durationMs": 0 },
+        "timeContextFromParameter": "TimeRange",
+        "queryType": 0,
+        "resourceType": "microsoft.insights/components",
+        "visualization": "table",
+        "gridSettings": {
+          "formatters": [
+            {
+              "columnMatch": "p95",
+              "formatter": 8,
+              "formatOptions": {
+                "palette": "yellowRed",
+                "customColumnWidthSetting": "110px"
+              }
+            }
+          ],
+          "sortBy": [ { "itemKey": "p95", "sortOrder": 2 } ]
+        }
+      },
+      "customWidth": "50",
+      "name": "table-dependency-perf"
+    }
+  ],
+  "styleSettings": {},
+  "fallbackResourceIds": [],
+  "$schema": "https://github.com/Microsoft/Application-Insights-Workbooks/blob/master/schema/workbook.json"
+}

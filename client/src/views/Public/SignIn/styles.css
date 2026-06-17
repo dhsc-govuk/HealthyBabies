@@ -1,0 +1,15 @@
+/* SignIn page styles using GOV.UK Design System classes */
+
+.signin-page {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  background-color: #ffffff;
+}
+
+.signin-page__main {
+  flex: 1;
+  background-color: #ffffff;
+}
+
+
