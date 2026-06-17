@@ -63,7 +63,7 @@ public class IntegrationTestWebFactory : WebApplicationFactory<Program>, IAsyncL
 
     private void RegisterEmailNotificationServices(IServiceCollection services)
     {
-        services.RemoveServiceByType(typeof(Infrastructure.Mailing.EmailNotificationService));
+        services.RemoveServiceByType(typeof(Infrastructure.Mailing.AzureCommunicationEmailService));
         services.AddScoped<IEmailNotificationService, InMemoryEmailNotificationService>();
     }
 

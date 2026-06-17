@@ -18,9 +18,7 @@ export interface CreateOrganisationUserDto {
   isActive: boolean;
 }
 
-export interface CreateOrganisationUserResponse extends CreateOrganisationUserDto {
-  temporaryPassword?: string | null;
-}
+export interface CreateOrganisationUserResponse extends CreateOrganisationUserDto {}
 
 export const createAdmin = (user: CreateAdminDto) => axios.post<CreateAdminDto>('admin/users/create', user);
 

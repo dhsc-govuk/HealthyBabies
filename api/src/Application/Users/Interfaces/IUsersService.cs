@@ -3,7 +3,7 @@ using LanguageExt;
 
 namespace Application.Users.Interfaces;
 
-public record CreatedIdentity(string SubId, string TemporaryPassword);
+public record CreatedIdentity(string SubId);
 
 public interface IUsersService
 {

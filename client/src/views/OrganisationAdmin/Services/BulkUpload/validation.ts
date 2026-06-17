@@ -6,6 +6,50 @@ import {
 import { CellError, RowData, ServiceMatchResult } from './types';
 
 /**
+ * Parses a raw checkbox cell value into individual tokens using a greedy algorithm.
+ *
+ * Some option values/labels contain commas (e.g. "Strengthening Families, Strengthening Communities",
+ * "Healthy Start, Happy Start"). A naive split(',') would tear those apart incorrectly.
+ *
+ * The greedy approach splits on every comma first, then tries to re-combine adjacent parts —
+ * longest combination first — until a known option is matched. This correctly handles:
+ *   "Strengthening Families, Strengthening Communities"          → one token
+ *   "Strengthening Families, Strengthening Communities,EPEC"    → two tokens
+ *   "Healthy Start, Happy Start,Incredible Years Preschool"     → two tokens
+ */
+const parseCheckboxInput = (
+  raw: string,
+  options: ServiceFormQuestionOptionDto[]
+): string[] => {
+  if (!raw.trim()) return [];
+
+  const parts = raw.split(',').map((v) => v.trim()).filter(Boolean);
+  const result: string[] = [];
+  let i = 0;
+
+  while (i < parts.length) {
+    let matched = false;
+    // Try longest possible combination first (greedy)
+    for (let j = parts.length; j > i; j--) {
+      const candidate = parts.slice(i, j).join(', ');
+      if (findOptionMatch(options, candidate)) {
+        result.push(candidate);
+        i = j;
+        matched = true;
+        break;
+      }
+    }
+    // No option matched — preserve the raw part so validation can flag it
+    if (!matched) {
+      result.push(parts[i]);
+      i++;
+    }
+  }
+
+  return result;
+};
+
+/**
  * Finds an option by matching either value or label (case-insensitive)
  * Also supports partial label matching where the input starts with or is contained in the label
  */
@@ -14,20 +58,20 @@ export const findOptionMatch = (
   inputValue: string
 ): ServiceFormQuestionOptionDto | undefined => {
   const normalizedInput = inputValue.trim().toLowerCase();
-  
-  // First try exact match on value or label
+
+  // Trim option values/labels before comparing — some DB entries have trailing spaces
+  // (e.g. "As needed ", "A telephone helpline ") that would otherwise prevent matching.
   const exactMatch = options.find(
     (o) =>
-      o.value.toLowerCase() === normalizedInput ||
-      o.label.toLowerCase() === normalizedInput
+      o.value.trim().toLowerCase() === normalizedInput ||
+      o.label.trim().toLowerCase() === normalizedInput
   );
   if (exactMatch) return exactMatch;
-  
-  // Then try partial match - input starts with or label starts with input
+
   const partialMatch = options.find(
     (o) =>
-      o.label.toLowerCase().startsWith(normalizedInput) ||
-      normalizedInput.startsWith(o.label.toLowerCase())
+      o.label.trim().toLowerCase().startsWith(normalizedInput) ||
+      normalizedInput.startsWith(o.label.trim().toLowerCase())
   );
   return partialMatch;
 };
@@ -92,7 +136,7 @@ export const validateCell = (
     }
 
     case ServiceFormQuestionType.Checkbox: {
-      const values = value.split(',').map((v) => v.trim());
+      const values = parseCheckboxInput(value, question.options);
       const invalidValues = values.filter((v) => !findOptionMatch(question.options, v));
       if (invalidValues.length > 0) {
         const validLabels = question.options.map((o) => o.label);
@@ -267,7 +311,7 @@ export const normalizeRowData = (
       const match = findOptionMatch(question.options, value);
       if (match) normalized[question.code] = match.value;
     } else if (question.questionType === ServiceFormQuestionType.Checkbox) {
-      const values = value.split(',').map((v) => v.trim());
+      const values = parseCheckboxInput(value, question.options);
       const normalizedValues = values
         .map((v) => findOptionMatch(question.options, v)?.value)
         .filter((v): v is string => v !== undefined);

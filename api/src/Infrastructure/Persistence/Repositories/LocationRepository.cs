@@ -170,4 +170,10 @@ public class LocationRepository(ApplicationDbContext dbContext)
 
         return Array.Empty<Location>().AsQueryable();
     }
+
+    public async Task DeleteAsync(Location entity, CancellationToken cancellationToken = default)
+    {
+        Context.Locations.Remove(entity);
+        await Context.SaveChangesAsync(cancellationToken);
+    }
 }

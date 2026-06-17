@@ -78,8 +78,7 @@ public class OrganisationUsersController(
                 r.OrganisationUser.User.Name.LastName,
                 r.OrganisationUser.User.Email,
                 r.OrganisationUser.User.IsActive,
-                r.OrganisationUser.User.Role,
-                TemporaryPassword: r.TemporaryPassword),
+                r.OrganisationUser.User.Role),
             error => error.ToObjectResult());
     }
 

@@ -7,7 +7,7 @@ interface Props {
 
 const GovUKPhaseBanner = ({ 
   phase = 'beta', 
-  feedbackUrl = '#'
+  feedbackUrl = 'https://forms.office.com/Pages/ResponsePage.aspx?id=MIwnYaiRMUyMH-9N6Jc6HAIrcSJBJtRJtmrT9QlbA9tUNTdOVVkxWldGVU5aNVRZRDZSMTlLSlhJOCQlQCN0PWcu'
 }: Props): React.ReactElement => {
   const phaseLabel = phase.charAt(0).toUpperCase() + phase.slice(1);
   
@@ -19,7 +19,7 @@ const GovUKPhaseBanner = ({
         </strong>
         <span className="govuk-phase-banner__text">
           This is a new service – your{' '}
-          <a className="govuk-link" href={feedbackUrl}>feedback</a>{' '}
+          <a className="govuk-link" href={feedbackUrl} target='_blank'>feedback</a>{' '}
           will help us to improve it.
         </span>
       </p>

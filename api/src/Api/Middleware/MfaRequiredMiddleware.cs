@@ -3,6 +3,7 @@ using Application.Common.Interfaces;
 using Application.Common.Interfaces.Repositories;
 using Application.Common.Settings;
 using Domain.Users;
+using Domain.ValueObjects;
 
 namespace Api.Middleware;
 
@@ -74,10 +75,18 @@ public class MfaRequiredMiddleware
 
         var userMfa = userMfaOption.Match(mfa => mfa, () => throw new InvalidOperationException());
 
-        // If MFA record exists but not enabled, allow access (MFA is disabled/relaxed)
+        // If MFA record exists but not enabled:
+        // - Admin users can have MFA disabled by another admin (intentional use case)
+        // - LA users (OrganisationAdmin) must always complete MFA setup regardless
         if (!userMfa.IsEnabled)
         {
-            await _next(context);
+            if (context.User.IsInRole(Role.Admin))
+            {
+                await _next(context);
+                return;
+            }
+
+            await WriteMfaSetupRequiredResponse(context);
             return;
         }
 

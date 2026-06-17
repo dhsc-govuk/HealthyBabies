@@ -57,11 +57,11 @@ public class CoreDataExportService(
 
         var sb = new StringBuilder();
 
-        var headers = new List<string> { "LAName", "ServiceName", "Status" };
+        var headers = new List<string> { "LAName", "ServiceName", "UniqueReference", "Status" };
         headers.AddRange(questions.Select(q => q.Code));
         sb.AppendLine(string.Join(",", headers.Select(EscapeCsvField)));
 
-        var labels = new List<string> { "LA Name", "Service Name", "Status" };
+        var labels = new List<string> { "LA Name", "Service Name", "Unique Reference", "Status" };
         labels.AddRange(questions.Select(q => q.Label));
         sb.AppendLine(string.Join(",", labels.Select(EscapeCsvField)));
 
@@ -72,6 +72,7 @@ public class CoreDataExportService(
             {
                 service.Organisation?.Name ?? string.Empty,
                 service.Name,
+                service.Id.Value.ToString(),
                 service.Status.ToString(),
             };
             row.AddRange(questions.Select(q => answerLookup.TryGetValue(q.Code, out var val) ? val : string.Empty));

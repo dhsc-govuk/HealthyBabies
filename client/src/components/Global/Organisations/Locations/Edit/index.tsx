@@ -49,7 +49,7 @@ const LocationsEditComponent = ({ organisationId, locationId, handleFinish, apiB
     mutationKey: ['admin-locations-edit'],
     mutationFn: (location: UpdateLocationDto) => updateLocation(organisationId!, location, apiBasePath),
     onSuccess(data, _variables, _context) {
-      queryClient.removeQueries({ queryKey: viewServiceDeliverySiteCacheKey(organisationId!, locationId!) });
+      queryClient.invalidateQueries([viewServiceDeliverySiteCacheKey(organisationId!, locationId!), apiBasePath]);
       handleFinish(data.data.id!);
     },
     onError(error, _variables, _context) {

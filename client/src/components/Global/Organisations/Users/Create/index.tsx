@@ -27,12 +27,7 @@ const CreateOrganisationUsersComponent = ({ organisationId, handleFinish, onCanc
     mutationKey: 'organisations-admins-create',
     mutationFn: (user: CreateOrganisationUserDto) => createOrganisationUser(organisationId!, user),
     onSuccess(data, _variables, _context) {
-      const temporaryPassword = data?.data.temporaryPassword;
-      // TODO: remove temporaryPassword from the banner once email delivery is reliable
-      const message = temporaryPassword
-        ? `LA user created successfully. Temporary password: ${temporaryPassword}`
-        : 'LA user created successfully';
-      setNotification({ type: 'success', title: 'Success', message });
+      setNotification({ type: 'success', title: 'Success', message: 'LA user created successfully' });
       handleFinish(organisationId!, data?.data.id!);
     },
     onError(error, _variables, _context) {

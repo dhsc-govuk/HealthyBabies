@@ -18,7 +18,7 @@ public class InMemoryUsersService : IUsersService
 
     public Task<Either<Exception, CreatedIdentity>> AddWithPassword(Name userName, string email, bool isActive, CancellationToken cancellationToken)
     {
-        return Task.FromResult<Either<Exception, CreatedIdentity>>(new CreatedIdentity(Guid.NewGuid().ToString(), "test-temp-password"));
+        return Task.FromResult<Either<Exception, CreatedIdentity>>(new CreatedIdentity(Guid.NewGuid().ToString()));
     }
 
     public Task<Either<Exception, Unit>> Update(string id, Name userName, string email, bool isActive, CancellationToken cancellationToken = default)

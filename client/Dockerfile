@@ -15,7 +15,7 @@ COPY . .
 ENV VITE_BASE_PATH=${VITE_BASE_PATH}
 RUN npm run build
 
-FROM nginx:alpine AS runner
+FROM mcr.microsoft.com/mirror/docker/library/nginx:1.25 AS runner
 
 ARG VITE_BASE_PATH=/
 

@@ -216,6 +216,8 @@ const AppRoutes = () => {
 
         <Route path="/organisation-admin/core-data/delivery-locations/:locationId/edit" element={<OrgAdmin.EditLocations />} />
 
+        <Route path="/organisation-admin/core-data/delivery-locations/:locationId/delete" element={<OrgAdmin.DeleteLocations />} />
+
         <Route path="/organisation-admin/core-data/delivery-locations/create" element={<OrgAdmin.CreateLocations />} />
 
         <Route path="/organisation-admin/core-data/delivery-locations/bulk-upload" element={<OrgAdmin.BulkUploadLocations />} />

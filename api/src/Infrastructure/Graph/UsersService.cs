@@ -15,7 +15,6 @@ namespace Infrastructure.Graph;
 public class UsersService : IUsersService
 {
     private readonly IEmailNotificationService _emailNotificationService;
-    private readonly ISmtpEmailNotificationService _smtpEmailNotificationService;
     private readonly GraphServiceClient _graphServiceClient;
     private readonly ILogger<UsersService> _logger;
     private readonly string _defaultUserPassword;
@@ -25,7 +24,6 @@ public class UsersService : IUsersService
         GraphServiceClient graphServiceClient,
         ApplicationSettings settings,
         IEmailNotificationService emailNotificationService,
-        ISmtpEmailNotificationService smtpEmailNotificationService,
         ILogger<UsersService> logger)
     {
         Guard.NotNull(graphServiceClient, nameof(graphServiceClient));
@@ -35,7 +33,6 @@ public class UsersService : IUsersService
 
         _graphServiceClient = graphServiceClient;
         _emailNotificationService = emailNotificationService;
-        _smtpEmailNotificationService = smtpEmailNotificationService;
         _logger = logger;
 
         _defaultUserPassword = settings.Graph.DefaultUserPassword;
@@ -141,18 +138,12 @@ public class UsersService : IUsersService
             var createdUser = await _graphServiceClient.Users.PostAsync(user, cancellationToken: cancellationToken);
             _logger.LogInformation("Graph user created with temporary password for {Email}, UserId: {UserId}", email, createdUser!.Id);
 
-            //var welcomeResult = await _emailNotificationService.SendWelcomeEmail(email, cancellationToken);
-            //welcomeResult.Match(
-            //    _ => { _logger.LogInformation("Welcome email sent to {Email}", email); return Unit.Default; },
-            //    ex => { _logger.LogError(ex, "Failed to send welcome email to {Email}", email); return Unit.Default; });
-
-            //var passwordResult = await _emailNotificationService.SendTemporaryPasswordEmail(email, password, cancellationToken);
-            var passwordResult = await _smtpEmailNotificationService.SendTemporaryPasswordEmail(email, password, cancellationToken);
+            var passwordResult = await _emailNotificationService.SendTemporaryPasswordEmail(email, password, cancellationToken);
             passwordResult.Match(
                 _ => { _logger.LogInformation("Temporary password email sent to {Email}", email); return Unit.Default; },
                 ex => { _logger.LogError(ex, "Failed to send temporary password email to {Email}", email); return Unit.Default; });
 
-            return new CreatedIdentity(createdUser.Id!, password);
+            return new CreatedIdentity(createdUser.Id!);
         }
         catch (ServiceException ex)
         {
@@ -260,6 +251,12 @@ public class UsersService : IUsersService
         {
             _logger.LogError(ex, "Failed to delete Entra user {UserId}: {Code} {Message}", userId, ex.Error?.Code, ex.Error?.Message);
             return ex;
+        }
+        catch (ServiceException ex) when (ex.ResponseStatusCode == (int)HttpStatusCode.NotFound)
+        {
+            // Already gone from Entra — treat as success so local delete can proceed.
+            _logger.LogInformation("Entra user {UserId} already deleted; skipping", userId);
+            return Unit.Default;
         }
         catch (ServiceException ex)
         {

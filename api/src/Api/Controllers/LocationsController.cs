@@ -134,6 +134,19 @@ public class LocationsController(
             e => e.ToObjectResult());
     }
 
+    [HttpDelete("organisations/{organisationId:guid}/locations/{locationId:guid}")]
+    [Authorize(Roles = $"{Role.Admin},{Role.OrganisationAdmin}")]
+    public async Task<ActionResult> Delete(
+        [FromRoute] Guid locationId,
+        CancellationToken cancellationToken)
+    {
+        var input = new DeleteLocationCommand { LocationId = locationId };
+        var result = await sender.Send(input, cancellationToken);
+        return result.Match<ActionResult>(
+            _ => NoContent(),
+            e => e.ToObjectResult());
+    }
+
     [HttpGet("organisations/{organisationId:guid}/locations/{locationId:guid}/totals")]
     [Authorize(Roles = $"{Role.Admin},{Role.OrganisationAdmin}")]
     public async Task<ActionResult<LocationHomeDto>> Totals(

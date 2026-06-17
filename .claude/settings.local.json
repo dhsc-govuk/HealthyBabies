@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm --prefix client run build)",
+      "Bash(pushd client *)",
+      "Bash(npx tsc *)",
+      "Bash(popd)",
+      "Bash(xargs grep *)"
+    ]
+  }
+}

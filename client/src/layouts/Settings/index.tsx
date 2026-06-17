@@ -35,6 +35,7 @@ const adminNavigation: NavItem[] = [
   { label: 'Form Modules', href: '/admin/configuration/data-collection-form-modules' },
   { label: 'Lookup Data', href: '/admin/configuration/lookup-data' },
   { label: 'Guidance', href: '/admin/guidance' },
+  { label: 'Core Data downloads', href: '/admin/core-data' },
 ];
 
 const organisationAdminNavigation: NavItem[] = [{ label: 'LA users', href: '/organisation-admin/la-users' }];

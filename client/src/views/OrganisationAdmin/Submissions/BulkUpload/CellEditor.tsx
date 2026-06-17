@@ -17,6 +17,41 @@ interface CellEditorProps {
   onCancel: () => void;
 }
 
+// Resolve a single token to its canonical option value, or null if unrecognised
+const resolveOptionValue = (token: string, fieldOptions: FieldOption[]): string | null => {
+  const lower = token.toLowerCase();
+  const match = fieldOptions.find(
+    (opt) => opt.value.toLowerCase() === lower || opt.label.toLowerCase() === lower
+  );
+  return match?.value ?? null;
+};
+
+// Normalise a raw cell value for selection fields:
+// - converts labels → option values
+// - drops unrecognised tokens (avoids pre-populating with stale/invalid data)
+const normaliseInitialValue = (
+  raw: string,
+  type: string | undefined,
+  fieldOptions: FieldOption[] | undefined
+): string => {
+  if (!fieldOptions?.length) return raw;
+  const normalized = type?.toLowerCase();
+
+  if (normalized === 'checkbox') {
+    const resolved = raw
+      .split(',')
+      .map((t) => resolveOptionValue(t.trim(), fieldOptions))
+      .filter((v): v is string => v !== null);
+    return resolved.join(',');
+  }
+
+  if (normalized === 'radio' || normalized === 'select') {
+    return resolveOptionValue(raw.trim(), fieldOptions) ?? raw;
+  }
+
+  return raw;
+};
+
 const CellEditor: React.FC<CellEditorProps> = ({
   value,
   error,
@@ -27,18 +62,20 @@ const CellEditor: React.FC<CellEditorProps> = ({
   onSave,
   onCancel,
 }) => {
-  const [editValue, setEditValue] = useState(value);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const selectRef = useRef<HTMLSelectElement>(null);
-
   // Normalize field type to lowercase for comparison
   const normalizedFieldType = fieldType?.toLowerCase();
-  
+
   // Single-select dropdown fields: radio or select with options
   const isDropdownField = (normalizedFieldType === 'radio' || normalizedFieldType === 'select') && options && options.length > 0;
-  
+
   // Multi-select checkbox fields
   const isCheckboxField = normalizedFieldType === 'checkbox' && options && options.length > 0;
+
+  const [editValue, setEditValue] = useState(() =>
+    normaliseInitialValue(value, fieldType, options)
+  );
+  const inputRef = useRef<HTMLInputElement>(null);
+  const selectRef = useRef<HTMLSelectElement>(null);
 
   useEffect(() => {
     if (isDropdownField && selectRef.current) {

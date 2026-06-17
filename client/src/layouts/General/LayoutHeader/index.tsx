@@ -63,7 +63,7 @@ const LayoutHeader = ({
 
   const isActive = (href: string) => {
     if (href === '/admin/settings') {
-      const settingsPaths = ['/admin/settings', '/admin/organisations', '/admin/departmental-users', '/admin/la-users', '/admin/data-collections', '/admin/forms', '/admin/guidance', '/admin/configuration'];
+      const settingsPaths = ['/admin/settings', '/admin/organisations', '/admin/departmental-users', '/admin/la-users', '/admin/data-collections', '/admin/forms', '/admin/guidance', '/admin/configuration', '/admin/core-data'];
       return settingsPaths.some(path => location.pathname.startsWith(path));
     }
     if (href === '/organisation-admin/core-data/delivery-locations') {

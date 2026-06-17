@@ -31,6 +31,10 @@ const ViewLocationDetails = ({ organisationId, locationId, apiBasePath, editPath
     navigate(path);
   };
 
+  const handleDelete = () => {
+    navigate(`/organisation-admin/core-data/delivery-locations/${locationId}/delete`);
+  };
+
   if (locLoading) {
     return (
       <div className="nhsuk-u-margin-top-4">
@@ -97,9 +101,12 @@ const ViewLocationDetails = ({ organisationId, locationId, apiBasePath, editPath
         <SummaryList items={summaryItems} />
       </div>
 
-      <div className="nhsuk-u-margin-top-6">
+      <div className="nhsuk-u-margin-top-6" style={{ display: 'flex', gap: '1rem' }}>
         <Button onClick={handleEdit} size="small">
           Edit Site
+        </Button>
+        <Button onClick={handleDelete} size="small" variant="warning">
+          Delete Site
         </Button>
       </div>
     </div>

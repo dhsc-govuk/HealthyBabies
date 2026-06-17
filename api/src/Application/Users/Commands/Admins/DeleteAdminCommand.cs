@@ -49,14 +49,20 @@ public class DeleteAdminCommandHandler(
     {
         user.Delete(deletedById);
 
-        var identityResult = await usersService.Delete(user.SubId.Value.ToString(), cancellationToken);
+        if (user.SubId.Value != Guid.Empty)
+        {
+            var identityResult = await usersService.Delete(user.SubId.Value.ToString(), cancellationToken);
 
-        return await identityResult.MatchAsync<Either<UserException, User>>(
-            async _ =>
-            {
-                await repository.UpdateAsync(user, cancellationToken);
-                return user;
-            },
-            e => new UserUnknownException(user.Id, e));
+            return await identityResult.MatchAsync<Either<UserException, User>>(
+                async _ =>
+                {
+                    await repository.UpdateAsync(user, cancellationToken);
+                    return user;
+                },
+                e => new UserUnknownException(user.Id, e));
+        }
+
+        await repository.UpdateAsync(user, cancellationToken);
+        return user;
     }
 }

@@ -11,6 +11,7 @@ public record AdminResetMfaCommand(UserId TargetUserId) : IRequest<Either<MfaExc
 
 public class AdminResetMfaCommandHandler(
     IMfaSessionService sessionService,
+    IMfaRateLimitService rateLimitService,
     IUserMfaRepository userMfaRepository)
     : IRequestHandler<AdminResetMfaCommand, Either<MfaException, bool>>
 {
@@ -34,6 +35,7 @@ public class AdminResetMfaCommandHandler(
         {
             await userMfaRepository.DeleteAsync(mfa, cancellationToken);
             await sessionService.RevokeAllUserSessionsAsync(userId);
+            rateLimitService.ResetAttempts(userId);
             return true;
         }
         catch (Exception ex)

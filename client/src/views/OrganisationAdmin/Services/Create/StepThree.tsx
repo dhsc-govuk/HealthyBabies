@@ -37,23 +37,33 @@ const getDisplayValue = (
     return locationNames.length > 0 ? locationNames.join(', ') : 'Not specified';
   }
 
-  // For questions with options, convert value to label
+  // For questions with options, convert value to label.
+  // Greedy parse handles option values that contain commas (e.g. SMD10 "Strengthening Families,
+  // Strengthening Communities") and trailing spaces (e.g. SMD06 "As needed ", SMD16 "A telephone helpline ").
   if (question.options && question.options.length > 0) {
-    // Handle checkbox (comma-separated values)
-    if (value.includes(',')) {
-      const values = value.split(',');
-      const labels = values
-        .map((v) => {
-          const option = question.options.find((opt) => opt.value === v);
-          return option?.label || v;
-        })
-        .filter(Boolean);
-      return labels.join(', ');
+    const parts = value.split(',').map((v) => v.trim()).filter(Boolean);
+    const labels: string[] = [];
+    let i = 0;
+    while (i < parts.length) {
+      let matched = false;
+      for (let j = parts.length; j > i; j--) {
+        const candidate = parts.slice(i, j).join(', ');
+        const option = question.options.find(
+          (opt) => opt.value.trim() === candidate || opt.label.trim() === candidate,
+        );
+        if (option) {
+          labels.push(option.label);
+          i = j;
+          matched = true;
+          break;
+        }
+      }
+      if (!matched) {
+        labels.push(parts[i]);
+        i++;
+      }
     }
-
-    // Single value - find option label
-    const option = question.options.find((opt) => opt.value === value);
-    return option?.label || value;
+    if (labels.length > 0) return labels.join(', ');
   }
 
   return value;

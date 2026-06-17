@@ -7,7 +7,6 @@ public class ApplicationSettings
     public DefaultAdminUserSettings DefaultAdminUser { get; set; } = new();
     public UserToRemoveSettings UserToRemove { get; set; } = new();
     public AzureBlobSettings AzureBlob { get; set; } = new();
-    public SendGridSettings SendGrid { get; set; } = new();
     public SmtpSettings Smtp { get; set; } = new();
     public HangfireSettings Hangfire { get; set; } = new();
     public MfaSettings Mfa { get; set; } = new();
@@ -49,22 +48,10 @@ public class AzureBlobSettings
     public string ConnectionString { get; set; } = string.Empty;
 }
 
-public class SendGridSettings
-{
-    public string EmailApiKey { get; set; } = string.Empty;
-    public string ClientUrl { get; set; } = string.Empty;
-    public string SenderEmail { get; set; } = string.Empty;
-}
-
 public class SmtpSettings
 {
-    public string Host { get; set; } = string.Empty;
-    public int Port { get; set; } = 587;
-    public bool EnableSsl { get; set; } = true;
-    public string Username { get; set; } = string.Empty;
-    public string Password { get; set; } = string.Empty;
+    public string EmailConnection { get; set; } = string.Empty;
     public string SenderEmail { get; set; } = string.Empty;
-    public string SenderName { get; set; } = string.Empty;
     public string ClientUrl { get; set; } = string.Empty;
 }
 

@@ -24,6 +24,7 @@ const WiderServiceForm = (): React.ReactElement => {
 
   const [viewMode, setViewMode] = useState<ViewMode>('form');
   const [userCount, setUserCount] = useState<string>('');
+  const [userCountError, setUserCountError] = useState<string>('');
   const [submitAttempts, setSubmitAttempts] = useState(0);
 
   const { data, isLoading } = useQuery({
@@ -70,9 +71,20 @@ const WiderServiceForm = (): React.ReactElement => {
 
   const formData = data?.data;
 
-  useErrorSummaryFocus(submitAttempts, saveMutation.isError);
+  useErrorSummaryFocus(submitAttempts, saveMutation.isError || !!userCountError);
+
+  const validate = (): boolean => {
+    if (!userCount && userCount !== '0') {
+      setUserCountError(`Enter a value for '${formData?.label ?? 'number of users'}'`);
+      setSubmitAttempts((n) => n + 1);
+      return false;
+    }
+    setUserCountError('');
+    return true;
+  };
 
   const handleContinue = () => {
+    if (!validate()) return;
     trackReviewReached();
     setViewMode('summary');
     window.scrollTo(0, 0);
@@ -89,6 +101,7 @@ const WiderServiceForm = (): React.ReactElement => {
   };
 
   const handleSaveAsDraft = () => {
+    if (!validate()) return;
     saveMutation.mutate(false);
   };
 
@@ -184,6 +197,17 @@ const WiderServiceForm = (): React.ReactElement => {
 
       <hr className="govuk-section-break govuk-section-break--l govuk-section-break--visible" />
 
+      {userCountError && (
+        <div className="govuk-error-summary" data-module="govuk-error-summary" role="alert" aria-labelledby="error-summary-title">
+          <h2 className="govuk-error-summary__title" id="error-summary-title">There is a problem</h2>
+          <div className="govuk-error-summary__body">
+            <ul className="govuk-list govuk-error-summary__list">
+              <li><a href="#user-count">{userCountError}</a></li>
+            </ul>
+          </div>
+        </div>
+      )}
+
       <GovUKInputWithSuffix
         id="user-count"
         name="user-count"
@@ -194,7 +218,8 @@ const WiderServiceForm = (): React.ReactElement => {
         type="number"
         width="5"
         questionCode="QWSU01"
-        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setUserCount(e.target.value)}
+        error={userCountError || undefined}
+        onChange={(e: React.ChangeEvent<HTMLInputElement>) => { setUserCount(e.target.value); setUserCountError(''); }}
       />
 
       <hr className="govuk-section-break govuk-section-break--l govuk-section-break--visible" />

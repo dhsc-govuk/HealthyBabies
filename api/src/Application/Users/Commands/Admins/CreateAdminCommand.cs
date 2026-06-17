@@ -8,7 +8,7 @@ using MediatR;
 
 namespace Application.Users.Commands.Admins;
 
-public record CreateAdminResult(User User, string? TemporaryPassword);
+public record CreateAdminResult(User User);
 
 public record CreateAdminCommand : IRequest<Either<UserException, CreateAdminResult>>
 {
@@ -57,12 +57,12 @@ public class CreateAdminCommandHandler(IUserRepository repository, IUsersService
         // back to creating a fresh Entra identity and rebinding the local row to the new SubId.
         var identityResult = await usersService.Activate(user.SubId.Value.ToString(), cancellationToken);
         return await identityResult.MatchAsync<Either<UserException, CreateAdminResult>>(
-            _ => FinaliseReactivation(user, name, isActive, user.SubId, temporaryPassword: null, cancellationToken),
+            _ => FinaliseReactivation(user, name, isActive, user.SubId, cancellationToken),
             async _ =>
             {
                 var fallback = await CreateUserIdentityIfDoesNotExist(name, user.Email, isActive, cancellationToken);
                 return await fallback.MatchAsync(
-                    identity => FinaliseReactivation(user, name, isActive, new SubId(Guid.Parse(identity.SubId)), NullIfEmpty(identity.TemporaryPassword), cancellationToken),
+                    identity => FinaliseReactivation(user, name, isActive, new SubId(Guid.Parse(identity.SubId)), cancellationToken),
                     ex => new UserUnknownException(user.Id, ex));
             });
     }
@@ -72,7 +72,6 @@ public class CreateAdminCommandHandler(IUserRepository repository, IUsersService
         Name name,
         bool isActive,
         SubId subId,
-        string? temporaryPassword,
         CancellationToken cancellationToken)
     {
         var trackedUser = await repository.GetByIdIgnoringFiltersAsync(user.Id, cancellationToken);
@@ -84,14 +83,14 @@ public class CreateAdminCommandHandler(IUserRepository repository, IUsersService
         var u = trackedUser.Match(x => x, () => throw new InvalidOperationException());
         u.Reactivate(name, subId, isActive, UserRole.Admin);
         await repository.UpdateAsync(u, cancellationToken);
-        return new CreateAdminResult(u, temporaryPassword);
+        return new CreateAdminResult(u);
     }
 
     private async Task<Either<UserException, CreateAdminResult>> CreateUser(Name name, string email, bool isActive, CancellationToken cancellationToken)
     {
         var identityResult = await CreateUserIdentityIfDoesNotExist(name, email, isActive, cancellationToken);
         return await identityResult.MatchAsync(
-            identity => CreateUser(name, email, identity.SubId, NullIfEmpty(identity.TemporaryPassword), isActive, cancellationToken),
+            identity => CreateUser(name, email, identity.SubId, isActive, cancellationToken),
             e => new UserUnknownException(UserId.Empty(), e));
     }
 
@@ -99,7 +98,6 @@ public class CreateAdminCommandHandler(IUserRepository repository, IUsersService
         Name name,
         string email,
         string subId,
-        string? temporaryPassword,
         bool isActive,
         CancellationToken cancellationToken)
     {
@@ -115,7 +113,7 @@ public class CreateAdminCommandHandler(IUserRepository repository, IUsersService
 
             var createdUser = await repository.AddAsync(user, cancellationToken);
 
-            return new CreateAdminResult(createdUser, temporaryPassword);
+            return new CreateAdminResult(createdUser);
         }
         catch (Exception exception)
         {
@@ -131,9 +129,7 @@ public class CreateAdminCommandHandler(IUserRepository repository, IUsersService
     {
         var existingUserSubId = await usersService.FindByEmail(email, cancellationToken);
         return await existingUserSubId.MatchAsync(
-            subId => new CreatedIdentity(subId, string.Empty),
+            subId => new CreatedIdentity(subId),
             () => usersService.AddWithPassword(userName, email, isActive, cancellationToken));
     }
-
-    private static string? NullIfEmpty(string? value) => string.IsNullOrEmpty(value) ? null : value;
 }

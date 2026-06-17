@@ -8,7 +8,6 @@ import { LoadingSpinner, useGovUKNotification } from '../../../../components/Gov
 import useErrorSummaryFocus from '../../../../hooks/useErrorSummaryFocus';
 import { getServiceFormQuestions, serviceFormQuestionsCacheKey } from '../../../../components/Global/Services';
 import { useAuthProvider } from '../../../../components/AuthProvider';
-import { getSubmissions } from '../../Submissions/queries';
 import {
   downloadServicesTemplate,
   matchServicesByName,
@@ -108,19 +107,6 @@ const BulkUploadServices: React.FC = () => {
       };
     });
   }, [rawQuestions, locationsData?.data]);
-
-  // Fetch submissions to get active data collection ID
-  const { data: submissionsData } = useQuery({
-    queryKey: ['organisation-admin-submissions'],
-    queryFn: getSubmissions,
-  });
-
-  // Get the first active (non-closed) data collection ID
-  const activeDataCollectionId = useMemo(() => {
-    const submissions = submissionsData?.data ?? [];
-    const activeSubmission = submissions.find((s) => new Date(s.endDate) >= new Date() && s.status !== 'Closed');
-    return activeSubmission?.id ?? null;
-  }, [submissionsData?.data]);
 
   // Download template mutation
   const { mutateAsync: downloadTemplate, isLoading: downloadingTemplate } = useMutation({
@@ -376,7 +362,6 @@ const BulkUploadServices: React.FC = () => {
 
     // Build request
     const request = {
-      dataCollectionId: activeDataCollectionId,
       services: servicesToUpdate.map((selection) => {
         const row = state.rows.find((r) => r.data['SMD01'] === selection.serviceName);
 
@@ -401,7 +386,7 @@ const BulkUploadServices: React.FC = () => {
     } catch (error) {
       // Error is handled by the mutation's onError callback
     }
-  }, [state.updateSelections, state.rows, state.headers, questions, bulkUpdate, activeDataCollectionId, setNotification]);
+  }, [state.updateSelections, state.rows, state.headers, questions, bulkUpdate, setNotification]);
 
   const handleFinish = useCallback(() => {
     setNotification({ type: 'success', title: 'Services updated', message: `${updateResult?.successCount || 0} services were updated successfully.` });

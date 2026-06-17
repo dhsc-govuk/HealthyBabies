@@ -17,6 +17,7 @@ public interface ILocationRepository
     Task<IReadOnlyList<Location>> FindByNamesOrUprnAsync(IReadOnlyList<string> namesOrUprns, OrganisationId organisationId, CancellationToken cancellationToken = default);
     Task<Location> AddAsync(Location entity, CancellationToken cancellationToken = default);
     Task<Location> UpdateAsync(Location entity, CancellationToken cancellationToken = default);
+    Task DeleteAsync(Location entity, CancellationToken cancellationToken = default);
     Task AddRangeAsync(
       IReadOnlyList<Location> entities,
       CancellationToken cancellationToken = default,

@@ -26,7 +26,7 @@ const CreateUser = (): React.ReactElement => {
     mutationKey: ['organisation-user-create'],
     mutationFn: createOrganisationUser,
     onSuccess(data) {
-      navigate('/admin/la-users', { state: { created: true, temporaryPassword: data?.data.temporaryPassword } });
+      navigate('/admin/la-users', { state: { created: true } });
     },
     onError(error) {
       processError(error, (e) => setNotification({ type: 'important', title: 'Error', message: e }));

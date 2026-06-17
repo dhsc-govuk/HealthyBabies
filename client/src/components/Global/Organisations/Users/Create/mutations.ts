@@ -10,9 +10,7 @@ export interface CreateOrganisationUserDto {
   role: OrganisationUserRole;
 }
 
-export interface CreateOrganisationUserResponse extends CreateOrganisationUserDto {
-  temporaryPassword?: string | null;
-}
+export interface CreateOrganisationUserResponse extends CreateOrganisationUserDto {}
 
 export const createOrganisationUser = (organisationId: string, user: CreateOrganisationUserDto) =>
   axios.post<CreateOrganisationUserResponse>(`/organisations/${organisationId}/users/create`, user);

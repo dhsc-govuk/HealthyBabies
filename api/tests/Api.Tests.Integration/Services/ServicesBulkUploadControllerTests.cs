@@ -76,7 +76,7 @@ public class ServicesBulkUploadControllerTests(OrganisationAdminIntegrationTestW
     public async Task ShouldBulkUpdate_UpdatesSingleService()
     {
         // Arrange
-        var request = new BulkUpdateServicesRequest(null, new List<BulkUpdateServiceItemRequest>
+        var request = new BulkUpdateServicesRequest(new List<BulkUpdateServiceItemRequest>
         {
             new(_service1.Id.Value, B64("Updated Service One"), new List<AnswerInputRequest>
             {
@@ -107,7 +107,7 @@ public class ServicesBulkUploadControllerTests(OrganisationAdminIntegrationTestW
     public async Task ShouldBulkUpdate_UpdatesMultipleServices()
     {
         // Arrange
-        var request = new BulkUpdateServicesRequest(null, new List<BulkUpdateServiceItemRequest>
+        var request = new BulkUpdateServicesRequest(new List<BulkUpdateServiceItemRequest>
         {
             new(_service1.Id.Value, B64("Updated Service One"), new List<AnswerInputRequest>
             {
@@ -143,7 +143,7 @@ public class ServicesBulkUploadControllerTests(OrganisationAdminIntegrationTestW
     public async Task ShouldBulkUpdate_ClearsExistingAnswers()
     {
         // Arrange - service with existing answers
-        var request = new BulkUpdateServicesRequest(null, new List<BulkUpdateServiceItemRequest>
+        var request = new BulkUpdateServicesRequest(new List<BulkUpdateServiceItemRequest>
         {
             new(_serviceWithAnswers.Id.Value, B64("Service With New Answers"), new List<AnswerInputRequest>
             {
@@ -174,7 +174,7 @@ public class ServicesBulkUploadControllerTests(OrganisationAdminIntegrationTestW
     public async Task ShouldBulkUpdate_MapsCheckboxValuesToDisplayLabels()
     {
         // Arrange
-        var request = new BulkUpdateServicesRequest(null, new List<BulkUpdateServiceItemRequest>
+        var request = new BulkUpdateServicesRequest(new List<BulkUpdateServiceItemRequest>
         {
             new(_service1.Id.Value, B64("Service With Checkbox"), new List<AnswerInputRequest>
             {
@@ -201,7 +201,7 @@ public class ServicesBulkUploadControllerTests(OrganisationAdminIntegrationTestW
     public async Task ShouldBulkUpdate_SetsServiceStatusToComplete()
     {
         // Arrange
-        var request = new BulkUpdateServicesRequest(null, new List<BulkUpdateServiceItemRequest>
+        var request = new BulkUpdateServicesRequest(new List<BulkUpdateServiceItemRequest>
         {
             new(_service1.Id.Value, B64("Completed Service"), new List<AnswerInputRequest>
             {
@@ -228,7 +228,7 @@ public class ServicesBulkUploadControllerTests(OrganisationAdminIntegrationTestW
     {
         // Arrange
         var nonExistentServiceId = Guid.NewGuid();
-        var request = new BulkUpdateServicesRequest(null, new List<BulkUpdateServiceItemRequest>
+        var request = new BulkUpdateServicesRequest(new List<BulkUpdateServiceItemRequest>
         {
             new(_service1.Id.Value, B64("Valid Service"), new List<AnswerInputRequest>
             {

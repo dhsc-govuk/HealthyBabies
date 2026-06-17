@@ -11,6 +11,7 @@ public record AdminDisableMfaCommand(UserId TargetUserId) : IRequest<Either<MfaE
 
 public class AdminDisableMfaCommandHandler(
     IMfaSessionService sessionService,
+    IMfaRateLimitService rateLimitService,
     IUserMfaRepository userMfaRepository)
     : IRequestHandler<AdminDisableMfaCommand, Either<MfaException, bool>>
 {
@@ -49,6 +50,7 @@ public class AdminDisableMfaCommandHandler(
         mfa.Disable();
         await userMfaRepository.UpdateAsync(mfa, cancellationToken);
         await sessionService.RevokeAllUserSessionsAsync(userId);
+        rateLimitService.ResetAttempts(userId);
         return true;
     }
 }

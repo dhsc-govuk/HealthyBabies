@@ -182,6 +182,13 @@ jobs:
             --file "./api/src/Api/Dockerfile" \
             ./api
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+          cache-dependency-path: ./client/package-lock.json
+
       - name: Generate Client Config
         run: |
           cat > ./client/src/config.json << EOF
@@ -200,6 +207,12 @@ jobs:
           echo "Generated config.json:"
           cat ./client/src/config.json
 
+      - name: Install and Build Client
+        run: |
+          npm ci
+          VITE_BASE_PATH="${{ vars.CLIENT_BASE_PATH || '/' }}" npm run build
+        working-directory: ./client
+
       - name: Build and Push Client Image to ACR
         run: |
           az acr build \
@@ -207,7 +220,7 @@ jobs:
             --registry "${{ vars.AZURE_CONTAINER_REGISTRY }}" \
             --source-acr-auth-id [caller] \
             --image "hby/${{ env.CLIENT_IMAGE_NAME }}:${{ github.sha }}" \
-            --file "./client/Dockerfile" \
+            --file "./client/Dockerfile.ci" \
             --build-arg VITE_BASE_PATH="${{ vars.CLIENT_BASE_PATH || '/' }}" \
             ./client
 
@@ -310,6 +323,13 @@ jobs:
             --file "./api/src/Api/Dockerfile" \
             ./api
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+          cache-dependency-path: ./client/package-lock.json
+
       - name: Generate Client Config
         run: |
           cat > ./client/src/config.json << EOF
@@ -328,6 +348,12 @@ jobs:
           echo "Generated config.json:"
           cat ./client/src/config.json
 
+      - name: Install and Build Client
+        run: |
+          npm ci
+          VITE_BASE_PATH="${{ vars.CLIENT_BASE_PATH || '/' }}" npm run build
+        working-directory: ./client
+
       - name: Build and Push Client Image to ACR
         run: |
           az acr build \
@@ -335,7 +361,7 @@ jobs:
             --registry "${{ vars.AZURE_CONTAINER_REGISTRY }}" \
             --source-acr-auth-id [caller] \
             --image "hby/${{ env.CLIENT_IMAGE_NAME }}:${{ github.sha }}" \
-            --file "./client/Dockerfile" \
+            --file "./client/Dockerfile.ci" \
             --build-arg VITE_BASE_PATH="${{ vars.CLIENT_BASE_PATH || '/' }}" \
             ./client
 
@@ -564,6 +590,13 @@ jobs:
             --file "./api/src/Api/Dockerfile" \
             ./api
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: "npm"
+          cache-dependency-path: ./client/package-lock.json
+
       - name: Generate Client Config
         run: |
           cat > ./client/src/config.json << EOF
@@ -582,6 +615,12 @@ jobs:
           echo "Generated config.json:"
           cat ./client/src/config.json
 
+      - name: Install and Build Client
+        run: |
+          npm ci
+          VITE_BASE_PATH="${{ vars.CLIENT_BASE_PATH || '/' }}" npm run build
+        working-directory: ./client
+
       - name: Build and Push Client Image to ACR
         run: |
           az acr build \
@@ -589,7 +628,7 @@ jobs:
             --registry "${{ vars.AZURE_CONTAINER_REGISTRY }}" \
             --source-acr-auth-id [caller] \
             --image "hby/${{ env.CLIENT_IMAGE_NAME }}:${{ github.sha }}" \
-            --file "./client/Dockerfile" \
+            --file "./client/Dockerfile.ci" \
             --build-arg VITE_BASE_PATH="${{ vars.CLIENT_BASE_PATH || '/' }}" \
             ./client
 

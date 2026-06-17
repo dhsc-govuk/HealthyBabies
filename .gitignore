@@ -451,14 +451,8 @@ Desktop.ini
 # Environment files
 .env
 
-# Local development secrets - never commit
-appsettings.Development.json
-
 **/.idea
 /client/dist
 
 # Client config (generated at build time)
 client/src/config.json
-
-# Claude Code local settings
-.claude/

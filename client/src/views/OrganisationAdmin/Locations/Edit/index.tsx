@@ -6,6 +6,7 @@ import { GeneralLayout } from '../../../../layouts';
 import { useAuthProvider } from '../../../../components/AuthProvider';
 import { getSiteFormQuestions, siteFormQuestionsCacheKey } from '../../../../components/Global/SiteForms';
 import { processError } from '../../../../helpers/axiosErrorFallback';
+import { viewServiceDeliverySiteCacheKey } from '../../../../helpers/queriesParams';
 import useErrorSummaryFocus from '../../../../hooks/useErrorSummaryFocus';
 import useFormTelemetry from '../../../../hooks/useFormTelemetry';
 import axios from 'axios';
@@ -73,6 +74,7 @@ const LocationsEdit = (): React.ReactElement => {
       setNotification({ type: 'success', title: 'Success', message: 'Site updated successfully' });
       queryClient.invalidateQueries(['locations']);
       queryClient.invalidateQueries(['location', locationId]);
+      queryClient.invalidateQueries([viewServiceDeliverySiteCacheKey(organisationId!, locationId!)]);
       navigate(`/organisation-admin/core-data/delivery-locations/${locationId}`);
     },
     onError: (error) => {

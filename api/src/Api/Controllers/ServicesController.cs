@@ -186,7 +186,6 @@ public class ServicesController(
 
         var input = new BulkUpdateServicesCommand
         {
-            DataCollectionId = request.DataCollectionId,
             Services = services
         };
 
@@ -217,4 +216,4 @@ public record BulkUpdateServiceItemRequest(
     string Name,
     IReadOnlyList<AnswerInputRequest> Answers);
 
-public record BulkUpdateServicesRequest(Guid? DataCollectionId, IReadOnlyList<BulkUpdateServiceItemRequest> Services);
+public record BulkUpdateServicesRequest(IReadOnlyList<BulkUpdateServiceItemRequest> Services);

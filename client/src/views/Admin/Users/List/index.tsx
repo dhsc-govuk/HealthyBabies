@@ -11,7 +11,6 @@ import usePageTitle from '../../../../hooks/usePageTitle';
 
 interface LocationState {
   created?: boolean;
-  temporaryPassword?: string | null;
 }
 
 const OrganisationUsersList = (): React.ReactElement => {
@@ -19,13 +18,11 @@ const OrganisationUsersList = (): React.ReactElement => {
   const navigate = useNavigate();
   const location = useLocation();
   const [showSuccessBanner, setShowSuccessBanner] = useState(false);
-  const [temporaryPassword, setTemporaryPassword] = useState<string | null>(null);
 
   useEffect(() => {
     const state = location.state as LocationState;
     if (state?.created) {
       setShowSuccessBanner(true);
-      setTemporaryPassword(state.temporaryPassword ?? null);
       window.history.replaceState({}, document.title);
     }
   }, [location.state]);
@@ -95,12 +92,6 @@ const OrganisationUsersList = (): React.ReactElement => {
             <p className="govuk-body">
               The LA user has been added to your list of LA users. You can view, change, or delete the user account at any time.
             </p>
-            {/* TODO: remove temporary password from the banner once email delivery is reliable */}
-            {temporaryPassword && (
-              <p className="govuk-body">
-                Temporary password: <strong>{temporaryPassword}</strong>
-              </p>
-            )}
           </div>
         </div>
       )}

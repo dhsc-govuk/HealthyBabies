@@ -12,7 +12,7 @@ using Unit = LanguageExt.Unit;
 
 namespace Application.Users.Commands.OrganisationUsers;
 
-public record CreateOrganisationUserResult(OrganisationUser OrganisationUser, string? TemporaryPassword);
+public record CreateOrganisationUserResult(OrganisationUser OrganisationUser);
 
 public record CreateOrganisationUserCommand : IRequest<Either<UserException, CreateOrganisationUserResult>>
 {
@@ -111,7 +111,7 @@ public class CreateOrganisationUserCommandHandler(
                 // Update the existing OrganisationUser
                 existingOrgUser.Reactivate(orgId, existingUser);
                 var result = await organisationUsersRepository.UpdateAsync(existingOrgUser, cancellationToken);
-                return new CreateOrganisationUserResult(result, NullIfEmpty(identity.TemporaryPassword));
+                return new CreateOrganisationUserResult(result);
             },
             async () =>
             {
@@ -123,7 +123,7 @@ public class CreateOrganisationUserCommandHandler(
                     orgId,
                     existingUser);
                 var result = await organisationUsersRepository.AddAsync(organisationUser, cancellationToken);
-                return new CreateOrganisationUserResult(result, NullIfEmpty(identity.TemporaryPassword));
+                return new CreateOrganisationUserResult(result);
             });
     }
 
@@ -151,7 +151,7 @@ public class CreateOrganisationUserCommandHandler(
             user);
         var result = await organisationUsersRepository.AddAsync(organisationUser, cancellationToken);
 
-        return new CreateOrganisationUserResult(result, NullIfEmpty(identity.TemporaryPassword));
+        return new CreateOrganisationUserResult(result);
     }
 
     private async Task<Either<UserException, Unit>> CheckOrganisation(
@@ -184,9 +184,7 @@ public class CreateOrganisationUserCommandHandler(
     {
         var existingUserSubId = await usersService.FindByEmail(email, cancellationToken);
         return await existingUserSubId.MatchAsync(
-            subId => new CreatedIdentity(subId, string.Empty),
+            subId => new CreatedIdentity(subId),
             () => usersService.AddWithPassword(userName, email, isActive, cancellationToken));
     }
-
-    private static string? NullIfEmpty(string? value) => string.IsNullOrEmpty(value) ? null : value;
 }

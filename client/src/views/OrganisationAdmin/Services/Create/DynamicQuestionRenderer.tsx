@@ -146,8 +146,36 @@ const QuestionRenderer = ({ question, value, error, onChange, allQuestions, stat
             label: opt.label,
           }));
 
-        // Checkbox values are stored as comma-separated string
-        const selectedValues = value ? value.split(',') : [];
+        // Checkbox values are stored as comma-separated string.
+        // Greedy parsing handles two classes of bad DB data:
+        //   1. Option values containing commas  (e.g. "Strengthening Families, Strengthening Communities")
+        //   2. Option values with trailing spaces (e.g. "As needed ", "A telephone helpline ")
+        // For each match we push the *original* option.value so GovUKCheckbox can
+        // resolve the checked state via selectedValues.includes(option.value).
+        const parseSelectedValues = (stored: string): string[] => {
+          if (!stored.trim()) return [];
+          const parts = stored.split(',').map((v) => v.trim()).filter(Boolean);
+          const result: string[] = [];
+          let i = 0;
+          while (i < parts.length) {
+            let matched = false;
+            for (let j = parts.length; j > i; j--) {
+              const candidate = parts.slice(i, j).join(', ');
+              const matchedOption = options.find(
+                (o) => o.value.trim() === candidate || o.label.trim() === candidate
+              );
+              if (matchedOption) {
+                result.push(matchedOption.value); // original value preserves trailing space
+                i = j;
+                matched = true;
+                break;
+              }
+            }
+            if (!matched) { result.push(parts[i]); i++; }
+          }
+          return result;
+        };
+        const selectedValues = value ? parseSelectedValues(value) : [];
 
         return (
           <GovUKCheckbox

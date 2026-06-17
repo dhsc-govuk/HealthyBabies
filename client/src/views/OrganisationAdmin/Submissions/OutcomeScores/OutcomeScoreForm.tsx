@@ -242,26 +242,42 @@ const OutcomeScoreForm = (): React.ReactElement => {
     }
   };
 
-  // Validate outcome score fields on step 4 (intervention scores)
   const validateCurrentStep = useCallback((): boolean => {
     if (!outcomeScoreForm) return true;
     const errors: Record<string, string> = {};
 
-    // Only validate on step 4 (intervention scores)
-    if (currentStep === 4) {
-      currentFields.forEach((field) => {
-        if (!isFieldVisible(field)) return;
+    currentFields.forEach((field) => {
+      if (!isFieldVisible(field)) return;
 
-        const value = fieldValues[field.code] as string;
-        if (!value) return;
+      const value = fieldValues[field.code];
+      const stringValue = typeof value === 'string' ? value : '';
+      const fieldTypeLower = field.fieldType.toLowerCase();
+      const isCheckboxEmpty = fieldTypeLower === 'checkbox' && Array.isArray(value) && value.length === 0;
+      const isEmpty = fieldTypeLower === 'checkbox' ? isCheckboxEmpty : !stringValue;
 
-        // Check if this is an outcome score field - pass field for config-based validation
-        const error = validateOutcomeScore(field.code, value, field);
+      // Required field check (all steps)
+      if (field.isRequired && isEmpty) {
+        if (fieldTypeLower === 'radio' || fieldTypeLower === 'select') {
+          errors[field.code] = 'Select an option';
+        } else if (fieldTypeLower === 'checkbox') {
+          errors[field.code] = 'Select at least one option';
+        } else {
+          errors[field.code] = 'Enter a value';
+        }
+        return;
+      }
+
+      // Skip non-required empty fields
+      if (isEmpty) return;
+
+      // Outcome score range validation (step 4)
+      if (currentStep === 4) {
+        const error = validateOutcomeScore(field.code, stringValue, field);
         if (error) {
           errors[field.code] = error;
         }
-      });
-    }
+      }
+    });
 
     Object.keys(errors).forEach((field) => trackValidationFailed(field, 'invalid'));
     setFieldErrors(errors);
@@ -308,6 +324,10 @@ const OutcomeScoreForm = (): React.ReactElement => {
   };
 
   const handleSaveAsDraft = () => {
+    if (!validateCurrentStep()) {
+      setSubmitAttempts((n) => n + 1);
+      return;
+    }
     saveMutation.mutate(false);
   };
 
@@ -541,11 +561,15 @@ const OutcomeScoreForm = (): React.ReactElement => {
             </h2>
             <div className="govuk-error-summary__body">
               <ul className="govuk-list govuk-error-summary__list">
-                {Object.entries(fieldErrors).map(([fieldCode, message]) => (
-                  <li key={fieldCode}>
-                    <a href={`#${fieldCode}`}>{message}</a>
-                  </li>
-                ))}
+                {Object.entries(fieldErrors).map(([fieldCode, message]) => {
+                  const field = outcomeScoreForm?.fields.find((f) => f.code === fieldCode);
+                  const summaryMessage = field ? `${field.label} – ${message}` : message;
+                  return (
+                    <li key={fieldCode}>
+                      <a href={`#${fieldCode}`}>{summaryMessage}</a>
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           </div>

@@ -31,8 +31,7 @@ public static class ConfigureServices
         services.AddHangfireServices(configuration);
         services.AddScoped<IRequestStagingService, RequestStagingService>();
         services.AddScoped<RequestStagingCleanupJob>();
-        services.AddScoped<IEmailNotificationService, EmailNotificationService>();
-        services.AddScoped<ISmtpEmailNotificationService, SmtpEmailNotificationService>();
+        services.AddScoped<IEmailNotificationService, AzureCommunicationEmailService>();
 
         // MFA Services
         services.AddScoped<ITotpService, TotpService>();

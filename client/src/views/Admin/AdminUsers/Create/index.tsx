@@ -16,7 +16,6 @@ interface CreateAdminUserRequest {
 
 interface CreateAdminUserResponse {
   id: string;
-  temporaryPassword?: string | null;
 }
 
 const createAdminUser = (data: CreateAdminUserRequest) =>
@@ -30,12 +29,7 @@ const CreateAdminUser = (): React.ReactElement => {
     mutationKey: ['departmental-user-create'],
     mutationFn: createAdminUser,
     onSuccess(data) {
-      const temporaryPassword = data.data.temporaryPassword;
-      // TODO: remove temporaryPassword from the banner once email delivery is reliable
-      const message = temporaryPassword
-        ? `Departmental user created successfully. Temporary password: ${temporaryPassword}`
-        : 'Departmental user created successfully';
-      setNotification({ type: 'success', title: 'Success', message });
+      setNotification({ type: 'success', title: 'Success', message: 'Departmental user created successfully' });
       navigate(`/admin/departmental-users/${data.data.id}`);
     },
     onError(error) {

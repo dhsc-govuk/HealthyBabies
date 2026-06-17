@@ -4,8 +4,6 @@ using Application.Common.Interfaces.Repositories;
 using Application.Common.Permissions;
 using Application.ServiceForms.Dtos;
 using Application.Services.Exceptions;
-using Domain.DataCollections;
-using Domain.DataCollections.Forms;
 using Domain.ServiceForms;
 using Domain.Services;
 using FluentValidation;
@@ -17,7 +15,6 @@ namespace Application.Services.Commands;
 
 public record BulkUpdateServicesCommand : IRequest<Either<ServiceException, BulkUpdateServicesResult>>
 {
-    public Guid? DataCollectionId { get; init; }
     public IReadOnlyList<ServiceBulkUpdateItem> Services { get; init; } = [];
 }
 
@@ -64,9 +61,7 @@ public class BulkUpdateServicesCommandValidator : AbstractValidator<BulkUpdateSe
 public class BulkUpdateServicesCommandHandler(
     PermissionsService permissionsService,
     IServiceRepository serviceRepository,
-    IServiceFormQuestionQueries questionQueries,
-    IDataCollectionFormModuleQueries formModuleQueries,
-    IFormSubmissionRepository formSubmissionRepository)
+    IServiceFormQuestionQueries questionQueries)
     : IRequestHandler<BulkUpdateServicesCommand, Either<ServiceException, BulkUpdateServicesResult>>
 {
     public async Task<Either<ServiceException, BulkUpdateServicesResult>> Handle(
@@ -94,13 +89,6 @@ public class BulkUpdateServicesCommandHandler(
             results.Add(result);
         }
 
-        // Create FormSubmission records for successful updates to update section 2 status
-        if (request.DataCollectionId.HasValue)
-        {
-            var organisationId = permission.OrganisationId.IfNone(() => throw new InvalidOperationException("Organisation ID is required"));
-            await CreateFormSubmissionsForSuccessfulServices(results, organisationId, request.DataCollectionId.Value, cancellationToken);
-        }
-
         var successCount = results.Count(r => r.IsSuccess);
         var errorCount = results.Count(r => !r.IsSuccess);
 
@@ -109,55 +97,6 @@ public class BulkUpdateServicesCommandHandler(
             successCount,
             errorCount,
             results);
-    }
-
-    private async Task CreateFormSubmissionsForSuccessfulServices(
-        List<BulkUpdateServiceResult> results,
-        Domain.Organisations.OrganisationId organisationId,
-        Guid dataCollectionId,
-        CancellationToken cancellationToken)
-    {
-        // Get the Service Users form module
-        var serviceUsersModuleOption = await formModuleQueries.GetByCodeWithFieldsAsync(
-            DataCollectionFormModuleCodes.ServiceUsers, cancellationToken);
-
-        if (serviceUsersModuleOption.IsNone)
-        {
-            return;
-        }
-
-        var serviceUsersModule = serviceUsersModuleOption.Match(m => m, () => null!);
-        var dcId = new DataCollectionId(dataCollectionId);
-
-        // Create or update FormSubmission for each successful service
-        foreach (var result in results.Where(r => r.IsSuccess && r.ServiceId.HasValue))
-        {
-            var serviceId = result.ServiceId!.Value;
-
-            // Check if a FormSubmission already exists for this service
-            var existingSubmissionOption = await formSubmissionRepository.GetByFormModuleDataCollectionAndServiceAsync(
-                serviceUsersModule.Id, dcId, serviceId, cancellationToken);
-
-            FormSubmission formSubmission;
-            if (existingSubmissionOption.IsSome)
-            {
-                formSubmission = existingSubmissionOption.Match(s => s, () => null!);
-            }
-            else
-            {
-                formSubmission = FormSubmission.Create(
-                    serviceUsersModule.Id,
-                    organisationId,
-                    dcId,
-                    "Service",
-                    serviceId);
-                await formSubmissionRepository.AddAsync(formSubmission, cancellationToken);
-            }
-
-            // Mark as complete (sets status to "approved" which shows as "Completed")
-            formSubmission.MarkAsComplete();
-            await formSubmissionRepository.UpdateAsync(formSubmission, cancellationToken);
-        }
     }
 
     private async Task<BulkUpdateServiceResult> ProcessSingleService(

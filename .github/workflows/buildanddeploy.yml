@@ -1,0 +1,252 @@
+name: Deploy to Environment
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: Select the target environment
+        required: true
+        type: choice
+        options:
+          - dev
+          - tst
+          - prd
+        default: dev
+      image_tag:
+        description: Existing ACR image tag to deploy
+        required: true
+        type: string
+
+jobs:
+  deploy:
+    runs-on: ${{ vars.PROJECTLABEL }}-selfhosted-runner
+    environment: ${{ inputs.environment }}
+    permissions:
+      id-token: write
+      contents: read
+    strategy:
+      matrix:
+        app:
+          - api
+          - client
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+
+      - name: Setup Carvel ytt
+        uses: carvel-dev/setup-action@v2
+        with:
+          token: ${{ github.token }}
+          only: ytt
+
+      - name: Set environment variables
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          APP="${{ matrix.app }}"
+          ENV="${{ inputs.environment }}"
+          IMAGE_TAG="${{ inputs.image_tag }}"
+
+          case "${ENV}" in
+            dev)
+              MANAGED_IDENTITY_RESOURCE_ID="/subscriptions/84bcd0e8-b91c-4fd0-b5f9-beaa7a1386c5/resourcegroups/rg-hby-rtl-dev-uks-01/providers/Microsoft.ManagedIdentity/userAssignedIdentities/id-hby-rtl-dev-uks-001"
+              ;;
+            tst)
+              MANAGED_IDENTITY_RESOURCE_ID="/subscriptions/17ea96d1-3a3d-414c-a0d2-d219c5d90777/resourcegroups/rg-hby-rtl-tst-uks-01/providers/Microsoft.ManagedIdentity/userAssignedIdentities/id-hby-rtl-tst-uks-001"
+              ;;
+            prd)
+              MANAGED_IDENTITY_RESOURCE_ID="/subscriptions/64beead7-9780-4418-b7d6-abbc47a1ca1a/resourcegroups/rg-hby-rtl-prd-uks-01/providers/Microsoft.ManagedIdentity/userAssignedIdentities/id-hby-rtl-prd-uks-001"
+              ;;
+            *)
+              echo "Error: Unsupported environment '${ENV}'"
+              exit 1
+              ;;
+          esac
+
+          if [ "${APP}" = "api" ]; then
+            APP_NAME="${{ vars.API_CONTAINER_APP }}"
+            IMAGE_PATH="hby/family-hubs-api:${IMAGE_TAG}"
+          else
+            APP_NAME="${{ vars.CLIENT_CONTAINER_APP }}"
+            IMAGE_PATH="hby/family-hubs-client:${IMAGE_TAG}"
+          fi
+
+          echo "APP=${APP}" >> "$GITHUB_ENV"
+          echo "ENV=${ENV}" >> "$GITHUB_ENV"
+          echo "IMAGE_TAG=${IMAGE_TAG}" >> "$GITHUB_ENV"
+          echo "MANAGED_IDENTITY_RESOURCE_ID=${MANAGED_IDENTITY_RESOURCE_ID}" >> "$GITHUB_ENV"
+          echo "APP_NAME=${APP_NAME}" >> "$GITHUB_ENV"
+          echo "IMAGE_PATH=${IMAGE_PATH}" >> "$GITHUB_ENV"
+          echo "FULL_IMAGE=${{ vars.AZURE_CONTAINER_REGISTRY }}.azurecr.io/${IMAGE_PATH}" >> "$GITHUB_ENV"
+          echo "REVISION_SUFFIX=${{ github.run_number }}-${{ github.run_attempt }}-${APP}" >> "$GITHUB_ENV"
+
+      - name: Show reusable-template config
+        shell: bash
+        run: |
+          {
+            echo "### Reusable Template Config"
+            echo
+            echo "- app: ${APP}"
+            echo "- image_tag: ${IMAGE_TAG}"
+            echo "- managed_identity_resource_id: ${MANAGED_IDENTITY_RESOURCE_ID}"
+            echo "- values: deploy/${APP}/containerapps/values-${ENV}.yaml"
+            echo "- template: deploy/${APP}/containerapps/template.yaml"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Check values file exists
+        shell: bash
+        run: |
+          if [ ! -f "deploy/${APP}/containerapps/values-${ENV}.yaml" ]; then
+            echo "Error: Values file deploy/${APP}/containerapps/values-${ENV}.yaml does not exist"
+            exit 1
+          fi
+
+      - name: Render Container App YAML with ytt
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "deploy/${APP}/containerapps/rendered"
+
+          ytt \
+            -f "deploy/${APP}/containerapps/values-schema.yaml" \
+            -f "deploy/${APP}/containerapps/template.yaml" \
+            -f "deploy/${APP}/containerapps/values-${ENV}.yaml" \
+            --data-value app_name="${APP_NAME}" \
+            --data-value managed_environment_id="${{ vars.AZURE_CONTAINER_APP_ENVIRONMENT_ID }}" \
+            --data-value managed_identity_resource_id="${MANAGED_IDENTITY_RESOURCE_ID}" \
+            --data-value acr_login_server="${{ vars.AZURE_CONTAINER_REGISTRY }}.azurecr.io" \
+            --data-value image="${FULL_IMAGE}" \
+            --data-value revision_suffix="${REVISION_SUFFIX}" \
+            > "deploy/${APP}/containerapps/rendered/${APP_NAME}-${ENV}.yaml"
+
+      - name: Validate rendered Azure resource IDs
+        shell: bash
+        run: |
+          set -euo pipefail
+          rendered_yaml="deploy/${APP}/containerapps/rendered/${APP_NAME}-${ENV}.yaml"
+
+          if [ -z "${{ vars.AZURE_CONTAINER_APP_ENVIRONMENT_ID }}" ]; then
+            echo "Error: GitHub environment variable AZURE_CONTAINER_APP_ENVIRONMENT_ID is empty or not defined."
+            exit 1
+          fi
+
+          if [ -z "${MANAGED_IDENTITY_RESOURCE_ID}" ]; then
+            echo "Error: MANAGED_IDENTITY_RESOURCE_ID resolved to an empty value."
+            exit 1
+          fi
+
+          if grep -Eq 'YOUR_|__SET_' "$rendered_yaml"; then
+            echo "Error: Rendered YAML still contains placeholder values."
+            exit 1
+          fi
+
+          if ! grep -Eq '/providers/Microsoft\.ManagedIdentity/userAssignedIdentities/' "$rendered_yaml"; then
+            echo "Error: Rendered YAML does not contain a valid user-assigned identity resource ID."
+            exit 1
+          fi
+
+      - name: Azure Login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ vars.AZURE_CLIENT_ID }}
+          tenant-id: ${{ vars.AZURE_TENANT_ID }}
+          subscription-id: ${{ vars.AZURE_RTL_SUBSCRIPTION_ID }}
+
+      - name: Generate client config
+        if: ${{ env.APP == 'client' }}
+        shell: bash
+        run: |
+          cat > ./client/src/config.json << EOF
+          {
+            "api_url": "${{ vars.CLIENT_API_URL }}",
+            "ad_tenant_id": "${{ vars.CLIENT_AD_TENANT_ID }}",
+            "ad_authority": "${{ vars.CLIENT_AD_AUTHORITY }}",
+            "ad_client_id": "${{ vars.CLIENT_AD_CLIENT_ID }}",
+            "ad_scope": "${{ vars.CLIENT_AD_SCOPE }}",
+            "ad_redirect_uri": "${{ vars.CLIENT_BASE_PATH || '/' }}",
+            "ad_domain_hint": "${{ vars.CLIENT_AD_DOMAIN_HINT }}",
+            "accessibility_testing_enabled": "false",
+            "app_insights_connection_string": "${{ vars.CLIENT_APP_INSIGHTS_CONNECTION_STRING || '' }}",
+            "sentry_dsn": "",
+            "clarity_project_id": "${{ vars.CLARITY_PROJECT_ID || '' }}"
+          }
+          EOF
+
+      - name: Check whether Container App exists
+        id: app_exists
+        shell: bash
+        run: |
+          set -euo pipefail
+          if az containerapp show \
+            --name "${APP_NAME}" \
+            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+            --subscription "${{ vars.AZURE_RTL_SUBSCRIPTION_ID }}" > /dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create Container App via dac-shared action
+        if: ${{ steps.app_exists.outputs.exists == 'false' }}
+        uses: dhsc-govuk-infrastructure/dac-shared/.github/actions/containerapp-create-from-yaml@main
+        with:
+          app_name: ${{ env.APP_NAME }}
+          azure_resource_group: ${{ vars.AZURE_RESOURCE_GROUP }}
+          container_app_yaml_path: deploy/${{ env.APP }}/containerapps/rendered/${{ env.APP_NAME }}-${{ env.ENV }}.yaml
+          image_to_deploy: ${{ env.FULL_IMAGE }}
+          azure_client_id: ${{ vars.AZURE_CLIENT_ID }}
+          azure_tenant_id: ${{ vars.AZURE_TENANT_ID }}
+          azure_subscription_id: ${{ vars.AZURE_RTL_SUBSCRIPTION_ID }}
+
+      - name: Ensure user-assigned identity configured
+        if: ${{ steps.app_exists.outputs.exists == 'true' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          az containerapp identity assign \
+            --name "${APP_NAME}" \
+            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+            --subscription "${{ vars.AZURE_RTL_SUBSCRIPTION_ID }}" \
+            --user-assigned "${MANAGED_IDENTITY_RESOURCE_ID}"
+
+      - name: Ensure registry identity configured
+        if: ${{ steps.app_exists.outputs.exists == 'true' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          az containerapp registry set \
+            --name "${APP_NAME}" \
+            --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" \
+            --subscription "${{ vars.AZURE_RTL_SUBSCRIPTION_ID }}" \
+            --server "${{ vars.AZURE_CONTAINER_REGISTRY }}.azurecr.io" \
+            --identity "${MANAGED_IDENTITY_RESOURCE_ID}"
+
+      - name: Update Container App via dac-shared action
+        if: ${{ steps.app_exists.outputs.exists == 'true' }}
+        uses: dhsc-govuk-infrastructure/dac-shared/.github/actions/containerapp-update-from-yaml@main
+        with:
+          app_name: ${{ env.APP_NAME }}
+          azure_resource_group: ${{ vars.AZURE_RESOURCE_GROUP }}
+          container_app_yaml_path: deploy/${{ env.APP }}/containerapps/rendered/${{ env.APP_NAME }}-${{ env.ENV }}.yaml
+          image_to_deploy: ${{ env.FULL_IMAGE }}
+          azure_client_id: ${{ vars.AZURE_CLIENT_ID }}
+          azure_tenant_id: ${{ vars.AZURE_TENANT_ID }}
+          azure_subscription_id: ${{ vars.AZURE_RTL_SUBSCRIPTION_ID }}
+
+      - name: Add deployment summary
+        shell: bash
+        run: |
+          fqdn="$(az containerapp show --name "${APP_NAME}" --resource-group "${{ vars.AZURE_RESOURCE_GROUP }}" --subscription "${{ vars.AZURE_RTL_SUBSCRIPTION_ID }}" --query "properties.configuration.ingress.fqdn" -o tsv)"
+          {
+            echo "### ${APP_NAME} deployment"
+            echo
+            echo "- environment: ${ENV}"
+            echo "- image_tag: ${IMAGE_TAG}"
+            echo "- image: ${{ env.FULL_IMAGE}}"
+            echo "- url: https://${fqdn}"
+            if [ "${APP}" = "client" ]; then
+              echo "- client_base_path: ${{ vars.CLIENT_BASE_PATH || '/' }}"
+            fi
+          } >> "$GITHUB_STEP_SUMMARY"

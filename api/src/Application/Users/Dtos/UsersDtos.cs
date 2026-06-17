@@ -43,8 +43,7 @@ public record AdminUserDto(
     string LastName,
     string Email,
     bool IsActive,
-    string? MfaStatus = null,
-    string? TemporaryPassword = null);
+    string? MfaStatus = null);
 
 public record OrganisationUserDto(
     string? Id,
@@ -55,8 +54,7 @@ public record OrganisationUserDto(
     string Role,
     string? Organisation = null,
     string? OrganisationId = null,
-    string? MfaStatus = null,
-    string? TemporaryPassword = null);
+    string? MfaStatus = null);
 
 public record Profile(
     Guid Id,

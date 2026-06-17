@@ -87,8 +87,7 @@ public class AdminUsersController(
                 r.User.Name.FirstName,
                 r.User.Name.LastName,
                 r.User.Email,
-                r.User.IsActive,
-                TemporaryPassword: r.TemporaryPassword),
+                r.User.IsActive),
             error => error.ToObjectResult());
     }
 
@@ -137,8 +136,7 @@ public class AdminUsersController(
                 r.OrganisationUser.User.Name.LastName,
                 r.OrganisationUser.User.Email,
                 r.OrganisationUser.User.IsActive,
-                r.OrganisationUser.User.Role,
-                TemporaryPassword: r.TemporaryPassword),
+                r.OrganisationUser.User.Role),
             error => error.ToObjectResult());
     }
 

@@ -1,15 +1,15 @@
 import React from 'react';
 import { useMutation } from 'react-query';
 
-import { GeneralLayout } from '../../../layouts';
+import { SettingsLayout } from '../../../layouts';
 import { useGovUKNotification } from '../../../components/GovUKComponents';
 import { processError } from '../../../helpers/axiosErrorFallback';
 import { downloadServicesCsv, downloadSitesCsv, triggerCsvDownload } from './queries';
+import usePageTitle from '../../../hooks/usePageTitle';
 
 function CoreData(): React.ReactElement {
+  usePageTitle('Core data downloads');
   const { setNotification } = useGovUKNotification();
-
-  const breadcrumbItems = [{ label: 'Home', link: '/admin/home' }];
 
   const { mutate: downloadSites, isLoading: downloadingSites } = useMutation({
     mutationFn: downloadSitesCsv,
@@ -32,13 +32,12 @@ function CoreData(): React.ReactElement {
   });
 
   return (
-    <GeneralLayout breadcrumbs={breadcrumbItems} currentPage="Core data downloads">
-      <h1 className="govuk-heading-xl">Core data downloads</h1>
-      <p className="govuk-body-l">Download sites and services data as CSV files. Each file includes a LA Name column to allow filtering by local authority.</p>
+    <SettingsLayout>
+      <h1 className="govuk-heading-l">Core data downloads</h1>
 
-      <div className="govuk-grid-row govuk-!-margin-top-6">
-        <div className="govuk-grid-column-one-half">
-          <div className="govuk-summary-card">
+      <div className="govuk-grid-row govuk-!-margin-top-6" style={{ display: 'flex' }}>
+        <div className="govuk-grid-column-one-half" style={{ display: 'flex', flexDirection: 'column' }}>
+          <div className="govuk-summary-card" style={{ flex: 1 }}>
             <div className="govuk-summary-card__title-wrapper">
               <h2 className="govuk-summary-card__title">Sites</h2>
             </div>
@@ -56,8 +55,8 @@ function CoreData(): React.ReactElement {
           </div>
         </div>
 
-        <div className="govuk-grid-column-one-half">
-          <div className="govuk-summary-card">
+        <div className="govuk-grid-column-one-half" style={{ display: 'flex', flexDirection: 'column' }}>
+          <div className="govuk-summary-card" style={{ flex: 1 }}>
             <div className="govuk-summary-card__title-wrapper">
               <h2 className="govuk-summary-card__title">Services</h2>
             </div>
@@ -75,7 +74,7 @@ function CoreData(): React.ReactElement {
           </div>
         </div>
       </div>
-    </GeneralLayout>
+    </SettingsLayout>
   );
 }
 

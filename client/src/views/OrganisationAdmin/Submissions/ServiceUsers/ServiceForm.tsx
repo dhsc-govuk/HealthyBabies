@@ -279,12 +279,27 @@ const ServiceForm = (): React.ReactElement => {
     visibleFields.forEach((field) => {
       const value = fieldValues[field.code];
       const stringValue = typeof value === 'string' ? value : '';
+      const fieldTypeLower = field.fieldType.toLowerCase();
+      const isCheckboxEmpty = fieldTypeLower === 'checkbox' && Array.isArray(value) && value.length === 0;
+      const isEmpty = fieldTypeLower === 'checkbox' ? isCheckboxEmpty : !stringValue;
 
-      // Skip if empty and not required
-      if (!stringValue && !field.isRequired) return;
+      // Required field check
+      if (field.isRequired && isEmpty) {
+        if (fieldTypeLower === 'radio' || fieldTypeLower === 'select') {
+          errors[field.code] = 'Select an option';
+        } else if (fieldTypeLower === 'checkbox') {
+          errors[field.code] = 'Select at least one option';
+        } else {
+          errors[field.code] = 'Enter a value';
+        }
+        return;
+      }
+
+      // Skip non-required empty fields
+      if (isEmpty) return;
 
       // Validate number fields
-      if (field.fieldType.toLowerCase() === 'number' && stringValue) {
+      if (fieldTypeLower === 'number' && stringValue) {
         const numValue = parseFloat(stringValue);
         if (isNaN(numValue)) {
           errors[field.code] = 'Enter a valid number';
@@ -398,6 +413,10 @@ const ServiceForm = (): React.ReactElement => {
   };
 
   const handleSaveAsDraft = () => {
+    if (!validateCurrentStep()) {
+      setSubmitAttempts((n) => n + 1);
+      return;
+    }
     saveMutation.mutate(false);
   };
 
@@ -581,11 +600,15 @@ const ServiceForm = (): React.ReactElement => {
             </h2>
             <div className="govuk-error-summary__body">
               <ul className="govuk-list govuk-error-summary__list">
-                {Object.entries(fieldErrors).map(([fieldCode, message]) => (
-                  <li key={fieldCode}>
-                    <a href={`#${fieldCode}`}>{message}</a>
-                  </li>
-                ))}
+                {Object.entries(fieldErrors).map(([fieldCode, message]) => {
+                  const field = serviceForm?.fields.find((f) => f.code === fieldCode);
+                  const summaryMessage = field ? `${field.label} – ${message}` : message;
+                  return (
+                    <li key={fieldCode}>
+                      <a href={`#${fieldCode}`}>{summaryMessage}</a>
+                    </li>
+                  );
+                })}
               </ul>
             </div>
           </div>

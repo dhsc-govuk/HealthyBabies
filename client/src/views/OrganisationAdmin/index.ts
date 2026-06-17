@@ -22,6 +22,8 @@ export { default as CreateLocations } from './Locations/Create';
 
 export { default as BulkUploadLocations } from './Locations/BulkUpload';
 
+export { default as DeleteLocations } from './Locations/Delete';
+
 
 
 export { default as ListServices } from './Services/List';
