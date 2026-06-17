@@ -1,0 +1,29 @@
+.dc-form {
+  max-width: 100%;
+}
+
+.dc-form-back-link {
+  display: inline-block;
+  margin-bottom: 15px;
+}
+
+.dc-form-back-link::before {
+  content: "‹ ";
+}
+
+.dc-form-actions {
+  display: flex;
+  gap: 15px;
+  margin-top: 30px;
+}
+
+.dc-form-review {
+  max-width: 100%;
+}
+
+.dc-form-review-title {
+  font-family: "GDS Transport", arial, sans-serif;
+  font-size: 24px;
+  font-weight: 700;
+  margin-bottom: 20px;
+}

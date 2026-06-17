@@ -1,0 +1,101 @@
+/* GOV.UK Tag Component
+ * Based on: https://design-system.service.gov.uk/components/tag/
+ * Colours match the official GOV.UK Design System palette exactly.
+ *
+ * Use the tag component when it's possible for something to have more than
+ * one status and it's useful for the user to know about that status.
+ */
+
+.govuk-tag {
+  /* Auto layout */
+  display: inline-flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  padding: 5px 8px 4px !important;
+
+  /* Typography */
+  font-family: 'GDS Transport', arial, sans-serif !important;
+  font-style: normal !important;
+  font-weight: 400 !important;
+  font-size: 19px !important;
+  line-height: 25px !important;
+
+  /* Reset transforms - override GOV.UK Frontend uppercase */
+  text-transform: none !important;
+  letter-spacing: normal !important;
+  text-decoration: none !important;
+
+  /* Default (blue) — https://design-system.service.gov.uk/components/tag/ */
+  color: #0c2d4a !important;
+  background-color: #bbd4ea !important;
+
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+@media print {
+  .govuk-tag {
+    font-family: sans-serif;
+  }
+}
+
+/* ── Colour variants — all values from the official GOV.UK Design System ── */
+
+.govuk-tag--grey {
+  color: #282d30 !important;
+  background-color: #e5e6e7 !important;
+}
+
+.govuk-tag--green {
+  /* Used for active, live, open or complete states */
+  color: #005a30 !important;
+  background-color: #cce2d8 !important;
+}
+
+.govuk-tag--turquoise {
+  color: #10403c !important;
+  background-color: #d4ecea !important;
+}
+
+.govuk-tag--blue {
+  /* Same palette as default; explicit class for semantic clarity */
+  color: #0c2d4a !important;
+  background-color: #bbd4ea !important;
+}
+
+.govuk-tag--light-blue {
+  color: #0c2d4a !important;
+  background-color: #e8f1f8 !important;
+}
+
+.govuk-tag--purple {
+  color: #491644 !important;
+  background-color: #efdfed !important;
+}
+
+.govuk-tag--pink {
+  color: #6b1c40 !important;
+  background-color: #f9e1ec !important;
+}
+
+.govuk-tag--red {
+  /* Use only for error or urgent statuses */
+  color: #2a0b06 !important;
+  background-color: #f4cdc6 !important;
+}
+
+.govuk-tag--orange {
+  color: #6e3619 !important;
+  background-color: #fcd6c3 !important;
+}
+
+.govuk-tag--yellow {
+  color: #594d00 !important;
+  background-color: #fff7bf !important;
+}
+
+.govuk-tag--white {
+  color: #0b0c0c !important;
+  background-color: #ffffff !important;
+  border: 1px solid #b1b4b6 !important;
+}

@@ -1,0 +1,8 @@
+/* Summary list with 50% key/value widths */
+.step-three-summary .govuk-summary-list__key {
+  width: 50%;
+}
+
+.step-three-summary .govuk-summary-list__value {
+  width: 50%;
+}

@@ -1,0 +1,15 @@
+.data-collection-form {
+  max-width: 100%;
+}
+
+.data-collection-form__actions {
+  display: flex;
+  gap: 15px;
+  margin-top: 30px;
+}
+
+.data-collection-view__actions {
+  display: flex;
+  gap: 15px;
+  margin-top: 30px;
+}

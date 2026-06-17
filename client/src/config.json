@@ -1,0 +1,11 @@
+{
+  "api_url": "https://localhost:5001/",
+  "ad_tenant_id": "1e2b27fa-0718-4c3d-b890-f505c168ee2f",
+  "ad_authority": "https://familyhubsmvp.ciamlogin.com/",
+  "ad_client_id": "badbc160-25bd-441a-98a0-a56affe4fcb1",
+  "ad_scope": "https://familyhubsmvp.onmicrosoft.com/3ac3428e-8f41-456e-8788-ecc8d25f4c10/API",
+  "ad_redirect_uri": "/",
+  "ad_domain_hint": "familyhubsmvp.onmicrosoft.com",
+  "accessibility_testing_enabled": "true",
+  "app_insights_connection_string": ""
+}

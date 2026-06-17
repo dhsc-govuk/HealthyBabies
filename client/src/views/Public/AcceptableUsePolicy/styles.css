@@ -1,0 +1,17 @@
+.acceptable-use-policy-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.acceptable-use-policy-page__main {
+  flex-grow: 1;
+  background-color: #ffffff;
+}
+
+/* Reset global .govuk-back-link::before overrides (several page stylesheets
+   unscope `content: "‹ "`, which collides with govuk-frontend's border-based
+   arrow and renders an extra glyph). Restore the native govuk-frontend arrow. */
+.acceptable-use-policy-page .govuk-back-link::before {
+  content: "";
+}

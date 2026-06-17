@@ -1,0 +1,14 @@
+import type React from 'react';
+
+import appConfig from './config.json';
+
+export const reportAccessibility = async (App: typeof React, config?: Record<string, unknown>): Promise<void> => {
+  if (appConfig.accessibility_testing_enabled === 'true') {
+    const axe = await import('@axe-core/react');
+    const ReactDOM = await import('react-dom');
+
+    axe.default(App, ReactDOM, 1000, config);
+  }
+};
+
+export default reportAccessibility;

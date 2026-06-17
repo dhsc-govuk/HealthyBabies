@@ -1,0 +1,58 @@
+.form-answers-view__intro {
+  margin-bottom: 30px;
+}
+
+.form-answers-view__container {
+  border: 1px solid #b1b4b6;
+}
+
+.form-answers-view__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 20px;
+  border-bottom: 1px solid #b1b4b6;
+}
+
+.form-answers-view__header-info {
+  font-size: 19px;
+}
+
+.form-answers-view__header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.form-answers-view__action-link {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+  color: #1d70b8;
+  text-decoration: underline;
+}
+
+.form-answers-view__action-link:hover {
+  color: #003078;
+}
+
+.form-answers-view__action-divider {
+  color: #b1b4b6;
+}
+
+.form-answers-view__table {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.form-answers-view__label {
+  width: 60%;
+  vertical-align: top;
+}
+
+.form-answers-view__value {
+  text-align: left;
+  vertical-align: top;
+}

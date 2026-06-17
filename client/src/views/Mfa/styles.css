@@ -1,0 +1,90 @@
+/* MFA pages styles using GOV.UK Design System classes */
+
+.mfa-page {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.mfa-page__main {
+  flex-grow: 1;
+  background-color: #ffffff;
+}
+
+.mfa-page__service-banner {
+  background-color: #f4f8fb;
+  padding: 15px 0;
+  border-bottom: 2px solid #8eb8dc;
+}
+
+.mfa-page__service-name {
+  font-family: "GDS Transport", arial, sans-serif;
+  font-weight: 700;
+  font-size: 19px;
+  color: #0b0c0c;
+}
+
+.mfa-page__loading {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  min-height: 60vh;
+}
+
+.mfa-page__content-wrapper {
+  max-width: 640px;
+}
+
+.mfa-page__input-wrapper {
+  max-width: 200px;
+  margin-bottom: 30px;
+}
+
+.mfa-page__qr-wrapper {
+  margin: 30px 0;
+  padding: 20px;
+  background-color: #ffffff;
+  border: 1px solid #b1b4b6;
+  display: inline-block;
+}
+
+.mfa-page__manual-key {
+  font-family: "GDS Transport", arial, sans-serif;
+  font-size: 16px;
+  background-color: #f3f2f1;
+  padding: 15px;
+  word-break: break-all;
+  border: 1px solid #b1b4b6;
+}
+
+.mfa-page__recovery-codes {
+  margin: 20px 0;
+  padding: 20px;
+  background-color: #f3f2f1;
+  border: 1px solid #b1b4b6;
+}
+
+.mfa-page__recovery-codes-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+.mfa-page__recovery-code {
+  font-family: "GDS Transport", arial, sans-serif;
+  font-size: 16px;
+  padding: 8px 12px;
+  background-color: #ffffff;
+  border: 1px solid #b1b4b6;
+  text-align: center;
+}
+
+.mfa-page__button-group {
+  display: flex;
+  gap: 15px;
+  margin-bottom: 30px;
+  flex-wrap: wrap;
+}
