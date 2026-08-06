@@ -173,7 +173,8 @@ public static class SiteFormQuestionSeeder
             null,
             SiteFormQuestionType.Date,
             displayOrder: 11,
-            isRequired: true);
+            isRequired: true,
+            dateValidationRule: SiteFormDateValidationRules.NotInFuture);
         questions.Add(fhs08);
 
         // FHS09 - BSFH branding (static Yes/No options)

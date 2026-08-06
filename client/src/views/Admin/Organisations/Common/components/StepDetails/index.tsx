@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo } from 'react';
-import { GovUKFieldset, ErrorSummary } from '../../../../../../components/GovUKComponents';
+import { GovUKFieldset, GovUKErrorSummary } from '../../../../../../components/GovUKComponents';
 import { Organisation, ValidationErrors, validationErrors, OrganisationReducerAction } from '../..';
 
 interface Props {
@@ -33,7 +33,7 @@ const StepDetails = ({ organisation, errors, setErrors, dispatch }: Props): Reac
 
   return (
     <>
-      {errorList.length > 0 && <ErrorSummary errors={errorList} />}
+      {errorList.length > 0 && <GovUKErrorSummary errors={errorList} />}
       <GovUKFieldset legend="Local Authority details" legendSize="m">
         <GovUKFieldset.Input
           id="organisation-name"

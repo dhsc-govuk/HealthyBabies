@@ -168,62 +168,59 @@ public class LocationsController(
 
     [HttpPost("organisations/{organisationId:guid}/locations/bulk-upload/validate")]
     [Authorize(Roles = $"{Role.Admin},{Role.OrganisationAdmin}")]
-    public async Task<ActionResult<BulkUploadLocationsResult>> ValidateBulkUpload(
+    public async Task<ActionResult<BulkUploadLocationsValidationResultDto>> ValidateBulkUpload(
         [FromRoute] Guid organisationId,
         [FromForm] IFormFile file,
         CancellationToken cancellationToken)
     {
-        var validation = await fileValidationService.ValidateAsync(file, FileUploadProfile.BulkUploadCsvOrExcel, cancellationToken);
-        var validationError = validation.Match<string?>(_ => null, e => e.Message);
-        if (validationError is not null)
-        {
-            return BadRequest(new ErrorResponse { Message = validationError });
-        }
-
-        var permissions = permissionsService.GetOrganisationPermissions();
-        return await permissions.MatchAsync(
-            async p =>
+        var validation = await fileValidationService.ValidateBulkUploadFileAsync(file, FileUploadProfile.BulkUploadCsvOrExcel, cancellationToken);
+        return await validation.MatchAsync<ActionResult<BulkUploadLocationsValidationResultDto>>(
+            async validated =>
             {
-                var command = new ValidateBulkUploadLocationsCommand
-                {
-                    File = file,
-                    OrganisationId = new OrganisationId(organisationId)
-                };
+                await using var content = validated.Content;
+                var permissions = permissionsService.GetOrganisationPermissions();
+                return await permissions.MatchAsync<ActionResult<BulkUploadLocationsValidationResultDto>>(
+                    async p =>
+                    {
+                        var command = new ValidateBulkUploadLocationsCommand
+                        {
+                            FileStream = content,
+                            FileName = validated.OriginalFileName,
+                            FileLength = validated.Length,
+                            OrganisationId = new OrganisationId(organisationId)
+                        };
 
-                var result = await sender.Send(command, cancellationToken);
-                return result.Match<ActionResult<BulkUploadLocationsResult>>(
-                    success => Ok(success),
-                    error => BadRequest(new ErrorResponse { Message = error.Message }));
+                        var result = await sender.Send(command, cancellationToken);
+                        return result.Match<ActionResult<BulkUploadLocationsValidationResultDto>>(
+                            success => Ok(success),
+                            error => BadRequest(new ErrorResponse { Message = error.Message }));
+                    },
+                    e => Unauthorized(new ErrorResponse { Message = e.Message }));
             },
-            e => Unauthorized(new ErrorResponse { Message = e.Message }));
+            error => BadRequest(new ErrorResponse { Message = error.Message }));
     }
 
-    [HttpPost("organisations/{organisationId:guid}/locations/bulk-upload/confirm")]
+    [HttpPost("organisations/{organisationId:guid}/locations/bulk-upload/staged")]
     [Authorize(Roles = $"{Role.Admin},{Role.OrganisationAdmin}")]
-    public async Task<ActionResult<ConfirmBulkUploadLocationsResult>> ConfirmBulkUpload(
+    public async Task<ActionResult<BulkUploadLocationsResultDto>> ProcessStagedBulkUpload(
         [FromRoute] Guid organisationId,
-        [FromForm] IFormFile file,
+        [FromBody] ProcessStagedBulkUploadLocationsRequest request,
         CancellationToken cancellationToken)
     {
-        var validation = await fileValidationService.ValidateAsync(file, FileUploadProfile.BulkUploadCsvOrExcel, cancellationToken);
-        var validationError = validation.Match<string?>(_ => null, e => e.Message);
-        if (validationError is not null)
-        {
-            return BadRequest(new ErrorResponse { Message = validationError });
-        }
-
         var permissions = permissionsService.GetOrganisationPermissions();
-        return await permissions.MatchAsync(
+        return await permissions.MatchAsync<ActionResult<BulkUploadLocationsResultDto>>(
             async p =>
             {
-                var command = new ConfirmBulkUploadLocationsCommand
+                var command = new ProcessStagedBulkUploadLocationsCommand
                 {
-                    File = file,
-                    OrganisationId = new OrganisationId(organisationId)
+                    StagingId = request.StagingId,
+                    OrganisationId = new OrganisationId(organisationId),
+                    SelectedRowNumbers = request.SelectedRowNumbers,
+                    CellEdits = request.CellEdits.Select(e => new BulkUploadLocationCellEdit(e.RowNumber, e.QuestionCode, Utility.HtmlDecodeField(e.Value))).ToList()
                 };
 
                 var result = await sender.Send(command, cancellationToken);
-                return result.Match<ActionResult<ConfirmBulkUploadLocationsResult>>(
+                return result.Match<ActionResult<BulkUploadLocationsResultDto>>(
                     success => Ok(success),
                     error => BadRequest(new ErrorResponse { Message = error.Message }));
             },
@@ -264,38 +261,13 @@ public class LocationsController(
         var result = await sender.Send(input, cancellationToken);
         return Ok(result);
     }
-
-    [HttpPost("organisations/{organisationId:guid}/locations/bulk-upload/update")]
-    [Authorize(Roles = $"{Role.Admin},{Role.OrganisationAdmin}")]
-    public async Task<ActionResult<BulkUpdateLocationsResult>> BulkUpdate(
-        [FromRoute] Guid organisationId,
-        [FromBody] BulkUpdateLocationsRequest request,
-        CancellationToken cancellationToken)
-    {
-        var locations = request.Locations.Select(l => new LocationBulkUpdateItem(
-            l.LocationId,
-            Utility.HtmlDecodeField(l.Name),
-            l.Answers.Select(a => new SiteAnswerInputDto(a.QuestionCode, Utility.HtmlDecodeNullableField(a.Value))).ToList())).ToList();
-
-        var input = new BulkUpdateLocationsCommand
-        {
-            OrganisationId = organisationId,
-            Locations = locations
-        };
-
-        var result = await sender.Send(input, cancellationToken);
-        return result.Match<ActionResult<BulkUpdateLocationsResult>>(
-            r => r,
-            e => e.ToObjectResult());
-    }
 }
 
 public record MatchLocationsRequest(IReadOnlyList<string> SiteNames);
 
-// public record SiteAnswerInputRequest(string QuestionCode, string? Value);
-public record BulkUpdateLocationItemRequest(
-    Guid? LocationId,
-    string Name,
-    IReadOnlyList<AnswerInputRequest> Answers);
+public record BulkUploadLocationCellEditRequest(int RowNumber, string QuestionCode, string Value);
 
-public record BulkUpdateLocationsRequest(IReadOnlyList<BulkUpdateLocationItemRequest> Locations);
+public record ProcessStagedBulkUploadLocationsRequest(
+    Guid StagingId,
+    IReadOnlyList<int> SelectedRowNumbers,
+    IReadOnlyList<BulkUploadLocationCellEditRequest> CellEdits);

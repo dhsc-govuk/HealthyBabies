@@ -1,6 +1,7 @@
 using Api.Modules.Errors;
 using Api.Services.Abstract;
 using Application.Common;
+using Application.Common.FileValidation;
 using Application.Common.Permissions;
 using Application.ServiceForms.Dtos;
 using Application.Services.Commands;
@@ -9,6 +10,7 @@ using Application.Services.Queries;
 using Domain.ValueObjects;
 using MediatR;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Api.Controllers;
@@ -20,7 +22,8 @@ public class ServicesController(
     PermissionsService permissionsService,
     ISender sender,
     IServicesControllerService controllerService,
-    IServicesBulkUploadTemplateService bulkUploadTemplateService)
+    IServicesBulkUploadTemplateService bulkUploadTemplateService,
+    IFileValidationService fileValidationService)
     : ControllerBase
 {
     [HttpGet]
@@ -174,25 +177,47 @@ public class ServicesController(
         return Ok(result);
     }
 
-    [HttpPost("bulk-upload")]
-    public async Task<ActionResult<BulkUpdateServicesResult>> BulkUpdate(
-        [FromBody] BulkUpdateServicesRequest request,
+    [HttpPost("bulk-upload/validate")]
+    public async Task<ActionResult<BulkUploadServicesValidationResultDto>> ValidateBulkUpload(
+        [FromForm] IFormFile file,
         CancellationToken cancellationToken)
     {
-        var services = request.Services.Select(s => new ServiceBulkUpdateItem(
-            s.ServiceId,
-            Utility.HtmlDecodeField(s.Name),
-            s.Answers.Select(a => new ServiceAnswerInputDto(a.QuestionCode, Utility.HtmlDecodeNullableField(a.Value))).ToList())).ToList();
+        var validation = await fileValidationService.ValidateBulkUploadFileAsync(file, FileUploadProfile.BulkUploadCsvOrExcel, cancellationToken);
+        return await validation.MatchAsync<ActionResult<BulkUploadServicesValidationResultDto>>(
+            async validated =>
+            {
+                await using var content = validated.Content;
+                var command = new ValidateBulkUploadServicesCommand
+                {
+                    FileStream = content,
+                    FileName = validated.OriginalFileName,
+                    FileLength = validated.Length
+                };
 
-        var input = new BulkUpdateServicesCommand
+                var result = await sender.Send(command, cancellationToken);
+                return result.Match<ActionResult<BulkUploadServicesValidationResultDto>>(
+                    success => Ok(success),
+                    error => error.ToObjectResult());
+            },
+            error => BadRequest(error.Message));
+    }
+
+    [HttpPost("bulk-upload/staged")]
+    public async Task<ActionResult<BulkUploadServicesResultDto>> ProcessStagedBulkUpload(
+        [FromBody] ProcessStagedBulkUploadServicesRequest request,
+        CancellationToken cancellationToken)
+    {
+        var command = new ProcessStagedBulkUploadServicesCommand
         {
-            Services = services
+            StagingId = request.StagingId,
+            SelectedRowNumbers = request.SelectedRowNumbers,
+            CellEdits = request.CellEdits.Select(e => new BulkUploadServiceCellEdit(e.RowNumber, e.QuestionCode, Utility.HtmlDecodeField(e.Value))).ToList()
         };
 
-        var result = await sender.Send(input, cancellationToken);
-        return result.Match<ActionResult<BulkUpdateServicesResult>>(
-            r => r,
-            e => e.ToObjectResult());
+        var result = await sender.Send(command, cancellationToken);
+        return result.Match<ActionResult<BulkUploadServicesResultDto>>(
+            success => Ok(success),
+            error => error.ToObjectResult());
     }
 }
 
@@ -211,9 +236,9 @@ public record UpdateServiceStepTwoRequest(
 
 public record MatchServicesRequest(IReadOnlyList<string> ServiceNames);
 
-public record BulkUpdateServiceItemRequest(
-    Guid? ServiceId,
-    string Name,
-    IReadOnlyList<AnswerInputRequest> Answers);
+public record BulkUploadServiceCellEditRequest(int RowNumber, string QuestionCode, string Value);
 
-public record BulkUpdateServicesRequest(IReadOnlyList<BulkUpdateServiceItemRequest> Services);
+public record ProcessStagedBulkUploadServicesRequest(
+    Guid StagingId,
+    IReadOnlyList<int> SelectedRowNumbers,
+    IReadOnlyList<BulkUploadServiceCellEditRequest> CellEdits);

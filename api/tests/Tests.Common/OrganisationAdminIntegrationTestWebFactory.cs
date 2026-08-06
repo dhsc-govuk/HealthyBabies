@@ -41,8 +41,10 @@ public class OrganisationAdminIntegrationTestWebFactory : WebApplicationFactory<
 
     public InMemoryBlobService BlobService => _blobService;
 
+    public string ConnectionString => _dbContainer.GetConnectionString();
+
     private readonly PostgreSqlContainer _dbContainer = new PostgreSqlBuilder()
-        .WithImage("postgres:latest")
+        .WithImage("postgres:15.1-alpine")
         .WithDatabase("neur-eye-tbo-db")
         .WithUsername("postgres")
         .WithPassword("postgres")

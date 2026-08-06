@@ -1,0 +1,48 @@
+import React from 'react';
+import { Link } from 'react-router-dom';
+import { GeneralLayout } from '../../../layouts';
+import { H1, H2, Paragraph } from '../../../components/GovUKComponents';
+import usePageTitle from '../../../hooks/usePageTitle';
+
+const Home = (): React.ReactElement => {
+  usePageTitle('Home');
+  return (
+    <GeneralLayout>
+      <div style={{ paddingTop: '30px' }}>
+        <H1>Delivery Plan</H1>
+        <Paragraph>Use this service to manage and submit delivery plan data for the Best Start Family Hubs and Healthy Babies programme.</Paragraph>
+        <Paragraph>You can:</Paragraph>
+        <ul className="govuk-list govuk-list--bullet">
+          <li>
+            <Link to="/delivery-plan/core-data" className="govuk-link">
+              view core data
+            </Link>
+            , like services and delivery locations
+          </li>
+          <li>
+            <Link to="/delivery-plan/submissions" className="govuk-link">
+              submit delivery plan returns and view previously submitted returns
+            </Link>
+          </li>
+        </ul>
+        <H2>Get help using this service</H2>
+        <p className="govuk-body">
+          <Link to="/delivery-plan/help" className="govuk-link">
+            Guidance
+          </Link>
+          {' '}is available to help you use this service.
+        </p>
+        <Paragraph>You can also contact us for more help.</Paragraph>
+        <p className="govuk-body">
+          <strong>Email</strong>
+          <br />
+          <a href="mailto:support@example.gov.uk" className="govuk-link">
+            support@example.gov.uk
+          </a>
+        </p>
+      </div>
+    </GeneralLayout>
+  );
+};
+
+export default Home;

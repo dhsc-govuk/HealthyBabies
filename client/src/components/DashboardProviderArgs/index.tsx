@@ -2,6 +2,9 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import {
   Dashboard as DashboardIcon,
   HomeWorkOutlined as OrganisationIcon,
+  StorageOutlined as CoreDataIcon,
+  AssignmentOutlined as SubmissionsIcon,
+  HelpOutline as HelpIcon,
 } from '@mui/icons-material';
 export function withRouter(Component: any) {
   function ComponentWithRouterProp(props: any) {
@@ -33,6 +36,18 @@ export const listItems = [
       title: 'Local Authority Admin',
       items: [
         { label: 'Dashboard', icon: DashboardIcon, to: '/organisation-admin/core-data' },
+      ],
+    },
+  },
+  {
+    name: 'delivery plan lead',
+    payload: {
+      key: 'delivery-plan',
+      title: 'Delivery Plan Lead',
+      items: [
+        { label: 'Core Data', icon: CoreDataIcon, to: '/delivery-plan/core-data' },
+        { label: 'Submissions', icon: SubmissionsIcon, to: '/delivery-plan/submissions' },
+        { label: 'Help', icon: HelpIcon, to: '/delivery-plan/help' },
       ],
     },
   },

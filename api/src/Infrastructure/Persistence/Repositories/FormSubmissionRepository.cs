@@ -113,6 +113,62 @@ public class FormSubmissionRepository(ApplicationDbContext dbContext)
         return entity ?? Option<FormSubmission>.None;
     }
 
+    public async Task<Option<FormSubmission>> GetByFormModuleDataCollectionAndOutcomeScoreAsync(
+        DataCollectionFormModuleId formModuleId,
+        DataCollectionId dataCollectionId,
+        Guid serviceId,
+        CancellationToken cancellationToken = default)
+    {
+        var entity = await Context.FormSubmissions
+            .AsTracking()
+            .Include(x => x.FieldValues)
+            .FirstOrDefaultAsync(x => x.FormModuleId == formModuleId && x.DataCollectionId == dataCollectionId && x.EntityType == "OutcomeScore" && x.EntityId == serviceId, cancellationToken);
+        return entity ?? Option<FormSubmission>.None;
+    }
+
+    public async Task<IReadOnlyList<FormSubmission>> GetAllOutcomeScoresByServiceAsync(
+        DataCollectionFormModuleId formModuleId,
+        DataCollectionId dataCollectionId,
+        Guid serviceId,
+        CancellationToken cancellationToken = default)
+    {
+        return await Context.FormSubmissions
+            .AsNoTracking()
+            .Include(x => x.FieldValues)
+            .Where(x => x.FormModuleId == formModuleId && x.DataCollectionId == dataCollectionId && x.EntityType == "OutcomeScore" && x.EntityId == serviceId)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<System.Collections.Generic.HashSet<Guid>> GetServiceIdsWithExistingOutcomeScoresAsync(
+        DataCollectionFormModuleId formModuleId,
+        DataCollectionId dataCollectionId,
+        IReadOnlyList<Guid> serviceIds,
+        CancellationToken cancellationToken = default)
+    {
+        var ids = serviceIds.Select(id => (Guid?)id).ToList();
+        var result = await Context.FormSubmissions
+            .AsNoTracking()
+            .Where(x => x.FormModuleId == formModuleId
+                && x.DataCollectionId == dataCollectionId
+                && x.EntityType == "OutcomeScore"
+                && ids.Contains(x.EntityId))
+            .Select(x => x.EntityId)
+            .Distinct()
+            .ToListAsync(cancellationToken);
+        return new System.Collections.Generic.HashSet<Guid>(result.Where(id => id.HasValue).Select(id => id!.Value));
+    }
+
+    public async Task DeleteOutcomeScoresByServiceAsync(
+        DataCollectionFormModuleId formModuleId,
+        DataCollectionId dataCollectionId,
+        Guid serviceId,
+        CancellationToken cancellationToken = default)
+    {
+        await Context.FormSubmissions
+            .Where(x => x.FormModuleId == formModuleId && x.DataCollectionId == dataCollectionId && x.EntityType == "OutcomeScore" && x.EntityId == serviceId)
+            .ExecuteDeleteAsync(cancellationToken);
+    }
+
     public async Task<Option<FormSubmission>> GetByFormModuleDataCollectionAndServiceCategoryAsync(
         DataCollectionFormModuleId formModuleId,
         DataCollectionId dataCollectionId,
@@ -208,6 +264,21 @@ public class FormSubmissionRepository(ApplicationDbContext dbContext)
             .AsTracking()
             .Include(x => x.FieldValues)
             .Where(x => x.OrganisationId == organisationId)
+            .OrderByDescending(x => x.CreatedAt)
+            .ToListAsync(cancellationToken);
+    }
+
+    public async Task<IReadOnlyList<FormSubmission>> GetActivitiesByOrganisationAndModulesAsync(
+        OrganisationId organisationId,
+        IReadOnlyCollection<DataCollectionFormModuleId> formModuleIds,
+        CancellationToken cancellationToken = default)
+    {
+        return await Context.FormSubmissions
+            .AsNoTracking()
+            .Include(x => x.FieldValues)
+            .Where(x => x.OrganisationId == organisationId
+                && x.EntityType == "Activity"
+                && formModuleIds.Contains(x.FormModuleId))
             .OrderByDescending(x => x.CreatedAt)
             .ToListAsync(cancellationToken);
     }

@@ -15,6 +15,7 @@ public record UpdateDataCollectionCommand : IRequest<Either<DataCollectionExcept
     public string? Description { get; init; }
     public DateTime StartDate { get; init; }
     public DateTime EndDate { get; init; }
+    public string Type { get; init; } = DataCollectionTypeConstants.DeliveryPlan;
     public bool IsSubmittedByAllLocalAuthorities { get; init; }
     public bool SaveAsDraft { get; init; } = false;
     public IReadOnlyList<Guid> LocalAuthorityIds { get; init; } = [];
@@ -55,13 +56,14 @@ public class UpdateDataCollectionCommandHandler(
     {
         try
         {
+            var type = DataCollectionType.From(request.Type);
             if (request.SaveAsDraft)
             {
-                dataCollection.UpdateAndSaveAsDraft(request.Name, request.Description?.Trim(), request.StartDate, request.EndDate, request.IsSubmittedByAllLocalAuthorities);
+                dataCollection.UpdateAndSaveAsDraft(request.Name, request.Description?.Trim(), request.StartDate, request.EndDate, request.IsSubmittedByAllLocalAuthorities, type);
             }
             else
             {
-                dataCollection.UpdateAndPublish(request.Name, request.Description?.Trim(), request.StartDate, request.EndDate, request.IsSubmittedByAllLocalAuthorities);
+                dataCollection.UpdateAndPublish(request.Name, request.Description?.Trim(), request.StartDate, request.EndDate, request.IsSubmittedByAllLocalAuthorities, type);
             }
 
             // Update local authority assignments

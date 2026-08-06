@@ -24,8 +24,10 @@ export interface CellError {
 }
 
 export interface ServiceSelection {
+  rowIndex: number;
   serviceName: string;
   updateFromFile: boolean;
+  hasExistingData: boolean;
   status: string;
   lastUpdated?: string;
 }

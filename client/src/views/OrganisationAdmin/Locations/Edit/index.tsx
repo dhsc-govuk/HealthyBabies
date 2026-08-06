@@ -1,10 +1,10 @@
-import React, { useReducer, useState, useEffect } from 'react';
+import React, { useReducer, useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from 'react-query';
-import { ErrorSummary, LoadingSpinner, Button, useGovUKNotification } from '../../../../components/GovUKComponents';
+import { GovUKErrorSummary, LoadingSpinner, Button, useGovUKNotification } from '../../../../components/GovUKComponents';
 import { GeneralLayout } from '../../../../layouts';
 import { useAuthProvider } from '../../../../components/AuthProvider';
-import { getSiteFormQuestions, siteFormQuestionsCacheKey } from '../../../../components/Global/SiteForms';
+import { getSiteFormQuestions, siteFormQuestionsCacheKey, SiteFormQuestionType } from '../../../../components/Global/SiteForms';
 import { processError } from '../../../../helpers/axiosErrorFallback';
 import { viewServiceDeliverySiteCacheKey } from '../../../../helpers/queriesParams';
 import useErrorSummaryFocus from '../../../../hooks/useErrorSummaryFocus';
@@ -108,6 +108,28 @@ const LocationsEdit = (): React.ReactElement => {
     navigate(`/organisation-admin/core-data/delivery-locations/${locationId}`);
   };
 
+  const errorList = useMemo(() => {
+    return Object.entries(errors)
+      .filter(([, value]) => value)
+      .map(([key, value]) => {
+        const lcKey = key.toLowerCase();
+        const question = questions.find((q) => q.code === key);
+        let targetName = lcKey;
+        if (question) {
+          if (question.questionType === SiteFormQuestionType.Date) {
+            targetName = `${lcKey}-day`;
+          } else if (
+            (question.questionType === SiteFormQuestionType.Radio || question.questionType === SiteFormQuestionType.Checkbox) &&
+            question.options.length > 0
+          ) {
+            const firstOption = [...question.options].sort((a, b) => a.displayOrder - b.displayOrder)[0];
+            targetName = `${lcKey}-${firstOption.value}`;
+          }
+        }
+        return { targetName, text: value || '' };
+      });
+  }, [errors, questions]);
+
   if (isLoadingQuestions || isLoadingLocation) {
     return (
       <GeneralLayout>
@@ -115,13 +137,6 @@ const LocationsEdit = (): React.ReactElement => {
       </GeneralLayout>
     );
   }
-
-  const errorList = Object.entries(errors)
-    .map(([key, value]) => ({
-      targetName: key,
-      text: value || '',
-    }))
-    .filter((e) => e.text);
 
   return (
     <LoadingSpinner loading={isLoadingLocation} label="Loading">
@@ -132,7 +147,7 @@ const LocationsEdit = (): React.ReactElement => {
           { label: locationData?.data?.name ?? '', link: `/organisation-admin/core-data/delivery-locations/${locationId}` },
         ]}
         currentPage="Edit site">
-        {errorList.length > 0 && <ErrorSummary errors={errorList} />}
+        {errorList.length > 0 && <GovUKErrorSummary errors={errorList} />}
         <LocationForm state={state} dispatch={dispatch} errors={errors} questions={questions} />
         <Stack direction="row" spacing={2} sx={{ mt: 3 }}>
           <Button onClick={handleSave}>Save changes</Button>

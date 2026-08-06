@@ -6,10 +6,10 @@ import { LoadingSpinner, GovUKButton, GovUKFieldset } from '../../../../componen
 import useErrorSummaryFocus from '../../../../hooks/useErrorSummaryFocus';
 import useFormTelemetry from '../../../../hooks/useFormTelemetry';
 import usePageTitle from '../../../../hooks/usePageTitle';
+import { processError } from '../../../../helpers/axiosErrorFallback';
 import { getSection, getSubmission, saveSection, SectionFieldDto } from '../queries';
 
 const SectionForm = (): React.ReactElement => {
-  usePageTitle('Complete section');
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { submissionId, moduleId, sectionId } = useParams<{
@@ -20,6 +20,7 @@ const SectionForm = (): React.ReactElement => {
 
   const [fieldValues, setFieldValues] = useState<Record<string, string | null>>({});
   const [submitAttempts, setSubmitAttempts] = useState(0);
+  const [saveError, setSaveError] = useState<string | undefined>(undefined);
 
   const { data: submissionData } = useQuery({
     queryKey: ['organisation-admin-submission', submissionId],
@@ -53,11 +54,13 @@ const SectionForm = (): React.ReactElement => {
       queryClient.invalidateQueries(['organisation-admin-section', submissionId, sectionId]);
       navigate(`/organisation-admin/submissions/${submissionId}/modules/${moduleId}`);
     },
-    onError: () => {
+    onError: (error) => {
       setSubmitAttempts((n) => n + 1);
+      processError(error, setSaveError);
     },
   });
 
+  usePageTitle('Complete section', saveMutation.isError);
   useErrorSummaryFocus(submitAttempts, saveMutation.isError);
 
   const { trackStarted, trackSubmitted, trackDraftSaved } = useFormTelemetry(
@@ -225,7 +228,7 @@ const SectionForm = (): React.ReactElement => {
         <div className="govuk-error-summary" data-module="govuk-error-summary">
           <h2 className="govuk-error-summary__title">There was a problem saving</h2>
           <div className="govuk-error-summary__body">
-            <p>Please try again or contact support if the problem persists.</p>
+            <p>{saveError ?? 'Please try again or contact support if the problem persists.'}</p>
           </div>
         </div>
       )}

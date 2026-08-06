@@ -1,7 +1,7 @@
 import React, { useReducer, useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from 'react-query';
-import { GeneralLayout } from '../../../../../layouts';
+import { SettingsLayout } from '../../../../../layouts';
 import { LoadingSpinner, Button, useGovUKNotification } from '../../../../../components/GovUKComponents';
 import useErrorSummaryFocus from '../../../../../hooks/useErrorSummaryFocus';
 import { processError } from '../../../../../helpers/axiosErrorFallback';
@@ -12,6 +12,7 @@ import QuestionForm from '../Common/QuestionForm';
 import { questionFormReducer } from '../Common/reducer';
 import { encodeForWaf, encodeNullableForWaf } from '../../../../../helpers/stringUtils';
 import { ValidationErrors, validationMessages, initialFormState, requiresOptions } from '../Common/types';
+import { getConditionFieldKeys } from '../../DataCollectionFormQuestions/Common/ConditionalRulesBuilder';
 
 const CreateSiteFormQuestion = (): React.ReactElement => {
   const navigate = useNavigate();
@@ -47,6 +48,10 @@ const CreateSiteFormQuestion = (): React.ReactElement => {
   });
 
   const validate = useCallback(() => {
+    // Ordering (forward-ref) isn't checked here: a new question is always appended after every
+    // existing one, so any referenced question is necessarily earlier. Only guard duplicates.
+    const conditionFieldKeys = getConditionFieldKeys(formState.conditionalRules);
+    const hasDuplicateCondition = new Set(conditionFieldKeys).size !== conditionFieldKeys.length;
     const errorItems: ValidationErrors = {
       code: !formState.code
         ? validationMessages.code
@@ -61,6 +66,7 @@ const CreateSiteFormQuestion = (): React.ReactElement => {
               formState.options.some((opt) => !opt.value || !opt.label)
             ? 'All options must have a value and label'
             : false,
+      conditionalRules: hasDuplicateCondition ? validationMessages.conditionalRulesDuplicate : false,
     };
     setErrors(errorItems);
     setSubmitAttempts((n) => n + 1);
@@ -80,6 +86,8 @@ const CreateSiteFormQuestion = (): React.ReactElement => {
       helpText: encodeNullableForWaf(formState.helpText),
       conditionalQuestionCode: formState.conditionalQuestionCode || null,
       conditionalValue: encodeNullableForWaf(formState.conditionalValue),
+      conditionalRules: formState.conditionalRules || null,
+      dateValidationRule: formState.dateValidationRule || null,
       options: formState.options.map((opt) => ({ ...opt, label: encodeForWaf(opt.label), value: encodeForWaf(opt.value) })),
     });
   };
@@ -90,7 +98,7 @@ const CreateSiteFormQuestion = (): React.ReactElement => {
 
   return (
     <>
-      <GeneralLayout
+      <SettingsLayout
         breadcrumbs={[
           { label: 'Admin', link: '/admin/home' },
           { label: 'Configuration', link: '/admin/configuration' },
@@ -110,7 +118,7 @@ const CreateSiteFormQuestion = (): React.ReactElement => {
             Cancel
           </Button>
         </Stack>
-      </GeneralLayout>
+      </SettingsLayout>
       {isLoading && <LoadingSpinner label="Creating question" />}
     </>
   );

@@ -13,6 +13,7 @@ import QuestionForm from '../Common/QuestionForm';
 import { questionFormReducer, QuestionFormAction } from '../Common/reducer';
 import { encodeForWaf, encodeNullableForWaf } from '../../../../../helpers/stringUtils';
 import { ValidationErrors, validationMessages, initialFormState, requiresOptions, QuestionFormState } from '../Common/types';
+import { getConditionFieldKeys } from '../../DataCollectionFormQuestions/Common/ConditionalRulesBuilder';
 
 type UrlParams = {
   questionId: string;
@@ -32,7 +33,10 @@ const EditServiceFormQuestion = (): React.ReactElement => {
     options: false,
   });
   const [submitAttempts, setSubmitAttempts] = useState(0);
-  useErrorSummaryFocus(submitAttempts, (Object.keys(errors) as Array<keyof typeof errors>).some((k) => errors[k]));
+  useErrorSummaryFocus(
+    submitAttempts,
+    (Object.keys(errors) as Array<keyof typeof errors>).some((k) => errors[k])
+  );
 
   const { data, isLoading: loading } = useQuery({
     queryKey: ['service-form-question-edit', questionId],
@@ -63,10 +67,14 @@ const EditServiceFormQuestion = (): React.ReactElement => {
         helpText: q.helpText || '',
         conditionalQuestionCode: q.conditionalQuestionCode || '',
         conditionalValue: q.conditionalValue || '',
+        dateValidationRule: q.dateValidationRule || '',
+        conditionalRules: q.conditionalRules || '',
         options: q.options.map((opt) => ({
           value: opt.value,
           label: opt.label,
           displayOrder: opt.displayOrder,
+          // Existing options: value is locked and must never change on relabel.
+          isPersisted: true,
         })),
       };
       dispatch({ type: QuestionFormAction.INIT, value: state });
@@ -87,8 +95,20 @@ const EditServiceFormQuestion = (): React.ReactElement => {
     },
   });
 
+  const allQuestions = questionsData?.data ?? [];
+
   const validate = useCallback(() => {
     const needsOptions = requiresOptions(formState.questionType) && formState.isPredefined;
+    // Fold step into a global order so a step-2 question is treated as after every step-1 one
+    // (Service displayOrder restarts each step).
+    const orderOf = (step: number, displayOrder: number) => step * 1000 + displayOrder;
+    const currentOrder = orderOf(formState.step, formState.displayOrder);
+    const conditionFieldKeys = getConditionFieldKeys(formState.conditionalRules);
+    const hasDuplicateCondition = new Set(conditionFieldKeys).size !== conditionFieldKeys.length;
+    const forwardReferencedKey = conditionFieldKeys.find((fk) => {
+      const referenced = allQuestions.find((q) => q.code === fk);
+      return referenced && orderOf(referenced.step, referenced.displayOrder) > currentOrder;
+    });
     const errorItems: ValidationErrors = {
       code: false,
       label: !formState.label ? validationMessages.label : false,
@@ -96,13 +116,14 @@ const EditServiceFormQuestion = (): React.ReactElement => {
         needsOptions && formState.options.length === 0
           ? validationMessages.options
           : needsOptions && formState.options.some((opt) => !opt.value || !opt.label)
-            ? 'All options must have a value and label'
-            : false,
+          ? 'All options must have a value and label'
+          : false,
+      conditionalRules: hasDuplicateCondition ? validationMessages.conditionalRulesDuplicate : forwardReferencedKey ? validationMessages.conditionalRulesForwardRef : false,
     };
     setErrors(errorItems);
     setSubmitAttempts((n) => n + 1);
     return !Object.values(errorItems).some((e) => e);
-  }, [formState]);
+  }, [formState, allQuestions]);
 
   const handleSave = async () => {
     if (!validate()) return;
@@ -121,9 +142,12 @@ const EditServiceFormQuestion = (): React.ReactElement => {
       helpText: encodeNullableForWaf(formState.helpText),
       conditionalQuestionCode: formState.conditionalQuestionCode || null,
       conditionalValue: encodeNullableForWaf(formState.conditionalValue),
-      options: formState.isPredefined
-        ? formState.options.map((opt) => ({ ...opt, label: encodeForWaf(opt.label), value: encodeForWaf(opt.value) }))
-        : [],
+      dateValidationRule: formState.dateValidationRule || null,
+      conditionalRules: formState.conditionalRules || null,
+      // Persist whatever options are loaded in the form. Non-predefined questions that genuinely load
+      // their options dynamically (e.g. SMD19 sites) have none stored, so this still sends []. This
+      // avoids wiping the options of a question that has them but is flagged non-predefined (e.g. SMD09).
+      options: formState.options.map((opt) => ({ ...opt, label: encodeForWaf(opt.label), value: encodeForWaf(opt.value) })),
     });
   };
 
@@ -140,14 +164,7 @@ const EditServiceFormQuestion = (): React.ReactElement => {
         ]}
         backLink={{ href: '/admin/configuration/service-form-questions', onClick: handleCancel }}
         currentPage="Edit Question">
-        <QuestionForm
-          formState={formState}
-          errors={errors}
-          setErrors={setErrors}
-          dispatch={dispatch}
-          isEdit
-          allQuestions={questionsData?.data ?? []}
-        />
+        <QuestionForm formState={formState} errors={errors} setErrors={setErrors} dispatch={dispatch} isEdit allQuestions={questionsData?.data ?? []} />
         <Stack direction="row" spacing={2} sx={{ mt: 3 }}>
           <Button onClick={handleSave}>Save</Button>
           <Button variant="secondary" onClick={handleCancel}>

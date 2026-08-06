@@ -13,6 +13,7 @@ public class DataCollection : SoftDeletableEntity<DataCollectionId>
     public bool IsDraft { get; private set; }
     public bool IsSubmittedByAllLocalAuthorities { get; private set; }
     public bool IsClosed { get; private set; }
+    public DataCollectionType Type { get; private set; }
 
     private readonly List<DataCollectionLocalAuthority> _localAuthorities = new();
     public IReadOnlyCollection<DataCollectionLocalAuthority> LocalAuthorities => _localAuthorities.AsReadOnly();
@@ -27,7 +28,8 @@ public class DataCollection : SoftDeletableEntity<DataCollectionId>
         DateTime startDate,
         DateTime endDate,
         bool isSubmittedByAllLocalAuthorities,
-        bool isDraft)
+        bool isDraft,
+        DataCollectionType type)
     {
         Id = id;
         Name = name;
@@ -37,6 +39,7 @@ public class DataCollection : SoftDeletableEntity<DataCollectionId>
         IsDraft = isDraft;
         IsSubmittedByAllLocalAuthorities = isSubmittedByAllLocalAuthorities;
         IsClosed = false;
+        Type = type;
         CreatedAt = DateTime.UtcNow;
     }
 
@@ -47,13 +50,14 @@ public class DataCollection : SoftDeletableEntity<DataCollectionId>
         DateTime startDate,
         DateTime endDate,
         bool isSubmittedByAllLocalAuthorities = true,
-        bool saveAsDraft = false)
+        bool saveAsDraft = false,
+        DataCollectionType? type = null)
     {
         Guard.NotNull(id, nameof(id));
         Guard.NotNullOrEmpty(name, nameof(name));
         Guard.Ensure(startDate < endDate, "Start date must be before end date");
 
-        return new DataCollection(id, name, description, startDate, endDate, isSubmittedByAllLocalAuthorities, saveAsDraft);
+        return new DataCollection(id, name, description, startDate, endDate, isSubmittedByAllLocalAuthorities, saveAsDraft, type ?? DataCollectionType.DeliveryPlan);
     }
 
     public void UpdateAndSaveAsDraft(
@@ -61,7 +65,8 @@ public class DataCollection : SoftDeletableEntity<DataCollectionId>
         string? description,
         DateTime startDate,
         DateTime endDate,
-        bool isSubmittedByAllLocalAuthorities)
+        bool isSubmittedByAllLocalAuthorities,
+        DataCollectionType? type = null)
     {
         Guard.NotNullOrEmpty(name, nameof(name));
         Guard.Ensure(startDate < endDate, "Start date must be before end date");
@@ -72,6 +77,7 @@ public class DataCollection : SoftDeletableEntity<DataCollectionId>
         EndDate = endDate;
         IsSubmittedByAllLocalAuthorities = isSubmittedByAllLocalAuthorities;
         IsDraft = true;
+        Type = type ?? DataCollectionType.DeliveryPlan;
         UpdatedAt = DateTime.UtcNow;
     }
 
@@ -80,7 +86,8 @@ public class DataCollection : SoftDeletableEntity<DataCollectionId>
         string? description,
         DateTime startDate,
         DateTime endDate,
-        bool isSubmittedByAllLocalAuthorities)
+        bool isSubmittedByAllLocalAuthorities,
+        DataCollectionType? type = null)
     {
         Guard.NotNullOrEmpty(name, nameof(name));
         Guard.Ensure(startDate < endDate, "Start date must be before end date");
@@ -91,6 +98,7 @@ public class DataCollection : SoftDeletableEntity<DataCollectionId>
         EndDate = endDate;
         IsSubmittedByAllLocalAuthorities = isSubmittedByAllLocalAuthorities;
         IsDraft = false;
+        Type = type ?? DataCollectionType.DeliveryPlan;
         UpdatedAt = DateTime.UtcNow;
     }
 
@@ -105,6 +113,34 @@ public class DataCollection : SoftDeletableEntity<DataCollectionId>
         _localAuthorities.Add(assignment);
         UpdatedAt = DateTime.UtcNow;
     }
+
+    // A local authority's own extended end date overrides the collection's default EndDate for that
+    // local authority - callers must use this instead of EndDate directly for deadline/lock checks.
+    public DateTime GetEffectiveEndDate(OrganisationId localAuthorityId)
+    {
+        var assignment = _localAuthorities.FirstOrDefault(la => la.LocalAuthorityId == localAuthorityId);
+        return assignment?.EndDate ?? EndDate;
+    }
+
+    private static readonly TimeZoneInfo UkTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Europe/London");
+
+    // EndDate values represent a UK calendar date - the last day submissions are accepted - not a
+    // precise instant. Postgres round-trips them as UTC, and UTC vs UK local time (BST) disagree on
+    // the calendar date for the last hour of each UK day, so callers must compare via UK local time
+    // rather than taking .Date on the raw UTC value, or the deadline silently loses a day near midnight.
+    private static DateTime ToUkDate(DateTime value)
+    {
+        var utc = value.Kind == DateTimeKind.Utc ? value : DateTime.SpecifyKind(value, DateTimeKind.Utc);
+        return TimeZoneInfo.ConvertTimeFromUtc(utc, UkTimeZone).Date;
+    }
+
+    // Number of whole UK calendar days remaining before the deadline; 0 means today is the last day.
+    public int GetDaysRemaining(OrganisationId localAuthorityId) =>
+        (ToUkDate(GetEffectiveEndDate(localAuthorityId)) - ToUkDate(DateTime.UtcNow)).Days;
+
+    // True once the UK calendar day after the deadline has begun - the deadline day itself stays open.
+    public bool IsClosedFor(OrganisationId localAuthorityId) =>
+        ToUkDate(DateTime.UtcNow) > ToUkDate(GetEffectiveEndDate(localAuthorityId));
 
     public void UpdateLocalAuthorityEndDate(OrganisationId localAuthorityId, DateTime? endDate)
     {
@@ -209,13 +245,13 @@ public class DataCollection : SoftDeletableEntity<DataCollectionId>
             return DataCollectionStatus.Closed;
         }
 
-        var now = DateTime.UtcNow;
-        if (now < StartDate)
+        var todayUk = ToUkDate(DateTime.UtcNow);
+        if (todayUk < ToUkDate(StartDate))
         {
             return DataCollectionStatus.Planned;
         }
 
-        if (now >= StartDate && now <= EndDate)
+        if (todayUk <= ToUkDate(EndDate))
         {
             return DataCollectionStatus.Open;
         }

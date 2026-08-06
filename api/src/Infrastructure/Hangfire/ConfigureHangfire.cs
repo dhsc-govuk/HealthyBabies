@@ -1,6 +1,7 @@
 using Application.Common.Interfaces;
 using Hangfire;
 using Hangfire.PostgreSql;
+using Infrastructure.Persistence;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Newtonsoft.Json;
@@ -11,7 +12,9 @@ public static class ConfigureHangfire
 {
     public static void AddHangfireServices(this IServiceCollection services, IConfiguration configuration)
     {
-        var hangfireConnection = configuration.GetConnectionString("DefaultConnection")!;
+        var dataSource = PostgresDataSourceFactory.Build(
+            configuration.GetConnectionString("DefaultConnection")!,
+            configuration["Database:ManagedIdentityClientId"]);
 
         services.AddHangfire(config => config
             .SetDataCompatibilityLevel(CompatibilityLevel.Version_180)
@@ -23,7 +26,7 @@ public static class ConfigureHangfire
                 ReferenceLoopHandling = ReferenceLoopHandling.Ignore
             })
             .UsePostgreSqlStorage(
-                options => options.UseNpgsqlConnection(hangfireConnection),
+                options => options.UseConnectionFactory(new DataSourceConnectionFactory(dataSource)),
                 new PostgreSqlStorageOptions
                 {
                     SchemaName = "hangfire_schema",

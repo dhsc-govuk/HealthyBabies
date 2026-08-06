@@ -209,7 +209,8 @@ public class DataCollectionFormQuestionsController(
         {
             Code = Utility.HtmlDecodeField(dto.Code),
             Name = Utility.HtmlDecodeField(dto.Name),
-            Description = Utility.HtmlDecodeNullableField(dto.Description)
+            Description = Utility.HtmlDecodeNullableField(dto.Description),
+            Type = dto.Type
         };
 
         var result = await sender.Send(command, cancellationToken);
@@ -235,6 +236,26 @@ public class DataCollectionFormQuestionsController(
             Name = Utility.HtmlDecodeField(dto.Name),
             Description = Utility.HtmlDecodeNullableField(dto.Description),
             IsActive = dto.IsActive
+        };
+
+        var result = await sender.Send(command, cancellationToken);
+
+        return result.Match<ActionResult<DataCollectionFormModuleDto>>(
+            module => DataCollectionFormModuleDto.FromDomainModel(module),
+            error => error.ToObjectResult());
+    }
+
+    [HttpPut("modules/{moduleId:guid}/type")]
+    [Authorize(Roles = Role.Admin)]
+    public async Task<ActionResult<DataCollectionFormModuleDto>> ChangeModuleType(
+        [FromRoute] Guid moduleId,
+        [FromBody] ChangeFormModuleTypeDto dto,
+        CancellationToken cancellationToken)
+    {
+        var command = new ChangeFormModuleTypeCommand
+        {
+            Id = moduleId,
+            Type = dto.Type
         };
 
         var result = await sender.Send(command, cancellationToken);

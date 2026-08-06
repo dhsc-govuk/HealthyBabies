@@ -1,4 +1,5 @@
 using Application.Submissions.Dtos;
+using Domain.DataCollections;
 using LanguageExt;
 
 namespace Api.Services.Abstract;
@@ -6,6 +7,7 @@ namespace Api.Services.Abstract;
 public interface ISubmissionsControllerService
 {
     Task<IEnumerable<SubmissionDto>> GetByOrganisationId(Guid organisationId, CancellationToken cancellationToken);
+    Task<IEnumerable<SubmissionDto>> GetByOrganisationIdAndType(Guid organisationId, string type, CancellationToken cancellationToken);
     Task<Option<SubmissionDetailDto>> GetById(Guid organisationId, Guid dataCollectionId, CancellationToken cancellationToken);
     Task<Option<SectionDetailDto>> GetSectionById(Guid organisationId, Guid dataCollectionId, Guid sectionId, CancellationToken cancellationToken);
     Task<Either<string, SectionDetailDto>> SaveSection(Guid organisationId, Guid dataCollectionId, Guid sectionId, SaveSectionRequest request, CancellationToken cancellationToken);
@@ -31,9 +33,20 @@ public interface ISubmissionsControllerService
     Task<Either<string, OutcomeScoreFormDetailDto>> SaveOutcomeScoreRecord(Guid organisationId, Guid dataCollectionId, Guid moduleId, Guid recordId, SaveOutcomeScoreFormRequest request, CancellationToken cancellationToken);
     Task<Either<string, bool>> DeleteOutcomeScoreRecord(Guid organisationId, Guid dataCollectionId, Guid moduleId, Guid recordId, CancellationToken cancellationToken);
 
+    // Activity module methods (delivery plan sections 2–8)
+    Task<Option<ActivitiesModuleDetailDto>> GetActivitiesModule(Guid organisationId, Guid dataCollectionId, Guid moduleId, CancellationToken cancellationToken);
+    Task<Either<string, ActivityFormDetailDto>> CreateActivity(Guid organisationId, Guid dataCollectionId, Guid moduleId, CancellationToken cancellationToken);
+    Task<Option<ActivityFormDetailDto>> GetActivityTemplate(Guid organisationId, Guid dataCollectionId, Guid moduleId, CancellationToken cancellationToken);
+    Task<Option<ActivityFormDetailDto>> GetActivityForm(Guid organisationId, Guid dataCollectionId, Guid moduleId, Guid activityId, CancellationToken cancellationToken);
+    Task<Either<string, ActivityFormDetailDto>> SaveActivityForm(Guid organisationId, Guid dataCollectionId, Guid moduleId, Guid activityId, SaveActivityFormRequest request, CancellationToken cancellationToken);
+    Task<Either<string, bool>> DeleteActivity(Guid organisationId, Guid dataCollectionId, Guid moduleId, Guid activityId, CancellationToken cancellationToken);
+
     // Admin methods
     Task<Either<string, int>> PurgeAllSubmissions(Guid organisationId, CancellationToken cancellationToken);
 
     // Submit submission
     Task<Either<string, SubmissionDetailDto>> SubmitSubmission(Guid organisationId, Guid dataCollectionId, Guid userId, CancellationToken cancellationToken);
+    Task<Either<string, SubmissionDetailDto>> ReopenSubmission(Guid organisationId, Guid dataCollectionId, CancellationToken cancellationToken);
+    Task<SubmissionIntegrityDto> GetSubmissionIntegrity(Guid organisationId, Guid dataCollectionId, CancellationToken cancellationToken);
+    Task<ResetCorruptedSubmissionResultDto> ResetCorruptedSubmission(Guid organisationId, Guid dataCollectionId, CancellationToken cancellationToken);
 }

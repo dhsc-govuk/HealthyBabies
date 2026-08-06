@@ -46,18 +46,38 @@ public record LocationHomeDto(
 public record LocationAdminHomeDto(
     int Admins);
 
-public record BulkUploadLocationsResult(
-    int TotalRows,
-    int SuccessCount,
-    int ErrorCount,
-    List<BulkUploadLocationResult> Results);
-
-public record BulkUploadLocationResult(
-    int RowNumber,
-    string? SiteName,
-    bool IsSuccess,
-    string? ErrorMessage = null);
-
 public record BulkUploadRowValidationError(
     string QuestionCode,
     string Message);
+
+public record BulkUploadLocationsValidationResultDto(
+    bool IsValid,
+    int TotalRows,
+    int ValidRows,
+    int InvalidRows,
+    IReadOnlyList<BulkUploadRowValidationDto> RowValidations,
+    IReadOnlyList<BulkUploadFieldMetadataDto> FieldMetadata,
+    Guid StagingId);
+
+public record BulkUploadRowValidationDto(
+    int RowNumber,
+    string? SiteName,
+    bool IsValid,
+    IReadOnlyList<BulkUploadFieldErrorDto> Errors);
+
+public record BulkUploadFieldErrorDto(
+    string FieldCode,
+    string FieldLabel,
+    string ErrorMessage);
+
+public record BulkUploadFieldMetadataDto(
+    string FieldCode,
+    string FieldType,
+    bool IsRequired,
+    IReadOnlyList<BulkUploadFieldOptionDto> Options,
+    string? ConditionalQuestionCode,
+    string? ConditionalValue);
+
+public record BulkUploadFieldOptionDto(
+    string Value,
+    string Label);

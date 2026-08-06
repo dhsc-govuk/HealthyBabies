@@ -47,6 +47,8 @@ public class SiteFormQuestionsControllerTests(IntegrationTestWebFactory factory)
             HelpText: null,
             ConditionalQuestionCode: null,
             ConditionalValue: null,
+            DateValidationRule: null,
+            ConditionalRules: null,
             Options: new List<SiteFormQuestionOptionInputDto>());
 
         // Act
@@ -76,6 +78,8 @@ public class SiteFormQuestionsControllerTests(IntegrationTestWebFactory factory)
             HelpText: null,
             ConditionalQuestionCode: null,
             ConditionalValue: null,
+            DateValidationRule: null,
+            ConditionalRules: null,
             Options: new List<SiteFormQuestionOptionInputDto>());
 
         // Act
@@ -103,6 +107,8 @@ public class SiteFormQuestionsControllerTests(IntegrationTestWebFactory factory)
             HelpText: B64N(existingQuestion.HelpText),
             ConditionalQuestionCode: existingQuestion.ConditionalQuestionCode,
             ConditionalValue: B64N(existingQuestion.ConditionalValue),
+            DateValidationRule: existingQuestion.DateValidationRule,
+            ConditionalRules: existingQuestion.ConditionalRules,
             Options: new List<SiteFormQuestionOptionInputDto>());
 
         // Act
@@ -167,6 +173,8 @@ public class SiteFormQuestionsControllerTests(IntegrationTestWebFactory factory)
             HelpText: null,
             ConditionalQuestionCode: null,
             ConditionalValue: null,
+            DateValidationRule: null,
+            ConditionalRules: null,
             Options: new List<SiteFormQuestionOptionInputDto>
             {
                 new(B64("yes"), B64("Yes"), 1),

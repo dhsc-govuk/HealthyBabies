@@ -266,7 +266,7 @@
                 { "name": "TimeContext", "isOptional": true },
                 {
                   "name": "ConfigurationId",
-                  "value": "/subscriptions/YOUR_SUBSCRIPTION_ID/resourcegroups/YOUR_RESOURCE_GROUP/providers/microsoft.insights/workbooks/YOUR_WORKBOOK_ID",
+                  "value": "/subscriptions/YOUR_SUBSCRIPTION_ID/resourcegroups/YOUR_RESOURCE_GROUP/providers/microsoft.insights/workbooks/b4c0e420-3a3a-4730-bb26-7a15f5fb4472",
                   "isOptional": true
                 },
                 { "name": "ViewerMode", "value": false, "isOptional": true },
@@ -278,7 +278,7 @@
               "type": "Extension/AppInsightsExtension/PartType/NotebookPinnedPart",
               "viewState": {
                 "content": {
-                  "configurationId": "/subscriptions/YOUR_SUBSCRIPTION_ID/resourcegroups/YOUR_RESOURCE_GROUP/providers/microsoft.insights/workbooks/YOUR_WORKBOOK_ID"
+                  "configurationId": "/subscriptions/YOUR_SUBSCRIPTION_ID/resourcegroups/YOUR_RESOURCE_GROUP/providers/microsoft.insights/workbooks/b4c0e420-3a3a-4730-bb26-7a15f5fb4472"
                 }
               }
             }

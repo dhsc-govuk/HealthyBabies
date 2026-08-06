@@ -7,13 +7,23 @@ public static class ServiceFormQuestionSeeder
 {
     public static async Task SeedAsync(ApplicationDbContext context, CancellationToken cancellationToken = default)
     {
-        if (await context.ServiceFormQuestions.AnyAsync(cancellationToken))
+        // Seed by code rather than bailing out on "any row exists": a prior data migration
+        // (InsertSMD19Question) inserts SMD19 before this seeder runs, so an AnyAsync() guard would
+        // treat the table as already seeded and silently skip SMD01-SMD18/SMD20/SMD21.
+        var existingCodes = await context.ServiceFormQuestions
+            .Select(q => q.Code)
+            .ToListAsync(cancellationToken);
+
+        var missingQuestions = CreateQuestions()
+            .Where(q => !existingCodes.Contains(q.Code))
+            .ToList();
+
+        if (missingQuestions.Count == 0)
         {
             return;
         }
 
-        var questions = CreateQuestions();
-        await context.ServiceFormQuestions.AddRangeAsync(questions, cancellationToken);
+        await context.ServiceFormQuestions.AddRangeAsync(missingQuestions, cancellationToken);
         await context.SaveChangesAsync(cancellationToken);
     }
 

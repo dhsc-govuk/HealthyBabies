@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Dialog, DialogTitle, DialogContent, DialogActions, IconButton } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import { RowData } from './types';
@@ -34,13 +34,15 @@ const FullScreenTableModal: React.FC<FullScreenTableModalProps> = ({
     rowIndex: number;
     header: string;
   } | null>(null);
+  const activeCellRef = useRef<HTMLTableCellElement | null>(null);
 
   const getQuestionByCode = (code: string): SiteFormQuestionDto | undefined => {
     return questions.find((q) => q.code === code);
   };
 
-  const handleCellClick = (rowIndex: number, header: string) => {
+  const handleCellActivate = (rowIndex: number, header: string, cellEl: HTMLTableCellElement) => {
     if (!editable) return;
+    activeCellRef.current = cellEl;
     setEditingCell({ rowIndex, header });
   };
 
@@ -48,11 +50,13 @@ const FullScreenTableModal: React.FC<FullScreenTableModalProps> = ({
     if (editingCell && onCellEdit) {
       onCellEdit(editingCell.rowIndex, editingCell.header, value);
       setEditingCell(null);
+      activeCellRef.current?.focus();
     }
   };
 
   const handleCellCancel = () => {
     setEditingCell(null);
+    activeCellRef.current?.focus();
   };
 
   return (
@@ -73,8 +77,8 @@ const FullScreenTableModal: React.FC<FullScreenTableModalProps> = ({
       </DialogTitle>
 
       <DialogContent sx={{ padding: 0 }}>
-        <div style={{ overflow: 'auto', height: '100%' }}>
-          <table className="bulk-upload-table" style={{ minWidth: '100%' }}>
+        <div style={{ overflow: 'auto', height: '100%' }} tabIndex={0}>
+          <table className="bulk-upload-table" role="grid" style={{ minWidth: '100%' }}>
             <thead>
               <tr>
                 <th className="bulk-upload-table__row-number" style={{ position: 'sticky', left: 0 }}>
@@ -109,6 +113,7 @@ const FullScreenTableModal: React.FC<FullScreenTableModalProps> = ({
                         <td
                           key={`${row.rowIndex}-${header}`}
                           className="bulk-upload-table__cell--editing"
+                          role="gridcell"
                         >
                           <CellEditor
                             value={cellValue}
@@ -124,11 +129,22 @@ const FullScreenTableModal: React.FC<FullScreenTableModalProps> = ({
                     return (
                       <td
                         key={`${row.rowIndex}-${header}`}
+                        role="gridcell"
+                        tabIndex={editable ? 0 : undefined}
                         className={`${editable ? 'bulk-upload-table__cell--editable' : ''}${cellError ? ' bulk-upload-table__cell--error' : ''}`}
-                        onClick={() => handleCellClick(row.rowIndex, header)}
-                        title={cellError?.message}
+                        aria-invalid={!!cellError}
+                        onClick={(e) => handleCellActivate(row.rowIndex, header, e.currentTarget)}
+                        onKeyDown={(e) => {
+                          if (editable && (e.key === 'Enter' || e.key === ' ')) {
+                            e.preventDefault();
+                            handleCellActivate(row.rowIndex, header, e.currentTarget);
+                          }
+                        }}
                       >
                         {cellValue || (cellError ? '(empty)' : '')}
+                        {cellError && (
+                          <span className="govuk-visually-hidden"> Error: {cellError.message}</span>
+                        )}
                       </td>
                     );
                   })}

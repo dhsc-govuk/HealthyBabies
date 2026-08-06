@@ -6,7 +6,6 @@ export {
   Checkbox,
   DateField,
   Details,
-  ErrorSummary,
   Fieldset,
   FormGroup,
   GridCol,
@@ -101,3 +100,8 @@ export type { FormAnswerItem, FormAnswersViewProps } from './FormAnswersView';
 export { GovUKNotificationProvider, useGovUKNotification, GovUKNotificationDisplay } from './GovUKNotificationProvider';
 export type { GovUKNotification } from './GovUKNotificationProvider';
 export { default as GovUKSkipLink } from './GovUKSkipLink';
+export { default as GovUKErrorSummary } from './GovUKErrorSummary';
+export { default as GovUKSummaryTable } from './GovUKSummaryTable';
+export type { GovUKSummaryTableRow, GovUKSummaryTableProps, GovUKSummaryTableAction } from './GovUKSummaryTable';
+export { default as GovUKTabs } from './GovUKTabs';
+export type { GovUKTab, GovUKTabsProps } from './GovUKTabs';

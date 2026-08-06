@@ -2,6 +2,7 @@ using System.Net.Http.Headers;
 using System.Text;
 using Application.Submissions.Dtos;
 using Domain.DataCollections;
+using Domain.DataCollections.Forms;
 using Domain.Organisations;
 using Domain.Services;
 using FluentAssertions;
@@ -17,6 +18,7 @@ public class ValidateBulkUploadCommandTests(OrganisationAdminIntegrationTestWebF
     : BaseOrganisationAdminIntegrationTest(factory), IAsyncLifetime
 {
     private const string ServiceName = "Outcome Scores Service";
+    private static readonly Guid DataCollectionGuid = new("a1b2c3d4-e5f6-7890-abcd-ef1234567890");
 
     private static readonly string[] OutcomeScoresHeaders =
     {
@@ -168,6 +170,27 @@ public class ValidateBulkUploadCommandTests(OrganisationAdminIntegrationTestWebF
         var outcomeScoresModule = await Context.DataCollectionFormModules
             .FirstAsync(m => m.Code == DataCollectionFormModuleCodes.OutcomeScores);
         _moduleId = outcomeScoresModule.Id.Value;
+
+        // Seed a Service Users submission with QSU13="yes" so the service passes the eligibility
+        // filter in ValidateBulkUploadCommand (which only allows PPS01 values for QSU13-eligible services).
+        var serviceUsersModule = await Context.DataCollectionFormModules
+            .Include(m => m.Fields)
+            .FirstAsync(m => m.Code == DataCollectionFormModuleCodes.ServiceUsers);
+        var qsu13Field = serviceUsersModule.Fields.First(f => f.FieldKey == "QSU13");
+
+        var dcId = new DataCollectionId(DataCollectionGuid);
+        var orgId = OrganisationAdminUsersData.OrganisationId;
+
+        var serviceUsersSubmission = FormSubmission.Create(
+            formModuleId: serviceUsersModule.Id,
+            organisationId: orgId,
+            dataCollectionId: dcId,
+            entityType: "Service",
+            entityId: service.Id.Value);
+        serviceUsersSubmission.SetFieldValue(qsu13Field.Id, "yes");
+        Context.FormSubmissions.Add(serviceUsersSubmission);
+
+        await SaveChangesAsync();
     }
 
     public async Task DisposeAsync()
@@ -183,8 +206,7 @@ public class ValidateBulkUploadCommandTests(OrganisationAdminIntegrationTestWebF
         fileContent.Headers.ContentType = new MediaTypeHeaderValue("text/csv");
         content.Add(fileContent, "file", "upload.csv");
 
-        var submissionId = Guid.NewGuid();
-        var url = $"organisation-admin/submissions/{submissionId}/modules/{_moduleId}/bulk-upload/validate";
+        var url = $"organisation-admin/submissions/{DataCollectionGuid}/modules/{_moduleId}/bulk-upload/validate";
         var response = await Client.PostAsync(url, content);
 
         response.IsSuccessStatusCode.Should().BeTrue(await response.Content.ReadAsStringAsync());

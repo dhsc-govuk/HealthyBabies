@@ -12,6 +12,8 @@ public record CreateServiceFormQuestionDto(
     string? HelpText,
     string? ConditionalQuestionCode,
     string? ConditionalValue,
+    string? DateValidationRule,
+    string? ConditionalRules,
     IReadOnlyList<ServiceFormQuestionOptionInputDto> Options);
 
 public record UpdateServiceFormQuestionDto(
@@ -27,6 +29,8 @@ public record UpdateServiceFormQuestionDto(
     string? HelpText,
     string? ConditionalQuestionCode,
     string? ConditionalValue,
+    string? DateValidationRule,
+    string? ConditionalRules,
     IReadOnlyList<ServiceFormQuestionOptionInputDto> Options);
 
 public record ServiceFormQuestionOptionInputDto(

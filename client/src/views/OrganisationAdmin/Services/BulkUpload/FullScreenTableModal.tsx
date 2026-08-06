@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Dialog, DialogTitle, DialogContent, DialogActions, IconButton } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import { RowData } from './types';
@@ -34,6 +34,7 @@ const FullScreenTableModal: React.FC<FullScreenTableModalProps> = ({
     rowIndex: number;
     header: string;
   } | null>(null);
+  const activeCellRef = useRef<HTMLTableCellElement | null>(null);
 
   const getQuestionByCode = (code: string): ServiceFormQuestionDto | undefined => {
     return questions.find((q) => q.code === code);
@@ -44,23 +45,22 @@ const FullScreenTableModal: React.FC<FullScreenTableModalProps> = ({
       return value;
     }
 
-    // For checkbox (multi-select), convert each value to label
     if (question.questionType === ServiceFormQuestionType.Checkbox) {
       const values = value.split(',').map((v) => v.trim());
-      const labels = values.map((v) => {
+      const labelsList = values.map((v) => {
         const option = question.options.find((opt) => opt.value === v);
         return option ? option.label : v;
       });
-      return labels.join(', ');
+      return labelsList.join(', ');
     }
 
-    // For single-select (Radio, Select), find the matching option
     const option = question.options.find((opt) => opt.value === value);
     return option ? option.label : value;
   };
 
-  const handleCellClick = (rowIndex: number, header: string) => {
+  const handleCellActivate = (rowIndex: number, header: string, cellEl: HTMLTableCellElement) => {
     if (!editable) return;
+    activeCellRef.current = cellEl;
     setEditingCell({ rowIndex, header });
   };
 
@@ -68,11 +68,13 @@ const FullScreenTableModal: React.FC<FullScreenTableModalProps> = ({
     if (editingCell && onCellEdit) {
       onCellEdit(editingCell.rowIndex, editingCell.header, value);
       setEditingCell(null);
+      activeCellRef.current?.focus();
     }
   };
 
   const handleCellCancel = () => {
     setEditingCell(null);
+    activeCellRef.current?.focus();
   };
 
   return (
@@ -93,8 +95,8 @@ const FullScreenTableModal: React.FC<FullScreenTableModalProps> = ({
       </DialogTitle>
 
       <DialogContent sx={{ padding: 0 }}>
-        <div style={{ overflow: 'auto', height: '100%' }}>
-          <table className="bulk-upload-table" style={{ minWidth: '100%' }}>
+        <div style={{ overflow: 'auto', height: '100%' }} tabIndex={0}>
+          <table className="bulk-upload-table" role="grid" style={{ minWidth: '100%' }}>
             <thead>
               <tr>
                 <th className="bulk-upload-table__row-number" style={{ position: 'sticky', left: 0 }}>
@@ -129,6 +131,7 @@ const FullScreenTableModal: React.FC<FullScreenTableModalProps> = ({
                         <td
                           key={`${row.rowIndex}-${header}`}
                           className="bulk-upload-table__cell--editing"
+                          role="gridcell"
                         >
                           <CellEditor
                             value={cellValue}
@@ -146,11 +149,22 @@ const FullScreenTableModal: React.FC<FullScreenTableModalProps> = ({
                     return (
                       <td
                         key={`${row.rowIndex}-${header}`}
+                        role="gridcell"
+                        tabIndex={editable ? 0 : undefined}
                         className={`${editable ? 'bulk-upload-table__cell--editable' : ''}${cellError ? ' bulk-upload-table__cell--error' : ''}`}
-                        onClick={() => handleCellClick(row.rowIndex, header)}
-                        title={cellError?.message}
+                        aria-invalid={!!cellError}
+                        onClick={(e) => handleCellActivate(row.rowIndex, header, e.currentTarget)}
+                        onKeyDown={(e) => {
+                          if (editable && (e.key === 'Enter' || e.key === ' ')) {
+                            e.preventDefault();
+                            handleCellActivate(row.rowIndex, header, e.currentTarget);
+                          }
+                        }}
                       >
                         {displayValue || (cellError ? '(empty)' : '')}
+                        {cellError && (
+                          <span className="govuk-visually-hidden"> Error: {cellError.message}</span>
+                        )}
                       </td>
                     );
                   })}

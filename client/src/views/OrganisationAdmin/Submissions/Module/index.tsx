@@ -9,6 +9,7 @@ import usePageTitle from '../../../../hooks/usePageTitle';
 import { getFormModule, saveFormModule, uploadFile, FormModuleFieldDto, ConditionalRule, FieldConfiguration } from '../queries';
 import { validateBreastfeedingRate } from '../validationUtils';
 import { encodeNullableForWaf } from '../../../../helpers/stringUtils';
+import { processError } from '../../../../helpers/axiosErrorFallback';
 
 type ViewMode = 'form' | 'summary' | 'view';
 
@@ -25,6 +26,7 @@ const ViewModule = (): React.ReactElement => {
   const [fieldValues, setFieldValues] = useState<Record<string, string | string[] | null>>({});
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [submitAttempts, setSubmitAttempts] = useState(0);
+  const [saveError, setSaveError] = useState<string | undefined>(undefined);
   useErrorSummaryFocus(submitAttempts, Object.keys(fieldErrors).length > 0);
 
   const { data: moduleData, isLoading } = useQuery({
@@ -64,9 +66,7 @@ const ViewModule = (): React.ReactElement => {
           serializedValues[key] = value;
         }
       });
-      const encodedValues = Object.fromEntries(
-        Object.entries(serializedValues).map(([key, value]) => [key, encodeNullableForWaf(value)])
-      );
+      const encodedValues = Object.fromEntries(Object.entries(serializedValues).map(([key, value]) => [key, encodeNullableForWaf(value)]));
       return saveFormModule(submissionId!, moduleId!, { fieldValues: encodedValues, markComplete, currentStep });
     },
     onSuccess: (_, markComplete) => {
@@ -88,6 +88,9 @@ const ViewModule = (): React.ReactElement => {
         navigate(`/organisation-admin/submissions/${submissionId}`);
       }
     },
+    onError: (error) => {
+      processError(error, setSaveError);
+    },
   });
 
   const formModule = moduleData?.data;
@@ -95,7 +98,7 @@ const ViewModule = (): React.ReactElement => {
   const { trackStarted, trackSectionCompleted, trackReviewReached, trackSubmitAttempted, trackSubmitted, trackAbandoned, trackDraftSaved, trackValidationFailed } =
     useFormTelemetry('module_form', formModule?.name);
 
-  usePageTitle(formModule?.name ?? 'View module');
+  usePageTitle(formModule?.name ?? 'View module', Object.keys(fieldErrors).length > 0);
 
   const sections = useMemo(() => {
     if (!formModule) return [];
@@ -146,7 +149,7 @@ const ViewModule = (): React.ReactElement => {
       const rules = parseConditionalRules(field.conditionalRules);
       if (!rules?.showWhen) return true;
 
-      const { fieldKey, equals, notEquals, in: inValues, allOf } = rules.showWhen;
+      const { fieldKey, equals, notEquals, gte, in: inValues, allOf } = rules.showWhen;
 
       // Helper to check if a value matches (handles both string and array parent values)
       const valueMatches = (parentValue: string | string[] | null, targetValue: string): boolean => {
@@ -163,6 +166,15 @@ const ViewModule = (): React.ReactElement => {
         return parentValue !== targetValue;
       };
 
+      const valueGte = (parentValue: string | string[] | null, threshold: string): boolean => {
+        if (Array.isArray(parentValue)) {
+          return false;
+        }
+        const actual = parseFloat(parentValue ?? '');
+        const target = parseFloat(threshold);
+        return !isNaN(actual) && !isNaN(target) && actual >= target;
+      };
+
       // Handle allOf conditions
       if (allOf && Array.isArray(allOf)) {
         return allOf.every((condition) => {
@@ -172,6 +184,9 @@ const ViewModule = (): React.ReactElement => {
           }
           if (condition.notEquals !== undefined) {
             return valueNotMatches(parentValue, condition.notEquals);
+          }
+          if (condition.gte !== undefined) {
+            return valueGte(parentValue, condition.gte);
           }
           return true;
         });
@@ -186,6 +201,9 @@ const ViewModule = (): React.ReactElement => {
         }
         if (notEquals !== undefined) {
           return valueNotMatches(parentValue, notEquals);
+        }
+        if (gte !== undefined) {
+          return valueGte(parentValue, gte);
         }
         if (inValues !== undefined && Array.isArray(inValues)) {
           if (Array.isArray(parentValue)) {
@@ -370,9 +388,25 @@ const ViewModule = (): React.ReactElement => {
     visibleFields.forEach((field) => {
       const value = fieldValues[field.code];
       const stringValue = typeof value === 'string' ? value : '';
+      const fieldTypeLower = field.fieldType.toLowerCase();
+      const isCheckboxEmpty = fieldTypeLower === 'checkbox' && Array.isArray(value) && value.length === 0;
+      const isEmpty = fieldTypeLower === 'checkbox' ? isCheckboxEmpty : !stringValue;
+
+      // Required field check. Mirrors validateCurrentStep so a field skipped via direct
+      // "Confirm and save" is still caught here.
+      if (field.isRequired && isEmpty) {
+        if (fieldTypeLower === 'radio' || fieldTypeLower === 'select') {
+          errors[field.code] = 'Select an option';
+        } else if (fieldTypeLower === 'checkbox') {
+          errors[field.code] = 'Select at least one option';
+        } else {
+          errors[field.code] = 'Enter a value';
+        }
+        return;
+      }
 
       // Validate number fields with sum group
-      if (field.fieldType.toLowerCase() === 'number' && stringValue) {
+      if (fieldTypeLower === 'number' && stringValue) {
         const config = parseConfiguration(field.configuration);
 
         // Sum group validation
@@ -455,6 +489,14 @@ const ViewModule = (): React.ReactElement => {
   const getFieldDisplayValue = (field: FormModuleFieldDto): string | React.ReactNode => {
     const value = fieldValues[field.code];
     if (!value || (Array.isArray(value) && value.length === 0)) return '';
+
+    // Prefer the server's snapshot-resolved display, but only when rendering the stored answer
+    // (not an in-progress edit), so historic answers survive later form/option changes.
+    const storedValue = field.value ?? '';
+    const currentAsString = Array.isArray(value) ? value.join(',') : (value ?? '');
+    if (field.displayValue && currentAsString === storedValue) {
+      return field.displayValue;
+    }
 
     if (Array.isArray(value)) {
       return value.map((v) => field.options.find((o) => o.value === v)?.label ?? v).join(', ');
@@ -637,7 +679,7 @@ const ViewModule = (): React.ReactElement => {
           <div className="govuk-error-summary" data-module="govuk-error-summary">
             <h2 className="govuk-error-summary__title">There was a problem saving</h2>
             <div className="govuk-error-summary__body">
-              <p>Please try again or contact support if the problem persists.</p>
+              <p>{saveError ?? 'Please try again or contact support if the problem persists.'}</p>
             </div>
           </div>
         )}
@@ -735,7 +777,7 @@ const ViewModule = (): React.ReactElement => {
         <div className="govuk-error-summary" data-module="govuk-error-summary">
           <h2 className="govuk-error-summary__title">There was a problem saving</h2>
           <div className="govuk-error-summary__body">
-            <p>Please try again or contact support if the problem persists.</p>
+            <p>{saveError ?? 'Please try again or contact support if the problem persists.'}</p>
           </div>
         </div>
       )}

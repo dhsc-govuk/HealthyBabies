@@ -21,9 +21,16 @@ export interface ServiceFormQuestionDto {
   helpText?: string;
   conditionalQuestionCode?: string;
   conditionalValue?: string;
+  conditionalRules?: string | null;
   isActive: boolean;
+  dateValidationRule?: string | null;
   options: ServiceFormQuestionOptionDto[];
 }
+
+export const DateValidationRule = {
+  NotInPast: 'not_in_past',
+  NotInFuture: 'not_in_future',
+} as const;
 
 export enum ServiceFormQuestionType {
   Text = 0,

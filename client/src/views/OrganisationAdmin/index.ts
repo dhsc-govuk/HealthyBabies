@@ -73,6 +73,9 @@ export { default as OutcomeScoreDelete } from './Submissions/OutcomeScores/Outco
 
 export { default as ServiceUsersBulkUpload } from './Submissions/BulkUpload/ServiceUsersBulkUpload';
 export { default as OutcomeScoresBulkUpload } from './Submissions/BulkUpload/OutcomeScoresBulkUpload';
+export { default as ActivitiesList } from '../DeliveryPlan/Submissions/Module/Activities';
+export { default as ActivityFormView } from '../DeliveryPlan/Submissions/Module/ActivityForm';
+export { default as ActivityDelete } from '../DeliveryPlan/Submissions/Module/Activities/DeleteActivity';
 
 
 

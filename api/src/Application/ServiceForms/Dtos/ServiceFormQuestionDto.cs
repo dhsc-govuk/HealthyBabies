@@ -17,6 +17,8 @@ public record ServiceFormQuestionDto(
     string? HelpText,
     string? ConditionalQuestionCode,
     string? ConditionalValue,
+    string? DateValidationRule,
+    string? ConditionalRules,
     bool IsActive,
     IReadOnlyList<ServiceFormQuestionOptionDto> Options)
 {
@@ -36,6 +38,8 @@ public record ServiceFormQuestionDto(
             question.HelpText,
             question.ConditionalQuestionCode,
             question.ConditionalValue,
+            question.DateValidationRule,
+            question.ConditionalRules,
             question.IsActive,
             question.Options.Select(ServiceFormQuestionOptionDto.FromDomainModel).ToList());
 }

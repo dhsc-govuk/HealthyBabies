@@ -49,30 +49,16 @@ function GovUKCheckbox({
     } else {
       // Regular option: if checked, remove any exclusive options
       const withoutExclusive = value.filter((v) => !exclusiveOptions.some((eo) => eo.value === v));
-      const updated = checked
-        ? [...withoutExclusive, optionValue]
-        : withoutExclusive.filter((v) => v !== optionValue);
+      const updated = checked ? [...withoutExclusive, optionValue] : withoutExclusive.filter((v) => v !== optionValue);
       onChange?.(updated);
     }
   };
 
   return (
     <div className={`govuk-form-group ${error ? 'govuk-form-group--error' : ''}`} style={{ position: 'relative' }}>
-      {questionCode && (
-        <span style={{ 
-          position: 'absolute', 
-          right: 0, 
-          top: 0, 
-          color: '#505a5f', 
-          fontSize: '16px', 
-          fontWeight: 'normal', 
-          whiteSpace: 'nowrap' 
-        }}>
-          {questionCode}
-        </span>
-      )}
       <fieldset className="govuk-fieldset" aria-describedby={[hint ? `${id}-hint` : '', error ? `${id}-error` : ''].filter(Boolean).join(' ') || undefined}>
-        <legend className={`govuk-fieldset__legend govuk-fieldset__legend--${legendSize}`} style={{ paddingRight: questionCode ? '100px' : undefined }}>
+        <legend className={`govuk-fieldset__legend govuk-fieldset__legend--${legendSize}`}>
+          {questionCode && <span className="govuk-visually-hidden">Question ID: {questionCode}: </span>}
           {legend}
         </legend>
 
@@ -109,10 +95,9 @@ function GovUKCheckbox({
                 {option.hint && <div className="govuk-hint govuk-checkboxes__hint">{option.hint}</div>}
               </div>
               {option.conditionalContent && (
-                <div 
+                <div
                   className={`govuk-checkboxes__conditional ${!value.includes(option.value) ? 'govuk-checkboxes__conditional--hidden' : ''}`}
-                  id={`conditional-${name}-${option.value}`}
-                >
+                  id={`conditional-${name}-${option.value}`}>
                   {option.conditionalContent}
                 </div>
               )}

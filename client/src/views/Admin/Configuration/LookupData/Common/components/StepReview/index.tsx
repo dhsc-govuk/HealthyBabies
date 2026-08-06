@@ -1,5 +1,5 @@
 import React from 'react';
-import { SummaryList } from '../../../../../../../components/GovUKComponents';
+import { GovUKSummaryTable } from '../../../../../../../components/GovUKComponents';
 import { LookupData } from '../..';
 
 interface Props {
@@ -9,11 +9,12 @@ interface Props {
 
 const StepReview = ({ lookupData, setStep }: Props): React.ReactElement => {
   return (
-    <SummaryList
-      items={[
-        { label: 'Entity', value: lookupData.entity, onAction: () => setStep(0) },
-        { label: 'Value', value: lookupData.value, onAction: () => setStep(0) },
-        { label: 'Description', value: lookupData.description || '-', onAction: () => setStep(0) },
+    <GovUKSummaryTable
+      onChangeAll={() => setStep(0)}
+      rows={[
+        { label: 'Entity', value: lookupData.entity, changeHiddenText: 'entity' },
+        { label: 'Value', value: lookupData.value, changeHiddenText: 'value' },
+        { label: 'Description', value: lookupData.description || '-', changeHiddenText: 'description' },
       ]}
     />
   );

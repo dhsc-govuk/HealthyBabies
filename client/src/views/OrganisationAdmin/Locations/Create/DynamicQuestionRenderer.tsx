@@ -1,8 +1,9 @@
 import React from 'react';
 import { Box } from '@mui/material';
 import { Details } from 'govuk-react';
+import { evaluateConditionalRules } from '../../../../helpers/conditionalRules';
 import { GovUKFieldset, GovUKRadio, GovUKCheckbox, GovUKDateField } from '../../../../components/GovUKComponents';
-import { SiteFormQuestionDto, SiteFormQuestionType } from '../../../../components/Global/SiteForms';
+import { SiteFormQuestionDto, SiteFormQuestionType, DateValidationRule } from '../../../../components/Global/SiteForms';
 import { LocationFormState, LocationReducerAction, ValidationErrors, PREDEFINED_POSTCODE_CODE } from '../Common';
 import AddressLookup from '../Common/AddressLookup';
 
@@ -25,6 +26,9 @@ interface QuestionRendererProps {
 }
 
 const isQuestionVisible = (question: SiteFormQuestionDto, answers: Record<string, string | undefined>): boolean => {
+  if (question.conditionalRules) {
+    return evaluateConditionalRules(question.conditionalRules, answers);
+  }
   if (!question.conditionalQuestionCode || !question.conditionalValue) {
     return true;
   }
@@ -217,6 +221,8 @@ const QuestionRenderer = ({ question, value, error, onChange, allQuestions, stat
             value={value || ''}
             error={error}
             hint={question.hint}
+            allowFuture={question.dateValidationRule === DateValidationRule.NotInFuture ? false : undefined}
+            disallowPast={question.dateValidationRule === DateValidationRule.NotInPast ? true : undefined}
             onChange={onChange}
           />
         );

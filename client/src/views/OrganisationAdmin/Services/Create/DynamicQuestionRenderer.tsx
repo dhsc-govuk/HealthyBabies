@@ -1,8 +1,9 @@
 import React from 'react';
 import { Box } from '@mui/material';
 import { Details } from 'govuk-react';
+import { evaluateConditionalRules } from '../../../../helpers/conditionalRules';
 import { GovUKFieldset, GovUKRadio, GovUKCheckbox, GovUKDateField } from '../../../../components/GovUKComponents';
-import { ServiceFormQuestionDto, ServiceFormQuestionType } from '../../../../components/Global/Services';
+import { ServiceFormQuestionDto, ServiceFormQuestionType, DateValidationRule } from '../../../../components/Global/Services';
 import { ServiceFormState, ServiceReducerAction, ValidationErrors } from '../Common';
 
 interface DynamicQuestionRendererProps {
@@ -24,6 +25,9 @@ interface QuestionRendererProps {
 }
 
 const isQuestionVisible = (question: ServiceFormQuestionDto, answers: Record<string, string | undefined>): boolean => {
+  if (question.conditionalRules) {
+    return evaluateConditionalRules(question.conditionalRules, answers);
+  }
   if (!question.conditionalQuestionCode || !question.conditionalValue) {
     return true;
   }
@@ -154,16 +158,17 @@ const QuestionRenderer = ({ question, value, error, onChange, allQuestions, stat
         // resolve the checked state via selectedValues.includes(option.value).
         const parseSelectedValues = (stored: string): string[] => {
           if (!stored.trim()) return [];
-          const parts = stored.split(',').map((v) => v.trim()).filter(Boolean);
+          const parts = stored
+            .split(',')
+            .map((v) => v.trim())
+            .filter(Boolean);
           const result: string[] = [];
           let i = 0;
           while (i < parts.length) {
             let matched = false;
             for (let j = parts.length; j > i; j--) {
               const candidate = parts.slice(i, j).join(', ');
-              const matchedOption = options.find(
-                (o) => o.value.trim() === candidate || o.label.trim() === candidate
-              );
+              const matchedOption = options.find((o) => o.value.trim() === candidate || o.label.trim() === candidate);
               if (matchedOption) {
                 result.push(matchedOption.value); // original value preserves trailing space
                 i = j;
@@ -171,7 +176,10 @@ const QuestionRenderer = ({ question, value, error, onChange, allQuestions, stat
                 break;
               }
             }
-            if (!matched) { result.push(parts[i]); i++; }
+            if (!matched) {
+              result.push(parts[i]);
+              i++;
+            }
           }
           return result;
         };
@@ -227,6 +235,8 @@ const QuestionRenderer = ({ question, value, error, onChange, allQuestions, stat
             value={value || ''}
             error={error}
             hint={question.hint}
+            allowFuture={question.dateValidationRule === DateValidationRule.NotInFuture ? false : undefined}
+            disallowPast={question.dateValidationRule === DateValidationRule.NotInPast ? true : undefined}
             onChange={onChange}
           />
         );
@@ -257,12 +267,7 @@ const DynamicQuestionRenderer = ({ questions, state, dispatch, errors }: Dynamic
   // In-step radio/select conditionals are rendered inline by QuestionRenderer.renderConditionalContent.
   // In-step checkbox conditionals are handled separately via checkboxConditionalQuestions below.
   const topLevelQuestions = questions
-    .filter(
-      (q) =>
-        q.isActive &&
-        q.code !== 'SMD01' &&
-        (!q.conditionalQuestionCode || !questions.some((p) => p.code === q.conditionalQuestionCode))
-    )
+    .filter((q) => q.isActive && q.code !== 'SMD01' && (!q.conditionalQuestionCode || !questions.some((p) => p.code === q.conditionalQuestionCode)))
     .sort((a, b) => a.displayOrder - b.displayOrder);
 
   // Find checkbox-conditional questions (like SMD19 depending on SMD17 which is a checkbox)

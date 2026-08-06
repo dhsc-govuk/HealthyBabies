@@ -9,7 +9,8 @@ public record DataCollectionFormModuleDto(
     string Name,
     string? Description,
     DateTime LastChangedOn,
-    bool IsActive)
+    bool IsActive,
+    string Type)
 {
     public static DataCollectionFormModuleDto FromDomainModel(DataCollectionFormModule formModule)
     {
@@ -20,7 +21,8 @@ public record DataCollectionFormModuleDto(
             formModule.Name,
             formModule.Description,
             formModule.LastChangedOn,
-            formModule.IsActive);
+            formModule.IsActive,
+            formModule.Type.Value);
     }
 }
 
@@ -32,6 +34,7 @@ public record DataCollectionFormModuleWithFieldsDto(
     string? Description,
     DateTime LastChangedOn,
     bool IsActive,
+    string Type,
     IReadOnlyList<FormSectionDto> Sections,
     IReadOnlyList<FormFieldDto> Fields)
 {
@@ -45,6 +48,7 @@ public record DataCollectionFormModuleWithFieldsDto(
             formModule.Description,
             formModule.LastChangedOn,
             formModule.IsActive,
+            formModule.Type.Value,
             formModule.Sections.Select(FormSectionDto.FromDomainModel).ToList(),
             formModule.Fields.OrderBy(f => f.DisplayOrder).Select(FormFieldDto.FromDomainModel).ToList());
     }

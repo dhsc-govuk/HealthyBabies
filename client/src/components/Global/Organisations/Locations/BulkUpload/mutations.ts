@@ -1,42 +1,103 @@
 import axios from 'axios';
+import { sanitizeCsvForUpload, zipCsvForUpload, zipFileForUpload } from '../../../../../helpers/csvUpload';
 
-export interface BulkUploadLocationResult {
+export interface BulkUploadFieldOptionDto {
+  value: string;
+  label: string;
+}
+
+export interface BulkUploadFieldMetadataDto {
+  fieldCode: string;
+  fieldType: string;
+  isRequired: boolean;
+  options: BulkUploadFieldOptionDto[];
+  conditionalQuestionCode?: string | null;
+  conditionalValue?: string | null;
+}
+
+export interface BulkUploadFieldErrorDto {
+  fieldCode: string;
+  fieldLabel: string;
+  errorMessage: string;
+}
+
+export interface BulkUploadRowValidationDto {
+  rowNumber: number;
+  siteName?: string;
+  isValid: boolean;
+  errors: BulkUploadFieldErrorDto[];
+}
+
+export interface BulkUploadLocationsValidationResultDto {
+  isValid: boolean;
+  totalRows: number;
+  validRows: number;
+  invalidRows: number;
+  rowValidations: BulkUploadRowValidationDto[];
+  fieldMetadata: BulkUploadFieldMetadataDto[];
+  stagingId: string;
+}
+
+export interface BulkUploadLocationCellEdit {
+  rowNumber: number;
+  questionCode: string;
+  value: string;
+}
+
+export interface ProcessStagedBulkUploadLocationsRequest {
+  stagingId: string;
+  selectedRowNumbers: number[];
+  cellEdits: BulkUploadLocationCellEdit[];
+}
+
+export interface BulkUploadLocationRowResultDto {
   rowNumber: number;
   siteName?: string;
   isSuccess: boolean;
   errorMessage?: string;
+  locationId?: string;
+  isNew: boolean;
 }
 
-export interface BulkUploadLocationsResult {
+export interface BulkUploadLocationsResultDto {
+  success: boolean;
   totalRows: number;
   successCount: number;
   errorCount: number;
-  results: BulkUploadLocationResult[];
-}
-
-export interface ConfirmBulkUploadLocationResult {
-  rowNumber: number;
-  siteName?: string;
-  isSaved: boolean;
-  locationId?: string;
-  skipReason?: string;
-}
-
-export interface ConfirmBulkUploadLocationsResult {
-  totalRows: number;
-  savedCount: number;
-  skippedCount: number;
-  results: ConfirmBulkUploadLocationResult[];
+  results: BulkUploadLocationRowResultDto[];
 }
 
 export type TemplateFormat = 'csv' | 'xlsx';
 
-export const validateBulkUpload = (organisationId: string, file: File, apiBasePath?: string) => {
+// Wraps the picked file in a zip before upload - see client/src/helpers/csvUpload.ts. CSV files are
+// text-sanitized first (WAF-signature characters, empty-cell comma runs); the binary .xlsx template
+// only needs the zip wrapper since it has no free-text-in-plain-CSV WAF risk to begin with.
+const toUploadFile = async (file: File): Promise<File> => {
+  const lowerName = file.name.toLowerCase();
+
+  if (lowerName.endsWith('.csv')) {
+    const sanitizedContent = sanitizeCsvForUpload(await file.text());
+    const zippedContent = zipCsvForUpload(sanitizedContent, file.name);
+    const zipFileName = `${file.name.slice(0, -'.csv'.length)}.zip`;
+    return new File([zippedContent], zipFileName, { type: 'application/zip' });
+  }
+
+  if (lowerName.endsWith('.xlsx')) {
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const zippedContent = zipFileForUpload(bytes, file.name);
+    const zipFileName = `${file.name.slice(0, -'.xlsx'.length)}.zip`;
+    return new File([zippedContent], zipFileName, { type: 'application/zip' });
+  }
+
+  return file;
+};
+
+export const validateBulkUpload = async (organisationId: string, file: File, apiBasePath?: string) => {
   const formData = new FormData();
-  formData.append('file', file);
+  formData.append('file', await toUploadFile(file));
 
   const url = apiBasePath ? `${apiBasePath}/bulk-upload/validate` : `/organisations/${organisationId}/locations/bulk-upload/validate`;
-  return axios.post<BulkUploadLocationsResult>(
+  return axios.post<BulkUploadLocationsValidationResultDto>(
     url,
     formData,
     {
@@ -47,20 +108,9 @@ export const validateBulkUpload = (organisationId: string, file: File, apiBasePa
   );
 };
 
-export const confirmBulkUpload = (organisationId: string, file: File, apiBasePath?: string) => {
-  const formData = new FormData();
-  formData.append('file', file);
-
-  const url = apiBasePath ? `${apiBasePath}/bulk-upload/confirm` : `/organisations/${organisationId}/locations/bulk-upload/confirm`;
-  return axios.post<ConfirmBulkUploadLocationsResult>(
-    url,
-    formData,
-    {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    }
-  );
+export const processStagedBulkUpload = (organisationId: string, request: ProcessStagedBulkUploadLocationsRequest, apiBasePath?: string) => {
+  const url = apiBasePath ? `${apiBasePath}/bulk-upload/staged` : `/organisations/${organisationId}/locations/bulk-upload/staged`;
+  return axios.post<BulkUploadLocationsResultDto>(url, request);
 };
 
 export const downloadTemplate = (organisationId: string, format: TemplateFormat = 'csv', apiBasePath?: string) => {
@@ -91,36 +141,6 @@ export interface LocationMatchResult {
   hasExistingData: boolean;
 }
 
-// Bulk update types
-export interface BulkUpdateLocationItemRequest {
-  locationId?: string;
-  name: string;
-  answers: { questionCode: string; value?: string }[];
-}
-
-export interface BulkUpdateLocationsRequest {
-  locations: BulkUpdateLocationItemRequest[];
-}
-
-export interface BulkUpdateLocationResult {
-  locationId?: string;
-  siteName: string;
-  isSuccess: boolean;
-  isNew: boolean;
-  errorMessage?: string;
-}
-
-export interface BulkUpdateLocationsResult {
-  totalCount: number;
-  successCount: number;
-  errorCount: number;
-  results: BulkUpdateLocationResult[];
-}
-
 // Match locations by name or UPRN
 export const matchLocationsByName = (organisationId: string, siteNames: string[]) =>
   axios.post<LocationMatchResult[]>(`/organisations/${organisationId}/locations/bulk-upload/match`, { siteNames });
-
-// Bulk update locations (create new or update existing)
-export const bulkUpdateLocations = (organisationId: string, request: BulkUpdateLocationsRequest) =>
-  axios.post<BulkUpdateLocationsResult>(`/organisations/${organisationId}/locations/bulk-upload/update`, request);

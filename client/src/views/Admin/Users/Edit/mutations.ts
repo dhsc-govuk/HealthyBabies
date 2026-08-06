@@ -10,4 +10,4 @@ export interface UpdateAdminDto {
   isActive: boolean;
 }
 
-export const updateAdmin = (user: UpdateAdminDto) => axios.put<UpdateAdminDto>('admin/users/edit', user);
+export const updateAdmin = (user: UpdateAdminDto) => axios.put<UpdateAdminDto>('admin/users/organisation-users/edit', user);

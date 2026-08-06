@@ -82,6 +82,41 @@ a:not(.govuk-header__link):not(.govuk-footer__link):not(.govuk-skip-link):not(.g
   color: #0b0c0c;
 }
 
+/* Error summary overrides
+   The global :not() link rules have specificity (0,9-10,1) — far higher than
+   .govuk-error-summary__list a (0,1,1). !important is the only practical way to
+   keep error-summary links in the error colour. :not(:focus) preserves the
+   GOV.UK yellow focus highlight, where color:#0b0c0c is correct. */
+.govuk-error-summary__list a:not(:focus),
+.govuk-error-summary__list a:link:not(:focus),
+.govuk-error-summary__list a:visited:not(:focus) {
+  color: #d4351c !important;
+}
+
+/* No visible focus ring when the container is programmatically focused
+   (tabIndex=-1 means it is never reached by Tab key). */
+.govuk-error-summary:focus {
+  outline: none;
+}
+
+/* Responsive title sizes — base rule must come before the media query so the
+   media query can override it at wider viewports (same specificity, source order). */
+.govuk-error-summary__title {
+  font-size: 1.3125rem;
+  line-height: 1.1904761905;
+  font-weight: 700;
+  margin-top: 0;
+  margin-bottom: 15px;
+}
+
+@media (min-width: 40.0625em) {
+  .govuk-error-summary__title {
+    font-size: 1.5rem;
+    line-height: 1.25;
+    margin-bottom: 20px;
+  }
+}
+
 .signin-page .govuk-header,
 .mfa-page .govuk-header,
 .help-page .govuk-header,

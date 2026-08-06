@@ -1,5 +1,6 @@
 import { Delimiter, ParsedData, CellError } from './types';
 import { BulkUploadValidationResultDto, BulkUploadFieldMetadataDto } from '../queries';
+import { evaluateNumericOperators } from '../../../../helpers/conditionalOperators';
 
 interface FieldOption {
   value: string;
@@ -9,16 +10,9 @@ interface FieldOption {
 /**
  * Finds an option by matching either value or label (case-insensitive)
  */
-export const findOptionMatch = (
-  options: FieldOption[],
-  inputValue: string
-): FieldOption | undefined => {
+export const findOptionMatch = (options: FieldOption[], inputValue: string): FieldOption | undefined => {
   const normalizedInput = inputValue.trim().toLowerCase();
-  return options.find(
-    (o) =>
-      o.value.toLowerCase() === normalizedInput ||
-      o.label.toLowerCase() === normalizedInput
-  );
+  return options.find((o) => o.value.toLowerCase() === normalizedInput || o.label.toLowerCase() === normalizedInput);
 };
 
 /**
@@ -27,12 +21,12 @@ export const findOptionMatch = (
 export const validateDateValue = (value: string): string | null => {
   const ddmmyyyyRegex = /^(\d{2})[-/](\d{2})[-/](\d{4})$/;
   const yyyymmddRegex = /^(\d{4})[-/](\d{2})[-/](\d{2})$/;
-  
+
   let day: number, month: number, year: number;
-  
+
   const ddmmMatch = value.match(ddmmyyyyRegex);
   const yyyymmMatch = value.match(yyyymmddRegex);
-  
+
   if (ddmmMatch) {
     day = parseInt(ddmmMatch[1], 10);
     month = parseInt(ddmmMatch[2], 10);
@@ -44,24 +38,34 @@ export const validateDateValue = (value: string): string | null => {
   } else {
     return 'Invalid date format. Expected DD-MM-YYYY or YYYY-MM-DD';
   }
-  
+
   // Check if it's a valid date
   const date = new Date(year, month - 1, day);
   if (isNaN(date.getTime()) || date.getDate() !== day || date.getMonth() !== month - 1 || date.getFullYear() !== year) {
     return 'Invalid date value';
   }
-  
+
   return null;
+};
+
+/**
+ * Reads configuration.min (e.g. "min": 0 on every demographic breakdown field) from a field's raw
+ * configuration JSON. Returns null when absent/unparseable so callers can skip the check.
+ */
+const parseFieldMin = (configuration: string | null | undefined): number | null => {
+  if (!configuration) return null;
+  try {
+    const parsed = JSON.parse(configuration) as { min?: number };
+    return typeof parsed.min === 'number' ? parsed.min : null;
+  } catch {
+    return null;
+  }
 };
 
 /**
  * Validates a cell value against field metadata
  */
-export const validateCellValue = (
-  value: string | undefined,
-  fieldMeta: BulkUploadFieldMetadataDto,
-  allRowValues: Record<string, string>
-): string | null => {
+export const validateCellValue = (value: string | undefined, fieldMeta: BulkUploadFieldMetadataDto, allRowValues: Record<string, string>): string | null => {
   // Check if this is a conditional field
   if (fieldMeta.conditionalRules) {
     try {
@@ -106,7 +110,10 @@ export const validateCellValue = (
 
     case 'checkbox': {
       if (fieldMeta.options.length > 0) {
-        const values = value.split(',').map((v) => v.trim()).filter(v => v);
+        const values = value
+          .split(',')
+          .map((v) => v.trim())
+          .filter((v) => v);
         const invalidValues = values.filter((v) => !findOptionMatch(fieldMeta.options, v));
         if (invalidValues.length > 0) {
           const validLabels = fieldMeta.options.map((o) => o.label);
@@ -123,8 +130,13 @@ export const validateCellValue = (
     }
 
     case 'number': {
-      if (isNaN(Number(value))) {
+      const numericValue = Number(value);
+      if (isNaN(numericValue)) {
         return 'Invalid number value';
+      }
+      const min = parseFieldMin(fieldMeta.configuration);
+      if (min !== null && numericValue < min) {
+        return `Must be ${min} or more`;
       }
       break;
     }
@@ -145,18 +157,14 @@ export const validateCellValue = (
  * Normalizes row data by converting human-readable labels to their underlying values.
  * This ensures backwards compatibility where users can enter either labels or values.
  */
-export const normalizeRowData = (
-  rowData: string[],
-  headers: string[],
-  fieldMetadata: BulkUploadFieldMetadataDto[] | undefined
-): string[] => {
+export const normalizeRowData = (rowData: string[], headers: string[], fieldMetadata: BulkUploadFieldMetadataDto[] | undefined): string[] => {
   if (!fieldMetadata) return rowData;
 
   return rowData.map((value, index) => {
     if (!value || value.trim() === '') return value;
 
     const fieldCode = headers[index];
-    const fieldMeta = fieldMetadata.find(f => f.fieldCode === fieldCode);
+    const fieldMeta = fieldMetadata.find((f) => f.fieldCode === fieldCode);
     if (!fieldMeta || fieldMeta.options.length === 0) return value;
 
     const fieldType = fieldMeta.fieldType.toLowerCase();
@@ -166,9 +174,7 @@ export const normalizeRowData = (
       if (match) return match.value;
     } else if (fieldType === 'checkbox') {
       const values = value.split(',').map((v) => v.trim());
-      const normalizedValues = values
-        .map((v) => findOptionMatch(fieldMeta.options, v)?.value)
-        .filter((v): v is string => v !== undefined);
+      const normalizedValues = values.map((v) => findOptionMatch(fieldMeta.options, v)?.value).filter((v): v is string => v !== undefined);
       if (normalizedValues.length > 0) return normalizedValues.join(',');
     }
 
@@ -179,15 +185,11 @@ export const normalizeRowData = (
 /**
  * Validates a row and returns cell errors for client-side validation
  */
-export const validateRowClientSide = (
-  rowData: string[],
-  headers: string[],
-  fieldMetadata: BulkUploadFieldMetadataDto[] | undefined
-): CellError[] => {
+export const validateRowClientSide = (rowData: string[], headers: string[], fieldMetadata: BulkUploadFieldMetadataDto[] | undefined): CellError[] => {
   if (!fieldMetadata) return [];
 
   const errors: CellError[] = [];
-  
+
   // Build a map of field code to value for conditional checks
   const allRowValues: Record<string, string> = {};
   headers.forEach((header, index) => {
@@ -195,7 +197,7 @@ export const validateRowClientSide = (
   });
 
   headers.forEach((fieldCode, cellIndex) => {
-    const fieldMeta = fieldMetadata.find(f => f.fieldCode === fieldCode);
+    const fieldMeta = fieldMetadata.find((f) => f.fieldCode === fieldCode);
     if (!fieldMeta) return;
 
     const value = rowData[cellIndex];
@@ -215,8 +217,8 @@ export const validateRowClientSide = (
 };
 
 export const parseCSV = (content: string, delim: Delimiter): ParsedData => {
-  const lines = content.split(/\r?\n/).filter(line => line.trim());
-  const rows = lines.map(line => {
+  const lines = content.split(/\r?\n/).filter((line) => line.trim());
+  const rows = lines.map((line) => {
     const result: string[] = [];
     let current = '';
     let inQuotes = false;
@@ -243,9 +245,9 @@ export const parseCSV = (content: string, delim: Delimiter): ParsedData => {
   let requiredFields: boolean[] = [];
   let dataRows: string[][];
 
-  if (rows[2] && rows[2].every(cell => cell === 'R' || cell === 'O' || cell === '')) {
+  if (rows[2] && rows[2].every((cell) => cell === 'R' || cell === 'O' || cell === '')) {
     // Row 3 is required indicators
-    requiredFields = rows[2].map(cell => cell === 'R');
+    requiredFields = rows[2].map((cell) => cell === 'R');
     dataRows = rows.slice(3);
   } else {
     // No required indicators row, assume all fields are optional
@@ -270,11 +272,25 @@ export const validateFile = (file: File): string | null => {
   return null;
 };
 
-export const convertValidationErrorsToCellErrors = (
-  validationResult: BulkUploadValidationResultDto,
+/**
+ * Resolve the service answers for a row from the server-provided serviceAnswersByName map, using the
+ * row's ServiceName (or PPS01 for outcome scores) column. Returns undefined when unavailable so
+ * service-scoped conditions fall back to their "default visible" behaviour.
+ */
+export const getRowServiceAnswers = (
+  rowData: string[],
   headers: string[],
-  parsedData: ParsedData
-): CellError[] => {
+  serviceAnswersByName: Record<string, Record<string, string>> | undefined
+): Record<string, string> | undefined => {
+  if (!serviceAnswersByName) return undefined;
+  const nameIndex = headers.indexOf('ServiceName') !== -1 ? headers.indexOf('ServiceName') : headers.indexOf('PPS01');
+  if (nameIndex === -1) return undefined;
+  const serviceName = rowData[nameIndex]?.trim().toLowerCase();
+  if (!serviceName) return undefined;
+  return serviceAnswersByName[serviceName];
+};
+
+export const convertValidationErrorsToCellErrors = (validationResult: BulkUploadValidationResultDto, headers: string[], parsedData: ParsedData): CellError[] => {
   const errors: CellError[] = [];
 
   if (validationResult.rowValidations) {
@@ -283,25 +299,26 @@ export const convertValidationErrorsToCellErrors = (
         // Use the backend's rowNumber directly to calculate the correct row index
         // Backend rowNumber is 1-indexed and includes header rows
         // parsedData.rows is 0-indexed data rows only
-        
+
         // Determine how many header rows were skipped
-        const hasLabelsRow = parsedData.labels.length > 0 && parsedData.labels.some(l => l.trim() !== '');
-        const hasRequiredRow = parsedData.requiredFields.some(r => r);
+        const hasLabelsRow = parsedData.labels.length > 0 && parsedData.labels.some((l) => l.trim() !== '');
+        const hasRequiredRow = parsedData.requiredFields.some((r) => r);
         let headerOffset = 1; // At minimum, header row
         if (hasLabelsRow) headerOffset++;
         if (hasRequiredRow) headerOffset++;
-        
+
         // Calculate row index from backend's row number
         const rowIndex = rowValidation.rowNumber - headerOffset - 1;
 
         if (rowIndex >= 0 && rowIndex < parsedData.rows.length) {
           const rowData = parsedData.rows[rowIndex];
+          const serviceAnswers = getRowServiceAnswers(rowData, headers, validationResult.serviceAnswersByName);
           rowValidation.errors.forEach((error) => {
             const cellIndex = headers.indexOf(error.fieldCode);
             if (cellIndex !== -1) {
               // Skip errors for fields that are not visible (parent conditions not met)
               // This handles cases where backend validation doesn't properly check conditional rules
-              if (!isFieldVisible(error.fieldCode, rowData, headers, validationResult.fieldMetadata)) {
+              if (!isFieldVisible(error.fieldCode, rowData, headers, validationResult.fieldMetadata, serviceAnswers)) {
                 return;
               }
               errors.push({
@@ -328,10 +345,7 @@ export const convertValidationErrorsToCellErrors = (
   return errors;
 };
 
-export const updateRequiredFieldsFromMetadata = (
-  headers: string[],
-  validationResult: BulkUploadValidationResultDto
-): boolean[] => {
+export const updateRequiredFieldsFromMetadata = (headers: string[], validationResult: BulkUploadValidationResultDto): boolean[] => {
   return headers.map((header) => {
     // ServiceName is always required
     if (header === 'ServiceName') return true;
@@ -343,24 +357,39 @@ export const updateRequiredFieldsFromMetadata = (
 };
 
 export const hasErrorsInRow = (rowIndex: number, cellErrors: CellError[]): boolean => {
-  return cellErrors.some(error => error.rowIndex === rowIndex);
+  return cellErrors.some((error) => error.rowIndex === rowIndex);
 };
 
 export const getErrorMessage = (rowIndex: number, cellIndex: number, cellErrors: CellError[]): string | null => {
-  const error = cellErrors.find(e => e.rowIndex === rowIndex && e.cellIndex === cellIndex);
+  const error = cellErrors.find((e) => e.rowIndex === rowIndex && e.cellIndex === cellIndex);
   return error?.message || null;
 };
 
 interface ConditionalRule {
   showWhen?: {
     fieldKey?: string;
+    serviceFieldKey?: string;
     equals?: string;
     notEquals?: string;
+    gt?: string;
+    gte?: string;
+    lt?: string;
+    lte?: string;
+    eq?: string;
+    neq?: string;
     in?: string[];
     allOf?: Array<{
-      fieldKey: string;
+      fieldKey?: string;
+      serviceFieldKey?: string;
       equals?: string;
       notEquals?: string;
+      in?: string[];
+      gt?: string;
+      gte?: string;
+      lt?: string;
+      lte?: string;
+      eq?: string;
+      neq?: string;
     }>;
   };
   displayInline?: boolean;
@@ -400,12 +429,7 @@ const parseConfiguration = (config: string | null | undefined): FieldConfigurati
  * Also validates single fields with maxSumField (like QSU14)
  * Returns an array of cell errors for fields that violate the sum constraint
  */
-export const validateSumGroups = (
-  rowData: string[],
-  headers: string[],
-  rowIndex: number,
-  fieldMetadata: FieldMetadataWithRequired[] | undefined
-): CellError[] => {
+export const validateSumGroups = (rowData: string[], headers: string[], rowIndex: number, fieldMetadata: FieldMetadataWithRequired[] | undefined): CellError[] => {
   if (!fieldMetadata) return [];
 
   const errors: CellError[] = [];
@@ -413,7 +437,7 @@ export const validateSumGroups = (
 
   fieldMetadata.forEach((fieldMeta) => {
     const config = parseConfiguration(fieldMeta.configuration);
-    
+
     // Skip if no maxSumField configured
     if (!config?.maxSumField) return;
 
@@ -456,7 +480,7 @@ export const validateSumGroups = (
       if (sum > maxValue) {
         const groupLabel = config.groupLabel || config.sumGroup;
         const errorMessage = `The total for '${groupLabel}' (${sum}) cannot exceed the total number of service users (${maxValue})`;
-        
+
         // Add error to all fields that have a value > 0 (contributing to the sum)
         groupFields.forEach((gf) => {
           const fieldIndex = headers.indexOf(gf.fieldCode);
@@ -504,11 +528,17 @@ export const isFieldVisible = (
   fieldCode: string,
   rowData: string[],
   headers: string[],
-  fieldMetadata: FieldMetadataWithRequired[] | undefined
+  fieldMetadata: FieldMetadataWithRequired[] | undefined,
+  // Populated per-row from the matched Service's own answers (e.g. SMD02/SMD09). Not yet threaded through by
+  // any caller today — the bulk-upload screen only fetches service names, not answers. When it is undefined,
+  // service-scoped conditions (serviceFieldKey, including inside allOf) default to VISIBLE, because we cannot
+  // evaluate them client-side and the server (ValidateBulkUploadCommand) already validates them correctly.
+  // Once real service answers are wired in (see BulkUploadValidationResultDto), the conditions evaluate normally.
+  serviceAnswers?: Record<string, string>
 ): boolean => {
   if (!fieldMetadata) return true;
 
-  const fieldMeta = fieldMetadata.find(f => f.fieldCode === fieldCode);
+  const fieldMeta = fieldMetadata.find((f) => f.fieldCode === fieldCode);
   if (!fieldMeta?.conditionalRules) return true; // No conditions = always visible
 
   try {
@@ -519,34 +549,57 @@ export const isFieldVisible = (
     const valueMatches = (parentValue: string | undefined, targetValue: string, parentFieldCode: string): boolean => {
       if (!parentValue) return false;
       const normalizedTarget = targetValue.toLowerCase();
-      
+
       // Check if parent field is a checkbox (multi-select) by looking at field metadata
-      const parentFieldMeta = fieldMetadata.find(f => f.fieldCode === parentFieldCode);
+      const parentFieldMeta = fieldMetadata.find((f) => f.fieldCode === parentFieldCode);
       const isCheckbox = parentFieldMeta?.fieldType?.toLowerCase() === 'checkbox';
-      
+
       if (isCheckbox) {
         // For checkbox fields, check if any selected value matches
-        const selectedValues = parentValue.split(',').map(v => v.trim().toLowerCase());
-        
+        const selectedValues = parentValue.split(',').map((v) => v.trim().toLowerCase());
+
         // Map labels to values for comparison
         const optionValueMap = new Map<string, string>();
         if (parentFieldMeta?.options) {
-          parentFieldMeta.options.forEach(opt => {
+          parentFieldMeta.options.forEach((opt) => {
             optionValueMap.set(opt.label.toLowerCase(), opt.value.toLowerCase());
             optionValueMap.set(opt.value.toLowerCase(), opt.value.toLowerCase());
           });
         }
-        
-        const normalizedSelectedValues = selectedValues.map(v => optionValueMap.get(v) || v);
+
+        const normalizedSelectedValues = selectedValues.map((v) => optionValueMap.get(v) || v);
         return normalizedSelectedValues.includes(normalizedTarget);
       }
-      
+
       return parentValue.toLowerCase() === normalizedTarget;
     };
 
     const valueNotMatches = (parentValue: string | undefined, targetValue: string, parentFieldCode: string): boolean => {
       return !valueMatches(parentValue, targetValue, parentFieldCode);
     };
+
+    // Check simple service-scoped condition (e.g. SMD02/SMD09 on the row's Service, not the row itself)
+    if (rules.showWhen.serviceFieldKey) {
+      // The bulk-upload screen doesn't fetch service answers. Without them we cannot evaluate a
+      // service-scoped condition, so default to visible (safe: the server validates these correctly).
+      // Treating an equals/in condition as "not visible" here would flag valid data as "should be empty".
+      if (!serviceAnswers) return true;
+      const serviceValue = serviceAnswers[rules.showWhen.serviceFieldKey];
+      const numeric = evaluateNumericOperators(serviceValue, rules.showWhen);
+      if (numeric !== null) return numeric;
+      if (rules.showWhen.equals) return (serviceValue ?? '').toLowerCase() === rules.showWhen.equals.toLowerCase();
+      if (rules.showWhen.in && Array.isArray(rules.showWhen.in)) {
+        return rules.showWhen.in.map((v) => v.toLowerCase()).includes((serviceValue ?? '').toLowerCase());
+      }
+      return true;
+    }
+
+    // Check numeric comparison on a row field (gt/gte/lt/lte/eq/neq)
+    if (rules.showWhen.fieldKey) {
+      const parentFieldIndex = headers.indexOf(rules.showWhen.fieldKey);
+      const numeric = parentFieldIndex !== -1 ? evaluateNumericOperators(rowData[parentFieldIndex]?.trim(), rules.showWhen) : null;
+      if (numeric !== null) return numeric;
+    }
 
     // Check simple equals condition
     if (rules.showWhen.fieldKey && rules.showWhen.equals) {
@@ -559,16 +612,32 @@ export const isFieldVisible = (
 
     // Check allOf conditions (all must be true)
     if (rules.showWhen.allOf && Array.isArray(rules.showWhen.allOf)) {
-      return rules.showWhen.allOf.every(condition => {
-        const parentFieldIndex = headers.indexOf(condition.fieldKey);
+      return rules.showWhen.allOf.every((condition) => {
+        if (condition.serviceFieldKey) {
+          // No service answers available — cannot evaluate this condition, so treat it as satisfied
+          // (default visible). Server-side validation handles service-scoped rules correctly.
+          if (!serviceAnswers) return true;
+          const serviceValue = serviceAnswers[condition.serviceFieldKey];
+          const numeric = evaluateNumericOperators(serviceValue, condition);
+          if (numeric !== null) return numeric;
+          if (condition.equals) return (serviceValue ?? '').toLowerCase() === condition.equals.toLowerCase();
+          if (condition.in && Array.isArray(condition.in)) {
+            return condition.in.map((v) => v.toLowerCase()).includes((serviceValue ?? '').toLowerCase());
+          }
+          return true;
+        }
+
+        const parentFieldIndex = headers.indexOf(condition.fieldKey!);
         if (parentFieldIndex === -1) return false;
         const parentValue = rowData[parentFieldIndex]?.trim();
-        
+
+        const numeric = evaluateNumericOperators(parentValue, condition);
+        if (numeric !== null) return numeric;
         if (condition.equals) {
-          return valueMatches(parentValue, condition.equals, condition.fieldKey);
+          return valueMatches(parentValue, condition.equals, condition.fieldKey!);
         }
         if (condition.notEquals) {
-          return valueNotMatches(parentValue, condition.notEquals, condition.fieldKey);
+          return valueNotMatches(parentValue, condition.notEquals, condition.fieldKey!);
         }
         return false;
       });
@@ -580,22 +649,26 @@ export const isFieldVisible = (
       if (parentFieldIndex !== -1) {
         const rawParentValue = rowData[parentFieldIndex];
         // Split first, then trim and lowercase each token so entries like "GAD-7 , ASQ-3" normalize per-token
-        const selectedValues = rawParentValue?.split(',').map(v => v.trim().toLowerCase()).filter(v => v !== '') || [];
+        const selectedValues =
+          rawParentValue
+            ?.split(',')
+            .map((v) => v.trim().toLowerCase())
+            .filter((v) => v !== '') || [];
 
         // Get the parent field's options to map labels to values
-        const parentFieldMeta = fieldMetadata.find(f => f.fieldCode === rules.showWhen?.fieldKey);
+        const parentFieldMeta = fieldMetadata.find((f) => f.fieldCode === rules.showWhen?.fieldKey);
         const optionValueMap = new Map<string, string>();
         if (parentFieldMeta?.options) {
-          parentFieldMeta.options.forEach(opt => {
+          parentFieldMeta.options.forEach((opt) => {
             optionValueMap.set(opt.label.toLowerCase(), opt.value.toLowerCase());
             optionValueMap.set(opt.value.toLowerCase(), opt.value.toLowerCase());
           });
         }
 
         // Normalize selected values to option values (handle both labels and values)
-        const normalizedSelectedValues = selectedValues.map(v => optionValueMap.get(v) || v);
+        const normalizedSelectedValues = selectedValues.map((v) => optionValueMap.get(v) || v);
 
-        return rules.showWhen.in.some(v => normalizedSelectedValues.includes(v.toLowerCase()));
+        return rules.showWhen.in.some((v) => normalizedSelectedValues.includes(v.toLowerCase()));
       }
     }
   } catch {
@@ -610,41 +683,36 @@ export const isFieldVisible = (
  * A field should only show errors if all preceding required fields have been answered.
  * This prevents showing all errors at once - only the first unanswered required field shows an error.
  */
-export const shouldValidateField = (
-  fieldCode: string,
-  rowData: string[],
-  headers: string[],
-  fieldMetadata: FieldMetadataWithRequired[] | undefined
-): boolean => {
+export const shouldValidateField = (fieldCode: string, rowData: string[], headers: string[], fieldMetadata: FieldMetadataWithRequired[] | undefined, serviceAnswers?: Record<string, string>): boolean => {
   if (!fieldMetadata) return true;
 
   const fieldIndex = headers.indexOf(fieldCode);
   if (fieldIndex === -1) return true;
 
-  const fieldMeta = fieldMetadata.find(f => f.fieldCode === fieldCode);
-  
+  const fieldMeta = fieldMetadata.find((f) => f.fieldCode === fieldCode);
+
   // For fields with conditional rules, check if parent condition is met first
   if (fieldMeta?.conditionalRules) {
-    const visible = isFieldVisible(fieldCode, rowData, headers, fieldMetadata);
+    const visible = isFieldVisible(fieldCode, rowData, headers, fieldMetadata, serviceAnswers);
     if (!visible) return false; // Don't validate hidden fields
   }
 
   // Check all preceding fields (left to right)
   for (let i = 0; i < fieldIndex; i++) {
     const precedingFieldCode = headers[i];
-    const precedingMeta = fieldMetadata.find(f => f.fieldCode === precedingFieldCode);
-    
+    const precedingMeta = fieldMetadata.find((f) => f.fieldCode === precedingFieldCode);
+
     if (!precedingMeta) continue;
-    
+
     // Skip ServiceName column - it's always prefilled
     if (precedingFieldCode === 'ServiceName' || precedingFieldCode === 'PPS01') continue;
-    
+
     // Check if preceding field has conditional rules
     if (precedingMeta.conditionalRules) {
-      const precedingVisible = isFieldVisible(precedingFieldCode, rowData, headers, fieldMetadata);
+      const precedingVisible = isFieldVisible(precedingFieldCode, rowData, headers, fieldMetadata, serviceAnswers);
       if (!precedingVisible) continue; // Skip hidden fields
     }
-    
+
     // If preceding field is required and empty, don't validate current field yet
     if (precedingMeta.isRequired) {
       const precedingValue = rowData[i]?.trim();
@@ -663,30 +731,25 @@ export const shouldValidateField = (
  * 1. It has conditional rules (showWhen)
  * 2. The parent condition is met (field is visible)
  * 3. The field itself is marked as required OR it's a sub-field that should have data
- * 
+ *
  * This is used to highlight empty sub-fields when parent is "Yes"
  */
-export const isFieldConditionallyRequired = (
-  fieldCode: string,
-  rowData: string[],
-  headers: string[],
-  fieldMetadata: FieldMetadataWithRequired[] | undefined
-): boolean => {
+export const isFieldConditionallyRequired = (fieldCode: string, rowData: string[], headers: string[], fieldMetadata: FieldMetadataWithRequired[] | undefined, serviceAnswers?: Record<string, string>): boolean => {
   if (!fieldMetadata) return false;
 
-  const fieldMeta = fieldMetadata.find(f => f.fieldCode === fieldCode);
+  const fieldMeta = fieldMetadata.find((f) => f.fieldCode === fieldCode);
   if (!fieldMeta?.conditionalRules) return false;
 
   // Only mark as conditionally required if the field is visible (parent condition met)
   // AND the field is actually required
-  const visible = isFieldVisible(fieldCode, rowData, headers, fieldMetadata);
-  
+  const visible = isFieldVisible(fieldCode, rowData, headers, fieldMetadata, serviceAnswers);
+
   // If not visible, not conditionally required
   if (!visible) return false;
-  
+
   // If visible and has isRequired flag, it's conditionally required
   if (fieldMeta.isRequired) return true;
-  
+
   // For grouped sub-fields (like QSU08_*, QSU10_*, QSU12_*), when parent is "Yes",
   // ALL sub-fields must be filled - highlight each individually until it has a value.
   // Only applies to fields with a "group" key in their configuration — plain optional
@@ -706,7 +769,7 @@ export const isFieldConditionallyRequired = (
   } catch {
     // Invalid JSON
   }
-  
+
   return false;
 };
 
@@ -721,20 +784,23 @@ export const isFieldValueInvalid = (
   rowData: string[],
   headers: string[],
   fieldMetadata: FieldMetadataWithRequired[] | undefined,
-  labels?: string[]
+  labels?: string[],
+  serviceAnswers?: Record<string, string>
 ): { isInvalid: boolean; errorMessage?: string } => {
   if (!fieldMetadata) return { isInvalid: false };
 
-  const fieldMeta = fieldMetadata.find(f => f.fieldCode === fieldCode);
+  const fieldMeta = fieldMetadata.find((f) => f.fieldCode === fieldCode);
   if (!fieldMeta?.conditionalRules) return { isInvalid: false };
 
   // Check if field has a value
   const hasValue = cellValue && cellValue.trim() !== '';
   if (!hasValue) return { isInvalid: false };
 
-  // Check if field is visible (parent condition met)
-  const visible = isFieldVisible(fieldCode, rowData, headers, fieldMetadata);
-  
+  // Check if field is visible (parent condition met). When serviceAnswers is supplied, service-scoped
+  // conditions evaluate against the row's service; when absent they default to visible (see
+  // isFieldVisible), so they never produce a false "should be empty" error here.
+  const visible = isFieldVisible(fieldCode, rowData, headers, fieldMetadata, serviceAnswers);
+
   // If field has a value but should NOT be visible (parent condition NOT met),
   // it's an error - the value should be empty
   if (!visible && hasValue) {
@@ -742,41 +808,37 @@ export const isFieldValueInvalid = (
       const rules: ConditionalRule = JSON.parse(fieldMeta.conditionalRules);
       if (rules.showWhen?.fieldKey) {
         const parentFieldIndex = headers.indexOf(rules.showWhen.fieldKey);
-        const parentFieldMeta = fieldMetadata.find(f => f.fieldCode === rules.showWhen?.fieldKey);
-        
+        const parentFieldMeta = fieldMetadata.find((f) => f.fieldCode === rules.showWhen?.fieldKey);
+
         // Get parent question label (from labels array or fallback to code)
-        const parentLabel = (labels && parentFieldIndex >= 0 ? labels[parentFieldIndex] : null) 
-          || parentFieldMeta?.fieldCode 
-          || rules.showWhen.fieldKey;
-        
+        const parentLabel = (labels && parentFieldIndex >= 0 ? labels[parentFieldIndex] : null) || parentFieldMeta?.fieldCode || rules.showWhen.fieldKey;
+
         // Get current field label
         const fieldIndex = headers.indexOf(fieldCode);
         const currentFieldLabel = (labels && fieldIndex >= 0 ? labels[fieldIndex] : null) || fieldCode;
-        
+
         // Get the parent's current value for context
         const parentValue = parentFieldIndex >= 0 ? rowData[parentFieldIndex] : '';
-        
+
         // Determine expected value based on condition type
         let expectedValue: string;
         if (rules.showWhen.in && Array.isArray(rules.showWhen.in)) {
           // For checkbox "in" conditions, show human-readable labels (not internal value codes)
           expectedValue = rules.showWhen.in
             .map((v) => {
-              const match = parentFieldMeta?.options?.find(
-                (opt) => opt.value.toLowerCase() === v.toLowerCase()
-              );
+              const match = parentFieldMeta?.options?.find((opt) => opt.value.toLowerCase() === v.toLowerCase());
               return match?.label ?? v;
             })
             .join(', ');
           return {
             isInvalid: true,
-            errorMessage: `"${currentFieldLabel}" should be empty because "${parentLabel}" does not include "${expectedValue}"`
+            errorMessage: `"${currentFieldLabel}" should be empty because "${parentLabel}" does not include "${expectedValue}"`,
           };
         } else {
           expectedValue = rules.showWhen.equals || 'Yes';
           return {
             isInvalid: true,
-            errorMessage: `"${currentFieldLabel}" should be empty because "${parentLabel}" is "${parentValue || 'empty'}" (expected "${expectedValue}" to fill this field)`
+            errorMessage: `"${currentFieldLabel}" should be empty because "${parentLabel}" is "${parentValue || 'empty'}" (expected "${expectedValue}" to fill this field)`,
           };
         }
       }
@@ -785,7 +847,7 @@ export const isFieldValueInvalid = (
     }
     return {
       isInvalid: true,
-      errorMessage: 'This field should be empty based on the parent field value'
+      errorMessage: 'This field should be empty based on the parent field value',
     };
   }
 

@@ -1,6 +1,5 @@
 import React, { useCallback, useMemo } from 'react';
-import { Box, FormControlLabel, Checkbox } from '@mui/material';
-import { GovUKFieldset, ErrorSummary } from '../../../../../components/GovUKComponents';
+import { GovUKFieldset, GovUKErrorSummary, GovUKCheckbox } from '../../../../../components/GovUKComponents';
 import {
   QuestionFormState,
   ValidationErrors,
@@ -8,10 +7,16 @@ import {
   questionTypeOptions,
   stepOptions,
   requiresOptions,
+  isDateQuestion,
+  dateValidationRuleOptions,
   ServiceFormQuestion,
 } from './types';
 import { QuestionFormAction } from './reducer';
 import OptionsManager from './OptionsManager';
+import ConditionalRulesBuilder, { ConditionalTriggerField } from '../../DataCollectionFormQuestions/Common/ConditionalRulesBuilder';
+
+// Service question types map to the field-type strings the shared ConditionalRulesBuilder understands.
+const QUESTION_TYPE_TO_FIELD_TYPE: Record<number, string> = { 0: 'text', 1: 'radio', 2: 'checkbox', 3: 'select', 4: 'date' };
 
 interface Props {
   formState: QuestionFormState;
@@ -22,26 +27,13 @@ interface Props {
   allQuestions?: ServiceFormQuestion[];
 }
 
-const QuestionForm = ({
-  formState,
-  errors,
-  setErrors,
-  dispatch,
-  isEdit = false,
-  allQuestions = [],
-}: Props): React.ReactElement => {
+const QuestionForm = ({ formState, errors, setErrors, dispatch, isEdit = false, allQuestions = [] }: Props): React.ReactElement => {
   const questionTypeSelectOptions = useMemo(
-    () => [
-      { value: '', label: 'Select question type' },
-      ...questionTypeOptions.map((opt) => ({ value: String(opt.value), label: opt.label })),
-    ],
+    () => [{ value: '', label: 'Select question type' }, ...questionTypeOptions.map((opt) => ({ value: String(opt.value), label: opt.label }))],
     []
   );
 
-  const stepSelectOptions = useMemo(
-    () => stepOptions.map((opt) => ({ value: String(opt.value), label: opt.label })),
-    []
-  );
+  const stepSelectOptions = useMemo(() => stepOptions.map((opt) => ({ value: String(opt.value), label: opt.label })), []);
 
   const conditionalQuestionOptions = useMemo(() => {
     const options = [{ value: '', label: 'None (always show)' }];
@@ -65,6 +57,21 @@ const QuestionForm = ({
     }
     return options;
   }, [allQuestions, formState.conditionalQuestionCode]);
+
+  // Map service questions to the minimal shape the shared multi-condition builder expects.
+  const conditionalTriggerFields = useMemo<ConditionalTriggerField[]>(
+    () =>
+      allQuestions.map((q) => ({
+        fieldKey: q.code,
+        label: q.label,
+        fieldType: QUESTION_TYPE_TO_FIELD_TYPE[q.questionType] ?? 'text',
+        // Fold step into a single global order so the forward-reference check treats a step-2
+        // question as coming after every step-1 question (displayOrder restarts each step).
+        displayOrder: q.step * 1000 + q.displayOrder,
+        options: q.options.map((o) => ({ value: o.value, label: o.label })),
+      })),
+    [allQuestions]
+  );
 
   const validate = useCallback(
     (field: string) => {
@@ -91,6 +98,7 @@ const QuestionForm = ({
     if (errors.code) list.push({ targetName: 'question-code', text: String(errors.code) });
     if (errors.label) list.push({ targetName: 'question-label', text: String(errors.label) });
     if (errors.options) list.push({ targetName: 'question-options', text: String(errors.options) });
+    if (errors.conditionalRules) list.push({ targetName: 'conditional-field-0', text: String(errors.conditionalRules) });
     return list;
   }, [errors]);
 
@@ -98,7 +106,7 @@ const QuestionForm = ({
 
   return (
     <>
-      {errorList.length > 0 && <ErrorSummary errors={errorList} />}
+      {errorList.length > 0 && <GovUKErrorSummary errors={errorList} />}
       <GovUKFieldset legend="Question Details" legendSize="m">
         <GovUKFieldset.Input
           id="question-code"
@@ -159,6 +167,17 @@ const QuestionForm = ({
           required
           onChange={(e) => dispatch({ type: QuestionFormAction.SET_STEP, value: Number(e.target.value) })}
         />
+        {isDateQuestion(formState.questionType) && (
+          <GovUKFieldset.Select
+            id="question-date-validation-rule"
+            name="dateValidationRule"
+            label="Date restriction"
+            hint="Controls whether this date field rejects past or future dates when answered"
+            value={formState.dateValidationRule}
+            options={dateValidationRuleOptions}
+            onChange={(e) => dispatch({ type: QuestionFormAction.SET_DATE_VALIDATION_RULE, value: e.target.value })}
+          />
+        )}
         <GovUKFieldset.Input
           id="question-help-text-summary"
           name="helpTextSummary"
@@ -177,17 +196,15 @@ const QuestionForm = ({
         />
       </GovUKFieldset>
 
-      <GovUKFieldset legend="Conditional Display" legendSize="m">
+      <GovUKFieldset legend="Child question (indented)" legendSize="m">
         <GovUKFieldset.Select
           id="conditional-question"
           name="conditionalQuestionCode"
-          label="Show when question"
-          hint="Optionally show this question only when another question has a specific answer"
+          label="Indent under question"
+          hint="Use this only to nest this question as an indented child under another question's answer. For general show/hide rules across one or more questions, use Conditional Display Rules below."
           value={formState.conditionalQuestionCode}
           options={conditionalQuestionOptions}
-          onChange={(e) =>
-            dispatch({ type: QuestionFormAction.SET_CONDITIONAL_QUESTION_CODE, value: e.target.value })
-          }
+          onChange={(e) => dispatch({ type: QuestionFormAction.SET_CONDITIONAL_QUESTION_CODE, value: e.target.value })}
         />
         {formState.conditionalQuestionCode && (
           <GovUKFieldset.Select
@@ -202,53 +219,36 @@ const QuestionForm = ({
         )}
       </GovUKFieldset>
 
-      <GovUKFieldset legend="Settings" legendSize="m">
-        <Box sx={{ mb: 2 }}>
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={formState.isRequired}
-                onChange={(e) => dispatch({ type: QuestionFormAction.SET_IS_REQUIRED, value: e.target.checked })}
-              />
-            }
-            label="Required"
-          />
-        </Box>
-        {showOptions && (
-          <Box sx={{ mb: 2 }}>
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={formState.isPredefined}
-                  onChange={(e) => dispatch({ type: QuestionFormAction.SET_IS_PREDEFINED, value: e.target.checked })}
-                />
-              }
-              label="Predefined options"
-            />
-            <Box sx={{ ml: 4, color: 'text.secondary', fontSize: '0.875rem' }}>
-              Uncheck this if options are loaded dynamically (e.g., from locations or services)
-            </Box>
-          </Box>
-        )}
-        {showOptions && formState.isPredefined && (
-          <GovUKFieldset legend="Answer Options" legendSize="m">
-            <OptionsManager options={formState.options} dispatch={dispatch} error={errors.options} />
-          </GovUKFieldset>
-        )}
-        {isEdit && (
-          <Box sx={{ mb: 2 }}>
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={formState.isActive}
-                  onChange={(e) => dispatch({ type: QuestionFormAction.SET_IS_ACTIVE, value: e.target.checked })}
-                />
-              }
-              label="Active"
-            />
-          </Box>
-        )}
-      </GovUKFieldset>
+      {/* Advanced: multiple conditions combined with AND (takes precedence over the single rule above when set). */}
+      <ConditionalRulesBuilder
+        value={formState.conditionalRules}
+        onChange={(value) => dispatch({ type: QuestionFormAction.SET_CONDITIONAL_RULES, value })}
+        availableFields={conditionalTriggerFields}
+        currentFieldKey={formState.code}
+      />
+
+      <GovUKCheckbox
+        id="question-settings"
+        name="settings"
+        legend="Settings"
+        legendSize="m"
+        options={[
+          { value: 'required', label: 'Required' },
+          ...(showOptions ? [{ value: 'predefined', label: 'Predefined options', hint: 'Uncheck this if options are loaded dynamically (e.g., from locations or services)' }] : []),
+          ...(isEdit ? [{ value: 'active', label: 'Active' }] : []),
+        ]}
+        value={[...(formState.isRequired ? ['required'] : []), ...(formState.isPredefined ? ['predefined'] : []), ...(formState.isActive ? ['active'] : [])]}
+        onChange={(vals) => {
+          dispatch({ type: QuestionFormAction.SET_IS_REQUIRED, value: vals.includes('required') });
+          if (showOptions) dispatch({ type: QuestionFormAction.SET_IS_PREDEFINED, value: vals.includes('predefined') });
+          if (isEdit) dispatch({ type: QuestionFormAction.SET_IS_ACTIVE, value: vals.includes('active') });
+        }}
+      />
+      {showOptions && formState.isPredefined && (
+        <GovUKFieldset legend="Answer Options" legendSize="m">
+          <OptionsManager options={formState.options} dispatch={dispatch} error={errors.options} />
+        </GovUKFieldset>
+      )}
     </>
   );
 };

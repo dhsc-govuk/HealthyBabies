@@ -1,11 +1,11 @@
 import React, { useState, useMemo } from 'react';
 import { LocationUpdateSelection } from './types';
-import { BulkUpdateLocationsResult } from './mutations';
+import { BulkUploadLocationsResultDto } from './mutations';
 import './styles.css';
 
 interface StepUpdateLocationsProps {
   selections: LocationUpdateSelection[];
-  updateResult: BulkUpdateLocationsResult | null;
+  updateResult: BulkUploadLocationsResultDto | null;
   isLoading: boolean;
   onToggleSelection: (siteName: string, updateFromFile: boolean) => void;
   onBack: () => void;

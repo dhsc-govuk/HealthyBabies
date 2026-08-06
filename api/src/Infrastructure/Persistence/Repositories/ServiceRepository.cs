@@ -85,6 +85,7 @@ public class ServiceRepository(ApplicationDbContext dbContext)
     public async Task<Option<Service>> FindByNameAsync(string name, OrganisationId organisationId, CancellationToken cancellationToken)
     {
         var entity = await Context.Services
+            .Include(x => x.Answers)
             .FirstOrDefaultAsync(x => x.Name == name && x.OrganisationId == organisationId, cancellationToken);
         return entity ?? Option<Service>.None;
     }

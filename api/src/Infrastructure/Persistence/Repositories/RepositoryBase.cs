@@ -9,14 +9,24 @@ public abstract class RepositoryBase<T, TKey>(ApplicationDbContext dbContext) : 
 {
     protected readonly ApplicationDbContext Context = dbContext;
 
-    public async Task<T> AddAsync(T entity, CancellationToken cancellationToken = default)
+    public Task<T> AddAsync(T entity, CancellationToken cancellationToken = default)
+    {
+        return AddAsync(entity, cancellationToken, saveChanges: true);
+    }
+
+    public async Task<T> AddAsync(T entity, CancellationToken cancellationToken, bool saveChanges)
     {
         Guard.NotNull(entity, nameof(entity), "Empty entity received");
 
         try
         {
             Context.Set<T>().Add(entity);
-            await Context.SaveChangesAsync(cancellationToken);
+
+            if (saveChanges)
+            {
+                await Context.SaveChangesAsync(cancellationToken);
+            }
+
             return entity;
         }
         catch (Exception ex)
@@ -50,7 +60,12 @@ public abstract class RepositoryBase<T, TKey>(ApplicationDbContext dbContext) : 
         }
     }
 
-    public virtual async Task<T> UpdateAsync(T entity, CancellationToken cancellationToken = default)
+    public virtual Task<T> UpdateAsync(T entity, CancellationToken cancellationToken = default)
+    {
+        return UpdateAsync(entity, cancellationToken, saveChanges: true);
+    }
+
+    public virtual async Task<T> UpdateAsync(T entity, CancellationToken cancellationToken, bool saveChanges)
     {
         Guard.NotNull(entity, nameof(entity), "Empty entity received");
 
@@ -62,7 +77,11 @@ public abstract class RepositoryBase<T, TKey>(ApplicationDbContext dbContext) : 
                 Context.Set<T>().Update(entity);
             }
 
-            await Context.SaveChangesAsync(cancellationToken);
+            if (saveChanges)
+            {
+                await Context.SaveChangesAsync(cancellationToken);
+            }
+
             return entity;
         }
         catch (Exception ex)

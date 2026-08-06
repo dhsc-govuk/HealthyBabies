@@ -19,7 +19,12 @@ public class ServiceFormQuestion : AuditableEntity<ServiceFormQuestionId>
     public string? HelpText { get; private set; }
     public string? ConditionalQuestionCode { get; private set; }
     public string? ConditionalValue { get; private set; }
+
+    // Rich multi-condition visibility rules (showWhen/allOf) mirroring the Data Collection form fields.
+    // When set, this takes precedence over the legacy ConditionalQuestionCode/ConditionalValue pair.
+    public string? ConditionalRules { get; private set; }
     public bool IsActive { get; private set; } = true;
+    public string? DateValidationRule { get; private set; }
 
     public IReadOnlyCollection<ServiceFormQuestionOption> Options => _options.AsReadOnly();
 
@@ -43,7 +48,9 @@ public class ServiceFormQuestion : AuditableEntity<ServiceFormQuestionId>
         string? helpTextSummary,
         string? helpText,
         string? conditionalQuestionCode,
-        string? conditionalValue)
+        string? conditionalValue,
+        string? dateValidationRule,
+        string? conditionalRules)
     {
         Guard.NotNullOrEmptyOrWhiteSpace(code, nameof(code));
         Guard.NotNullOrEmptyOrWhiteSpace(label, nameof(label));
@@ -64,6 +71,8 @@ public class ServiceFormQuestion : AuditableEntity<ServiceFormQuestionId>
         HelpText = helpText;
         ConditionalQuestionCode = conditionalQuestionCode;
         ConditionalValue = conditionalValue;
+        DateValidationRule = dateValidationRule;
+        ConditionalRules = conditionalRules;
     }
 
     public static ServiceFormQuestion New(
@@ -80,7 +89,9 @@ public class ServiceFormQuestion : AuditableEntity<ServiceFormQuestionId>
         string? helpTextSummary = null,
         string? helpText = null,
         string? conditionalQuestionCode = null,
-        string? conditionalValue = null)
+        string? conditionalValue = null,
+        string? dateValidationRule = null,
+        string? conditionalRules = null)
     {
         return new ServiceFormQuestion(
             id,
@@ -96,7 +107,9 @@ public class ServiceFormQuestion : AuditableEntity<ServiceFormQuestionId>
             helpTextSummary,
             helpText,
             conditionalQuestionCode,
-            conditionalValue);
+            conditionalValue,
+            dateValidationRule,
+            conditionalRules);
     }
 
     public void UpdateDetails(
@@ -111,7 +124,9 @@ public class ServiceFormQuestion : AuditableEntity<ServiceFormQuestionId>
         string? helpTextSummary,
         string? helpText,
         string? conditionalQuestionCode,
-        string? conditionalValue)
+        string? conditionalValue,
+        string? dateValidationRule = null,
+        string? conditionalRules = null)
     {
         Guard.NotNullOrEmptyOrWhiteSpace(label, nameof(label));
         Guard.GreaterThan(step, 0, nameof(step));
@@ -129,6 +144,8 @@ public class ServiceFormQuestion : AuditableEntity<ServiceFormQuestionId>
         HelpText = helpText;
         ConditionalQuestionCode = conditionalQuestionCode;
         ConditionalValue = conditionalValue;
+        DateValidationRule = dateValidationRule;
+        ConditionalRules = conditionalRules;
     }
 
     public ServiceFormQuestionOption AddOption(string value, string label, int displayOrder)

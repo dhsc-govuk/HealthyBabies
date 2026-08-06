@@ -1,4 +1,5 @@
 import { FormFieldOption, QuestionFormState } from './types';
+import { uniqueSlug } from '../../../../../helpers/slug';
 
 export enum QuestionFormAction {
   SET_FIELD_KEY = 'SET_FIELD_KEY',
@@ -83,6 +84,7 @@ export const questionFormReducer = (state: QuestionFormState, action: Action): Q
         label: '',
         displayOrder: state.options.length + 1,
         isDefault: false,
+        isPersisted: false,
       };
       return { ...state, options: [...state.options, newOption] };
     }
@@ -94,10 +96,20 @@ export const questionFormReducer = (state: QuestionFormState, action: Action): Q
     }
     case QuestionFormAction.UPDATE_OPTION: {
       const updatedOptions = state.options.map((opt, i) => {
-        if (i === action.index) {
-          return { ...opt, [action.field]: action.value };
+        if (i !== action.index) {
+          return opt;
         }
-        return opt;
+        if (action.field === 'label') {
+          // Persisted options keep their locked, system-owned value; only the label changes.
+          if (opt.isPersisted) {
+            return { ...opt, label: action.value };
+          }
+          // New options auto-generate a value from the label, unique across siblings.
+          const takenValues = state.options.filter((_, j) => j !== i).map((o) => o.value);
+          return { ...opt, label: action.value, value: uniqueSlug(action.value, takenValues) };
+        }
+        // Value is system-owned and not directly editable; ignore direct edits to persisted values.
+        return opt.isPersisted ? opt : { ...opt, value: action.value };
       });
       return { ...state, options: updatedOptions };
     }

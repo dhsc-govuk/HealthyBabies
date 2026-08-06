@@ -13,6 +13,8 @@ export enum ActionType {
   SET_HELP_TEXT = 'SET_HELP_TEXT',
   SET_CONDITIONAL_QUESTION_CODE = 'SET_CONDITIONAL_QUESTION_CODE',
   SET_CONDITIONAL_VALUE = 'SET_CONDITIONAL_VALUE',
+  SET_CONDITIONAL_RULES = 'SET_CONDITIONAL_RULES',
+  SET_DATE_VALIDATION_RULE = 'SET_DATE_VALIDATION_RULE',
   SET_OPTIONS = 'SET_OPTIONS',
   ADD_OPTION = 'ADD_OPTION',
   UPDATE_OPTION = 'UPDATE_OPTION',
@@ -34,6 +36,8 @@ export type Action =
   | { type: ActionType.SET_HELP_TEXT; payload: string }
   | { type: ActionType.SET_CONDITIONAL_QUESTION_CODE; payload: string }
   | { type: ActionType.SET_CONDITIONAL_VALUE; payload: string }
+  | { type: ActionType.SET_CONDITIONAL_RULES; payload: string }
+  | { type: ActionType.SET_DATE_VALIDATION_RULE; payload: string }
   | { type: ActionType.SET_OPTIONS; payload: SiteFormQuestionOption[] }
   | { type: ActionType.ADD_OPTION; payload: SiteFormQuestionOption }
   | { type: ActionType.UPDATE_OPTION; payload: { index: number; option: SiteFormQuestionOption } }
@@ -67,6 +71,10 @@ export const questionFormReducer = (state: QuestionFormState, action: Action): Q
       return { ...state, conditionalQuestionCode: action.payload };
     case ActionType.SET_CONDITIONAL_VALUE:
       return { ...state, conditionalValue: action.payload };
+    case ActionType.SET_CONDITIONAL_RULES:
+      return { ...state, conditionalRules: action.payload };
+    case ActionType.SET_DATE_VALIDATION_RULE:
+      return { ...state, dateValidationRule: action.payload };
     case ActionType.SET_OPTIONS:
       return { ...state, options: action.payload };
     case ActionType.ADD_OPTION:
@@ -99,6 +107,8 @@ export const questionFormReducer = (state: QuestionFormState, action: Action): Q
         helpText: '',
         conditionalQuestionCode: '',
         conditionalValue: '',
+        conditionalRules: '',
+        dateValidationRule: '',
         options: [],
       };
     default:

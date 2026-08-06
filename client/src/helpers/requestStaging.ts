@@ -8,6 +8,8 @@ export const STAGING_ENDPOINT_PATH = '/system/request-staging';
 // because their bodies contain embedded JSON that triggers WAF rules.
 const FORCE_STAGE_URL_PATTERNS = [
   '/data-collection-form-questions',
+  '/site-form-questions',
+  '/service-form-questions',
   '/services/bulk-upload',
   '/locations/bulk-upload/update',
   'bulk-upload/staged',
@@ -20,20 +22,15 @@ export const markRequestAsStagingInternal = <T extends AxiosRequestConfig>(confi
   return config;
 };
 
-const isMarkedInternal = (config: AxiosRequestConfig): boolean =>
-  Boolean((config as unknown as Record<symbol, boolean>)[SKIP_FLAG]);
+const isMarkedInternal = (config: AxiosRequestConfig): boolean => Boolean((config as unknown as Record<symbol, boolean>)[SKIP_FLAG]);
 
 const stagingMethods = new Set(['post', 'put', 'patch']);
 
-const isFormData = (data: unknown): boolean =>
-  typeof FormData !== 'undefined' && data instanceof FormData;
+const isFormData = (data: unknown): boolean => typeof FormData !== 'undefined' && data instanceof FormData;
 
-const isBlob = (data: unknown): boolean =>
-  typeof Blob !== 'undefined' && data instanceof Blob;
+const isBlob = (data: unknown): boolean => typeof Blob !== 'undefined' && data instanceof Blob;
 
-const isArrayBufferLike = (data: unknown): boolean =>
-  data instanceof ArrayBuffer ||
-  (typeof ArrayBuffer !== 'undefined' && ArrayBuffer.isView(data as ArrayBufferView));
+const isArrayBufferLike = (data: unknown): boolean => data instanceof ArrayBuffer || (typeof ArrayBuffer !== 'undefined' && ArrayBuffer.isView(data as ArrayBufferView));
 
 const contentTypeIsMultipart = (config: AxiosRequestConfig): boolean => {
   const ct = (config.headers?.['Content-Type'] || config.headers?.['content-type']) as string | undefined;
@@ -62,15 +59,13 @@ const stageBody = async (json: string): Promise<string> => {
     form,
     markRequestAsStagingInternal({
       headers: { 'Content-Type': 'multipart/form-data' },
-    }),
+    })
   );
 
   return response.data.stagingId;
 };
 
-export const stagingRequestInterceptor = async (
-  config: InternalAxiosRequestConfig,
-): Promise<InternalAxiosRequestConfig> => {
+export const stagingRequestInterceptor = async (config: InternalAxiosRequestConfig): Promise<InternalAxiosRequestConfig> => {
   if (isMarkedInternal(config)) {
     return config;
   }

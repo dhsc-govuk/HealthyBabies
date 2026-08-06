@@ -66,6 +66,12 @@ public class CreateFormFieldCommandHandler(
         DataCollectionFormModule module,
         CancellationToken cancellationToken)
     {
+        var duplicateFieldKey = ConditionalRulesValidation.FindDuplicateFieldKey(request.ConditionalRules);
+        if (duplicateFieldKey != null)
+        {
+            return new FormFieldDuplicateConditionException(FormFieldId.Empty(), duplicateFieldKey);
+        }
+
         try
         {
             var maxDisplayOrder = await fieldRepository.GetMaxDisplayOrderForModule(

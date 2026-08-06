@@ -451,6 +451,9 @@ Desktop.ini
 # Environment files
 .env
 
+# Local development secrets - never commit
+appsettings.Development.json
+
 **/.idea
 /client/dist
 

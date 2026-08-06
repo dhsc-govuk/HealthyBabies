@@ -1,6 +1,5 @@
 import React, { useCallback, useMemo } from 'react';
-import { GovUKFieldset } from '../../../../../../../components/GovUKComponents';
-import { ErrorSummary } from 'govuk-react';
+import { GovUKFieldset, GovUKErrorSummary } from '../../../../../../../components/GovUKComponents';
 import { useEntityTypesQuery } from '../../../../../../../components/Global/Queries/globalData';
 import { LookupData, LookupDataReducerAction, ValidationErrors, validationErrors } from '../..';
 
@@ -48,7 +47,7 @@ const StepDetails = ({ lookupData, errors, setErrors, dispatch, isEdit = false }
 
   return (
     <>
-      {errorList.length > 0 && <ErrorSummary errors={errorList} />}
+      {errorList.length > 0 && <GovUKErrorSummary errors={errorList} />}
       <GovUKFieldset legend="Lookup Data Details" legendSize="m">
         <GovUKFieldset.Select
           id="lookup-entity"

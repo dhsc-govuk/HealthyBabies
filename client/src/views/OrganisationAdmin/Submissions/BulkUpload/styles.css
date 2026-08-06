@@ -293,6 +293,17 @@
   flex: 1;
 }
 
+/* Fieldset used inside the value column — must be flex so each option sits in its own column */
+.bulk-upload-summary-list__fieldset {
+  display: flex;
+  flex: 1;
+  gap: 40px;
+  align-items: flex-start;
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+
 /* Checkbox multi-select list in cell editor */
 .cell-editor__checkbox-list {
   display: flex;

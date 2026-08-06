@@ -6,6 +6,7 @@ import StepDetails from '../StepDetails';
 import StepReview from '../StepReview';
 
 interface Props {
+  title: string;
   completeLabel: string;
   lookupData: LookupData;
   dispatch: React.Dispatch<{ type: LookupDataReducerAction; value: any }>;
@@ -14,7 +15,7 @@ interface Props {
   onCancel?: () => void;
 }
 
-const LookupDataSteps = ({ completeLabel, lookupData, dispatch, handleSave, isEdit = false, onCancel }: Props): React.ReactElement => {
+const LookupDataSteps = ({ title, completeLabel, lookupData, dispatch, handleSave, isEdit = false, onCancel }: Props): React.ReactElement => {
   const [step, setStep] = useState<number>(0);
 
   const [errors, setErrors] = useState<ValidationErrors>({
@@ -61,6 +62,7 @@ const LookupDataSteps = ({ completeLabel, lookupData, dispatch, handleSave, isEd
       validate={validate}
       isNextDisabled={hasErrors}
       onCancel={onCancel}
+      title={title}
     />
   );
 };

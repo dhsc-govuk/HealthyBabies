@@ -26,5 +26,7 @@ public class LocationDoesNotExistException(LocationId id)
 
 public class LocationArgumentException(LocationId id, string message) : LocationException(id, message);
 
+public class LocationInvalidAnswerException(LocationId id, string message) : LocationException(id, message);
+
 public class LocationUnknownException(LocationId id, Exception innerException)
     : LocationException(id, $"Unknown exception for the location {id}", innerException);

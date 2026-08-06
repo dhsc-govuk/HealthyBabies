@@ -82,6 +82,23 @@ public class DataCollectionRepository(ApplicationDbContext dbContext)
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<DataCollection>> GetByOrganisationIdAndTypeAsync(
+        OrganisationId organisationId,
+        DataCollectionType type,
+        CancellationToken cancellationToken = default)
+    {
+        return await Context.DataCollections
+            .AsNoTracking()
+            .Include(x => x.LocalAuthorities)
+            .Include(x => x.FormModuleAssignments)
+                .ThenInclude(fma => fma.FormModule)
+            .Where(x => !x.IsDraft
+                && x.Type == type
+                && (x.IsSubmittedByAllLocalAuthorities || x.LocalAuthorities.Any(la => la.LocalAuthorityId == organisationId)))
+            .OrderByDescending(x => x.EndDate)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task UpdateFormModuleAssignmentsAsync(
         DataCollectionId dataCollectionId,
         IReadOnlyList<Guid> formModuleIds,

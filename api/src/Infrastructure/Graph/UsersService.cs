@@ -19,6 +19,7 @@ public class UsersService : IUsersService
     private readonly ILogger<UsersService> _logger;
     private readonly string _defaultUserPassword;
     private readonly string _domain;
+    private readonly bool _useDefaultPassword;
 
     public UsersService(
         GraphServiceClient graphServiceClient,
@@ -28,8 +29,11 @@ public class UsersService : IUsersService
     {
         Guard.NotNull(graphServiceClient, nameof(graphServiceClient));
         Guard.NotNull(settings, nameof(settings));
-        Guard.NotNullOrEmpty(settings.Graph.DefaultUserPassword, nameof(settings.Graph.DefaultUserPassword));
         Guard.NotNullOrEmpty(settings.AzureAd.Domain, nameof(settings.AzureAd.Domain));
+        if (settings.Graph.UseDefaultPassword)
+        {
+            Guard.NotNullOrEmpty(settings.Graph.DefaultUserPassword, nameof(settings.Graph.DefaultUserPassword));
+        }
 
         _graphServiceClient = graphServiceClient;
         _emailNotificationService = emailNotificationService;
@@ -37,6 +41,7 @@ public class UsersService : IUsersService
 
         _defaultUserPassword = settings.Graph.DefaultUserPassword;
         _domain = settings.AzureAd.Domain;
+        _useDefaultPassword = settings.Graph.UseDefaultPassword;
     }
 
     public async Task<Option<string>> FindById(string userId, CancellationToken cancellationToken)
@@ -106,7 +111,9 @@ public class UsersService : IUsersService
     {
         try
         {
-            var password = PasswordGenerator.GenerateRandomPassword();
+            var password = _useDefaultPassword
+                ? _defaultUserPassword
+                : PasswordGenerator.GenerateRandomPassword();
 
             // Local member account: user signs in with email + password and is required to change it on first sign-in
             var user = new User
@@ -138,10 +145,13 @@ public class UsersService : IUsersService
             var createdUser = await _graphServiceClient.Users.PostAsync(user, cancellationToken: cancellationToken);
             _logger.LogInformation("Graph user created with temporary password for {Email}, UserId: {UserId}", email, createdUser!.Id);
 
-            var passwordResult = await _emailNotificationService.SendTemporaryPasswordEmail(email, password, cancellationToken);
-            passwordResult.Match(
-                _ => { _logger.LogInformation("Temporary password email sent to {Email}", email); return Unit.Default; },
-                ex => { _logger.LogError(ex, "Failed to send temporary password email to {Email}", email); return Unit.Default; });
+            if (!_useDefaultPassword)
+            {
+                var passwordResult = await _emailNotificationService.SendTemporaryPasswordEmail(email, password, cancellationToken);
+                passwordResult.Match(
+                    _ => { _logger.LogInformation("Temporary password email sent to {Email}", email); return Unit.Default; },
+                    ex => { _logger.LogError(ex, "Failed to send temporary password email to {Email}", email); return Unit.Default; });
+            }
 
             return new CreatedIdentity(createdUser.Id!);
         }

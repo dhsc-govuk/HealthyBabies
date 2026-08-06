@@ -50,7 +50,10 @@ public class InMemoryBlobService : IBlobService
 
     public Task<Either<Exception, IReadOnlyList<string>>> GetNamesByPrefix(string containerName, string prefix, CancellationToken cancellationToken = default)
     {
-        var keyPrefix = $"{containerName}/{prefix}";
+        // Mirrors the real BlobService, which searches for a "{prefix}/" virtual-folder-style prefix -
+        // a flat "{prefix}{extension}" name would never match, so this fake must enforce the same rule
+        // to catch that class of bug.
+        var keyPrefix = $"{containerName}/{prefix}/";
         IReadOnlyList<string> matches = _store.Keys
             .Where(k => k.StartsWith(keyPrefix))
             .Select(k => k[(containerName.Length + 1)..])

@@ -46,6 +46,20 @@ public class UpdateFormFieldCommandHandler(IFormFieldRepository repository)
         FormField field,
         CancellationToken cancellationToken)
     {
+        var duplicateFieldKey = ConditionalRulesValidation.FindDuplicateFieldKey(request.ConditionalRules);
+        if (duplicateFieldKey != null)
+        {
+            return new FormFieldDuplicateConditionException(field.Id, duplicateFieldKey);
+        }
+
+        var moduleFields = await repository.GetByModuleIdTracking(field.FormModuleId, cancellationToken);
+        var forwardReferencedFieldKey = ConditionalRulesValidation.FindForwardReferencedFieldKey(
+            request.ConditionalRules, request.DisplayOrder, moduleFields);
+        if (forwardReferencedFieldKey != null)
+        {
+            return new FormFieldBackwardConditionException(field.Id, forwardReferencedFieldKey);
+        }
+
         try
         {
             field.UpdateDetails(

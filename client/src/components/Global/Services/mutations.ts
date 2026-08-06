@@ -5,6 +5,7 @@ import {
   UpdateServiceStepOneRequest,
   UpdateServiceStepTwoRequest,
 } from './types';
+import { sanitizeCsvForUpload, zipCsvForUpload, zipFileForUpload } from '../../../helpers/csvUpload';
 
 export const createService = (request: CreateServiceRequest) =>
   axios.post<ServiceDto>('/services/create', request);
@@ -31,34 +32,97 @@ export interface ServiceMatchResult {
   hasExistingData: boolean;
 }
 
-export interface BulkUpdateServiceItemRequest {
-  serviceId?: string | null;
-  name: string;
-  answers: { questionCode: string; value?: string }[];
+export interface BulkUploadServiceFieldOptionDto {
+  value: string;
+  label: string;
 }
 
-export interface BulkUpdateServicesRequest {
-  dataCollectionId?: string | null;
-  services: BulkUpdateServiceItemRequest[];
+export interface BulkUploadServiceFieldMetadataDto {
+  fieldCode: string;
+  fieldType: string;
+  isRequired: boolean;
+  options: BulkUploadServiceFieldOptionDto[];
+  conditionalQuestionCode?: string | null;
+  conditionalValue?: string | null;
 }
 
-export interface BulkUpdateServiceResult {
-  serviceId?: string;
-  serviceName: string;
+export interface BulkUploadServiceFieldErrorDto {
+  fieldCode: string;
+  fieldLabel: string;
+  errorMessage: string;
+}
+
+export interface BulkUploadServiceRowValidationDto {
+  rowNumber: number;
+  serviceName?: string;
+  isValid: boolean;
+  errors: BulkUploadServiceFieldErrorDto[];
+}
+
+export interface BulkUploadServicesValidationResultDto {
+  isValid: boolean;
+  totalRows: number;
+  validRows: number;
+  invalidRows: number;
+  rowValidations: BulkUploadServiceRowValidationDto[];
+  fieldMetadata: BulkUploadServiceFieldMetadataDto[];
+  stagingId: string;
+}
+
+export interface BulkUploadServiceCellEdit {
+  rowNumber: number;
+  questionCode: string;
+  value: string;
+}
+
+export interface ProcessStagedBulkUploadServicesRequest {
+  stagingId: string;
+  selectedRowNumbers: number[];
+  cellEdits: BulkUploadServiceCellEdit[];
+}
+
+export interface BulkUploadServiceRowResultDto {
+  rowNumber: number;
+  serviceName?: string;
   isSuccess: boolean;
-  isNew: boolean;
   errorMessage?: string;
+  serviceId?: string;
+  isNew: boolean;
 }
 
-export interface BulkUpdateServicesResult {
-  totalCount: number;
+export interface BulkUploadServicesResultDto {
+  success: boolean;
+  totalRows: number;
   successCount: number;
   errorCount: number;
-  results: BulkUpdateServiceResult[];
+  results: BulkUploadServiceRowResultDto[];
 }
 
 // Bulk upload mutations
 export type TemplateFormat = 'csv' | 'xlsx';
+
+// Wraps the picked file in a zip before upload - see client/src/helpers/csvUpload.ts. CSV files are
+// text-sanitized first (WAF-signature characters, empty-cell comma runs); the binary .xlsx template
+// only needs the zip wrapper since it has no free-text-in-plain-CSV WAF risk to begin with.
+const toUploadFile = async (file: File): Promise<File> => {
+  const lowerName = file.name.toLowerCase();
+
+  if (lowerName.endsWith('.csv')) {
+    const sanitizedContent = sanitizeCsvForUpload(await file.text());
+    const zippedContent = zipCsvForUpload(sanitizedContent, file.name);
+    const zipFileName = `${file.name.slice(0, -'.csv'.length)}.zip`;
+    return new File([zippedContent], zipFileName, { type: 'application/zip' });
+  }
+
+  if (lowerName.endsWith('.xlsx')) {
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const zippedContent = zipFileForUpload(bytes, file.name);
+    const zipFileName = `${file.name.slice(0, -'.xlsx'.length)}.zip`;
+    return new File([zippedContent], zipFileName, { type: 'application/zip' });
+  }
+
+  return file;
+};
 
 export const downloadServicesTemplate = (format: TemplateFormat = 'csv') =>
   axios.get('/services/bulk-upload/template', {
@@ -79,5 +143,16 @@ export const getServicesTemplateMimeType = (format: TemplateFormat): string => {
 export const matchServicesByName = (serviceNames: string[]) =>
   axios.post<ServiceMatchResult[]>('/services/bulk-upload/match', { serviceNames });
 
-export const bulkUpdateServices = (request: BulkUpdateServicesRequest) =>
-  axios.post<BulkUpdateServicesResult>('/services/bulk-upload', request);
+export const validateBulkUpload = async (file: File) => {
+  const formData = new FormData();
+  formData.append('file', await toUploadFile(file));
+
+  return axios.post<BulkUploadServicesValidationResultDto>('/services/bulk-upload/validate', formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
+};
+
+export const processStagedBulkUpload = (request: ProcessStagedBulkUploadServicesRequest) =>
+  axios.post<BulkUploadServicesResultDto>('/services/bulk-upload/staged', request);

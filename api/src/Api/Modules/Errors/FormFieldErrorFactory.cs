@@ -15,6 +15,8 @@ public static class FormFieldErrorFactory
                 FormFieldDuplicateKeyException => StatusCodes.Status409Conflict,
                 FormFieldFormModuleNotFoundException => StatusCodes.Status404NotFound,
                 FormFieldHasValuesException => StatusCodes.Status409Conflict,
+                FormFieldBackwardConditionException => StatusCodes.Status400BadRequest,
+                FormFieldDuplicateConditionException => StatusCodes.Status400BadRequest,
                 FormFieldUnknownException => StatusCodes.Status500InternalServerError,
                 _ => throw new NotImplementedException("FormField exception handler not implemented")
             }

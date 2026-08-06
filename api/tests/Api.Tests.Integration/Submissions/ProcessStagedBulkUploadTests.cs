@@ -51,7 +51,7 @@ public class ProcessStagedBulkUploadTests(OrganisationAdminIntegrationTestWebFac
 
         var result = await PostStagedAsync(new ProcessStagedBulkUploadRequestDto(
             validation.StagingId,
-            new[] { ServiceName },
+            new[] { 0 },
             Array.Empty<BulkUploadCellEditDto>()));
 
         result.Success.Should().BeTrue();
@@ -71,7 +71,7 @@ public class ProcessStagedBulkUploadTests(OrganisationAdminIntegrationTestWebFac
 
         var result = await PostStagedAsync(new ProcessStagedBulkUploadRequestDto(
             validation.StagingId,
-            new[] { ServiceName },
+            new[] { 0 },
             edits));
 
         result.Success.Should().BeTrue();
@@ -89,7 +89,7 @@ public class ProcessStagedBulkUploadTests(OrganisationAdminIntegrationTestWebFac
 
         var result = await PostStagedAsync(new ProcessStagedBulkUploadRequestDto(
             validation.StagingId,
-            new[] { OtherServiceName },
+            new[] { 1 },
             Array.Empty<BulkUploadCellEditDto>()));
 
         result.SuccessCount.Should().Be(1);
@@ -104,7 +104,7 @@ public class ProcessStagedBulkUploadTests(OrganisationAdminIntegrationTestWebFac
         var url = $"organisation-admin/submissions/{_submissionId}/modules/{_moduleId}/bulk-upload/staged";
         var response = await Client.PostAsJsonAsync(url, new ProcessStagedBulkUploadRequestDto(
             unknownStagingId,
-            new[] { ServiceName },
+            new[] { 0 },
             Array.Empty<BulkUploadCellEditDto>()));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
@@ -121,7 +121,7 @@ public class ProcessStagedBulkUploadTests(OrganisationAdminIntegrationTestWebFac
         var url = $"organisation-admin/submissions/{_submissionId}/modules/{_moduleId}/bulk-upload/staged";
         var response = await Client.PostAsJsonAsync(url, new ProcessStagedBulkUploadRequestDto(
             validation.StagingId,
-            Array.Empty<string>(),
+            Array.Empty<int>(),
             Array.Empty<BulkUploadCellEditDto>()));
 
         response.StatusCode.Should().Be(HttpStatusCode.BadRequest);

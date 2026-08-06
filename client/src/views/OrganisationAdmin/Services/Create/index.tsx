@@ -1,8 +1,8 @@
-import React, { useReducer, useState, useRef, useEffect } from 'react';
+import React, { useReducer, useState, useRef, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from 'react-query';
 import { GeneralLayout } from '../../../../layouts';
-import { GovUKStepper, ErrorSummary, LoadingSpinner, useGovUKNotification } from '../../../../components/GovUKComponents';
+import { GovUKStepper, GovUKErrorSummary, LoadingSpinner, useGovUKNotification } from '../../../../components/GovUKComponents';
 import {
   createService,
   updateServiceStepOne,
@@ -11,6 +11,7 @@ import {
   servicesCacheKey,
   getServiceFormQuestions,
   serviceFormQuestionsCacheKey,
+  ServiceFormQuestionType,
   UpdateServiceStepOneRequest,
   UpdateServiceStepTwoRequest,
 } from '../../../../components/Global/Services';
@@ -265,6 +266,29 @@ const CreateService = (): React.ReactElement => {
     }
   };
 
+  const errorList = useMemo(() => {
+    return Object.entries(errors)
+      .filter(([, value]) => value)
+      .map(([key, value]) => {
+        if (key === 'name') return { targetName: 'service-name', text: value || '' };
+        const lcKey = key.toLowerCase();
+        const question = questions.find((q) => q.code === key);
+        let targetName = lcKey;
+        if (question) {
+          if (question.questionType === ServiceFormQuestionType.Date) {
+            targetName = `${lcKey}-day`;
+          } else if (
+            (question.questionType === ServiceFormQuestionType.Radio || question.questionType === ServiceFormQuestionType.Checkbox) &&
+            question.options.length > 0
+          ) {
+            const firstOption = [...question.options].sort((a, b) => a.displayOrder - b.displayOrder)[0];
+            targetName = `${lcKey}-${firstOption.value}`;
+          }
+        }
+        return { targetName, text: value || '' };
+      });
+  }, [errors, questions]);
+
   if (isLoadingQuestions) {
     return (
       <GeneralLayout>
@@ -272,13 +296,6 @@ const CreateService = (): React.ReactElement => {
       </GeneralLayout>
     );
   }
-
-  const errorList = Object.entries(errors)
-    .map(([key, value]) => ({
-      targetName: key,
-      text: value || '',
-    }))
-    .filter((e) => e.text);
 
   const stepperSteps = [
     {
@@ -306,9 +323,8 @@ const CreateService = (): React.ReactElement => {
       breadcrumbs={[
         { label: 'Home', link: '/organisation-admin/home' },
         { label: 'Services', link: '/organisation-admin/core-data/services' },
-      ]}
-      currentPage="Add a service">
-      {errorList.length > 0 && <ErrorSummary errors={errorList} />}
+      ]}>
+      {errorList.length > 0 && <GovUKErrorSummary errors={errorList} />}
       <GovUKStepper
         step={step}
         setStep={handleStepChange}

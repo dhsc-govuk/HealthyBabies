@@ -17,7 +17,7 @@ public static class EmailTemplates
 public class AzureCommunicationEmailService(ApplicationSettings settings, IWebHostEnvironment hostingEnvironment)
     : IEmailNotificationService
 {
-    private readonly EmailClient _emailClient = new(settings.Smtp.EmailConnection);
+    private readonly Lazy<EmailClient> _emailClient = new(() => new EmailClient(settings.Smtp.EmailConnection));
     private readonly string _senderAddress = settings.Smtp.SenderEmail;
     private readonly string _clientUrl = settings.Smtp.ClientUrl;
 
@@ -77,6 +77,6 @@ public class AzureCommunicationEmailService(ApplicationSettings settings, IWebHo
             content: new EmailContent(subject) { Html = htmlBody },
             recipients: new EmailRecipients([new Azure.Communication.Email.EmailAddress(to)]));
 
-        await _emailClient.SendAsync(WaitUntil.Completed, message, cancellationToken);
+        await _emailClient.Value.SendAsync(WaitUntil.Completed, message, cancellationToken);
     }
 }

@@ -13,6 +13,8 @@ export interface UpdateSiteFormQuestionRequest {
   helpText?: string | null;
   conditionalQuestionCode?: string | null;
   conditionalValue?: string | null;
+  conditionalRules?: string | null;
+  dateValidationRule?: string | null;
   options: Omit<SiteFormQuestionOption, 'id'>[];
 }
 

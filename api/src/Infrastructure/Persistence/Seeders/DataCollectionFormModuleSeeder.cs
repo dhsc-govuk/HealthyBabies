@@ -73,81 +73,71 @@ public static class DataCollectionFormModuleSeeder
                 modulesAdded = true;
             }
 
+            // Check if delivery plan section modules exist, if not create them
+            var dpSections = new[]
+            {
+                (DataCollectionFormModuleCodes.Section1, 1),
+                (DataCollectionFormModuleCodes.Section2, 2),
+                (DataCollectionFormModuleCodes.Section3, 3),
+                (DataCollectionFormModuleCodes.Section4, 4),
+                (DataCollectionFormModuleCodes.Section5, 5),
+            };
+            foreach (var (code, sectionNumber) in dpSections)
+            {
+                if (existingModules.All(m => m.Code != code))
+                {
+                    await context.DataCollectionFormModules.AddAsync(CreateDeliveryPlanSectionModule(systemUserId, code, sectionNumber), cancellationToken);
+                    modulesAdded = true;
+                }
+            }
+
+            // Check if section-8 module exists, if not create it
+            var section8Module = existingModules.FirstOrDefault(m => m.Code == DataCollectionFormModuleCodes.Section8);
+            if (section8Module == null)
+            {
+                var newSection8Module = CreateSection8Module(systemUserId);
+                await context.DataCollectionFormModules.AddAsync(newSection8Module, cancellationToken);
+                modulesAdded = true;
+            }
+
+            // Check if section-9 module exists, if not create it
+            var section9Module = existingModules.FirstOrDefault(m => m.Code == DataCollectionFormModuleCodes.Section9);
+            if (section9Module == null)
+            {
+                var newSection9Module = CreateSection9Module(systemUserId);
+                await context.DataCollectionFormModules.AddAsync(newSection9Module, cancellationToken);
+                modulesAdded = true;
+            }
+
             if (modulesAdded)
             {
                 await context.SaveChangesAsync(cancellationToken);
             }
 
-            var moduleDescriptions = GetModuleDescriptions();
+            var miCodes = new HashSet<string>
+            {
+                DataCollectionFormModuleCodes.HealthyBabies,
+                DataCollectionFormModuleCodes.ServiceUsers,
+                DataCollectionFormModuleCodes.WiderServiceUsers,
+                DataCollectionFormModuleCodes.OutcomeScores,
+                DataCollectionFormModuleCodes.BreastfeedingRates,
+            };
 
+            var typeCorrectionNeeded = false;
             foreach (var module in existingModules)
             {
-                if (moduleDescriptions.TryGetValue(module.Code, out var details))
+                if (miCodes.Contains(module.Code) && module.Type != DataCollectionType.ManagementInformation)
                 {
-                    module.UpdateDetails(details.Name, details.Description);
+                    module.UpdateType(DataCollectionType.ManagementInformation);
+                    typeCorrectionNeeded = true;
                 }
             }
 
-            // Add missing fields to Service Users module (QSU13, QSU16)
-            await AddMissingServiceUsersFieldsAsync(context, existingModules, cancellationToken);
-
-            await context.SaveChangesAsync(cancellationToken);
+            if (typeCorrectionNeeded)
+            {
+                await context.SaveChangesAsync(cancellationToken);
+            }
         }
-    }
-
-    private static async Task AddMissingServiceUsersFieldsAsync(
-        ApplicationDbContext context,
-        List<DataCollectionFormModule> existingModules,
-        CancellationToken cancellationToken)
-    {
-        var serviceUsersModule = existingModules.FirstOrDefault(m => m.Code == DataCollectionFormModuleCodes.ServiceUsers);
-        if (serviceUsersModule == null)
-        {
-            return;
-        }
-
-        var existingFieldKeys = serviceUsersModule.Fields.Select(f => f.FieldKey).ToHashSet();
-        var section1 = serviceUsersModule.Sections.FirstOrDefault(s => s.SectionNumber == 1);
-        var section4 = serviceUsersModule.Sections.FirstOrDefault(s => s.SectionNumber == 4);
-
-        var fieldsAdded = false;
-
-        // Add QSU02 if missing (Do you have data? - conditional on QSU01=yes, shown inline)
-        if (!existingFieldKeys.Contains("QSU02") && section1 != null)
-        {
-            var qsu02 = serviceUsersModule.AddField("QSU02", "Do you have data on the number of users who accessed this service this quarter?", FieldType.Radio, 2, true, null, "For example, this can be centrally collected data or data received from delivery partners.");
-            qsu02.SetSection(section1.Id);
-            qsu02.AddOption("yes", "Yes", 1);
-            qsu02.AddOption("no", "No", 2);
-            qsu02.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"QSU01\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
-            fieldsAdded = true;
-        }
-
-        // Add QSU17 if missing (Clarification Comments - now in section 4)
-        if (!existingFieldKeys.Contains("QSU17") && section4 != null)
-        {
-            var qsu17 = serviceUsersModule.AddField("QSU17", "Clarification comments", FieldType.Textarea, 34, false, null, "Please provide any relevant additional information – for example if one of the questions doesn't properly capture the information about users. Please only add comments in this section if necessary.");
-            qsu17.SetSection(section4.Id);
-            qsu17.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"QSU01\",\"equals\":\"yes\"}}");
-            fieldsAdded = true;
-        }
-
-        if (fieldsAdded)
-        {
-            await context.SaveChangesAsync(cancellationToken);
-        }
-    }
-
-    private static Dictionary<string, (string Name, string Description)> GetModuleDescriptions()
-    {
-        return new Dictionary<string, (string Name, string Description)>
-        {
-            { DataCollectionFormModuleCodes.HealthyBabies, ("Healthy Babies offer and Parent-Carer Panels", "Tell us about the users who accessed the service over the past 3 months. This information will be included in your quarterly Management Information data collection.") },
-            { DataCollectionFormModuleCodes.ServiceUsers, ("Service users", "Questions about service users") },
-            { DataCollectionFormModuleCodes.WiderServiceUsers, ("Wider service users", "Questions about wider service users") },
-            { DataCollectionFormModuleCodes.OutcomeScores, ("Outcome scores", "Questions about outcome scores") },
-            { DataCollectionFormModuleCodes.BreastfeedingRates, ("Breastfeeding rates", "Questions about breastfeeding rates") }
-        };
     }
 
     private static List<DataCollectionFormModule> CreateFormModules(UserId systemUserId)
@@ -160,6 +150,13 @@ public static class DataCollectionFormModuleSeeder
         modules.Add(CreateWiderServiceUsersModule(lastChangedOn, systemUserId));
         modules.Add(CreateOutcomeScoresModule(lastChangedOn, systemUserId));
         modules.Add(CreateBreastfeedingRatesModule(lastChangedOn, systemUserId));
+        modules.Add(CreateDeliveryPlanSectionModule(systemUserId, DataCollectionFormModuleCodes.Section1, 1));
+        modules.Add(CreateDeliveryPlanSectionModule(systemUserId, DataCollectionFormModuleCodes.Section2, 2));
+        modules.Add(CreateDeliveryPlanSectionModule(systemUserId, DataCollectionFormModuleCodes.Section3, 3));
+        modules.Add(CreateDeliveryPlanSectionModule(systemUserId, DataCollectionFormModuleCodes.Section4, 4));
+        modules.Add(CreateDeliveryPlanSectionModule(systemUserId, DataCollectionFormModuleCodes.Section5, 5));
+        modules.Add(CreateSection8Module(systemUserId));
+        modules.Add(CreateSection9Module(systemUserId));
 
         return modules;
     }
@@ -172,7 +169,8 @@ public static class DataCollectionFormModuleSeeder
             1,
             "Healthy Babies offer and Parent-Carer Panels",
             "Tell us about the users who accessed the service over the past 3 months. This information will be included in your quarterly Management Information data collection.",
-            lastChangedOn);
+            lastChangedOn,
+            type: DataCollectionType.ManagementInformation);
 
         var section1 = module.AddSection(1, "Healthy Babies offer", "Tell us about the users who accessed the service over the past 3 months.");
         var section2 = module.AddSection(2, "Parent-Carer Panel meetings", "Questions about Parent-Carer Panel meetings and engagement.");
@@ -325,7 +323,8 @@ public static class DataCollectionFormModuleSeeder
             2,
             "Service users",
             "Tell us about the users who accessed the service over the past 3 months. This information will be included in your quarterly Management Information data collection.",
-            lastChangedOn);
+            lastChangedOn,
+            type: DataCollectionType.ManagementInformation);
 
         // 4 sections = 5 steps (Step 5 is summary/check your answers)
         var section1 = module.AddSection(1, "Service delivery", "Tell us if this service was delivered this quarter.");
@@ -385,7 +384,10 @@ public static class DataCollectionFormModuleSeeder
         qsu07.SetSection(section3.Id);
         qsu07.AddOption("yes", "Yes", 1);
         qsu07.AddOption("no", "No", 2);
-        qsu07.SetConditionalRules("{\"showWhen\":{\"allOf\":[{\"fieldKey\":\"QSU01\",\"equals\":\"yes\"},{\"fieldKey\":\"QSU02\",\"equals\":\"yes\"}]}}");
+
+        // Only ask for the ethnicity breakdown when the service ran (QSU01), has data (QSU02), actually had
+        // users (QSU03 >= 1), and is programme funded/partially funded (SMD02 on the Service record).
+        qsu07.SetConditionalRules("{\"showWhen\":{\"allOf\":[{\"fieldKey\":\"QSU01\",\"equals\":\"yes\"},{\"fieldKey\":\"QSU02\",\"equals\":\"yes\"},{\"fieldKey\":\"QSU03\",\"gte\":\"1\"},{\"serviceFieldKey\":\"SMD02\",\"in\":[\"0\",\"1\"]}]}}");
 
         // QSU08: Ethnicity breakdown (conditional grouped inputs)
         var qsu08_white = module.AddField("QSU08_white", "White/White British", FieldType.Number, 8, false, "parents/carers");
@@ -423,7 +425,7 @@ public static class DataCollectionFormModuleSeeder
         qsu09.SetSection(section3.Id);
         qsu09.AddOption("yes", "Yes", 1);
         qsu09.AddOption("no", "No", 2);
-        qsu09.SetConditionalRules("{\"showWhen\":{\"allOf\":[{\"fieldKey\":\"QSU01\",\"equals\":\"yes\"},{\"fieldKey\":\"QSU02\",\"equals\":\"yes\"}]}}");
+        qsu09.SetConditionalRules("{\"showWhen\":{\"allOf\":[{\"fieldKey\":\"QSU01\",\"equals\":\"yes\"},{\"fieldKey\":\"QSU02\",\"equals\":\"yes\"},{\"fieldKey\":\"QSU03\",\"gte\":\"1\"},{\"serviceFieldKey\":\"SMD02\",\"in\":[\"0\",\"1\"]}]}}");
 
         // QSU10: IMD breakdown (10 deciles)
         var qsu10_decile1 = module.AddField("QSU10_decile1", "IMD Decile 1", FieldType.Number, 15, false, "parents/carers");
@@ -481,7 +483,7 @@ public static class DataCollectionFormModuleSeeder
         qsu11.SetSection(section3.Id);
         qsu11.AddOption("yes", "Yes", 1);
         qsu11.AddOption("no", "No", 2);
-        qsu11.SetConditionalRules("{\"showWhen\":{\"allOf\":[{\"fieldKey\":\"QSU01\",\"equals\":\"yes\"},{\"fieldKey\":\"QSU02\",\"equals\":\"yes\"}]}}");
+        qsu11.SetConditionalRules("{\"showWhen\":{\"allOf\":[{\"fieldKey\":\"QSU01\",\"equals\":\"yes\"},{\"fieldKey\":\"QSU02\",\"equals\":\"yes\"},{\"fieldKey\":\"QSU03\",\"gte\":\"1\"},{\"serviceFieldKey\":\"SMD02\",\"in\":[\"0\",\"1\"]}]}}");
 
         // QSU12: Sex breakdown
         var qsu12_female = module.AddField("QSU12_female", "Female", FieldType.Number, 26, false, "parents/carers");
@@ -504,35 +506,85 @@ public static class DataCollectionFormModuleSeeder
         qsu12_prefer_not.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"QSU11\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
         qsu12_prefer_not.SetConfiguration("{\"group\":\"QSU12\",\"suffix\":\"parents/carers\",\"width\":\"5\",\"sumGroup\":\"sex\",\"maxSumField\":\"QSU03\",\"min\":0}");
 
+        // QSU13A: Age data available?
+        var qsu13a = module.AddField("QSU13A", "Do you have data on how many people used this service in the relevant quarter, by age group?", FieldType.Radio, 30, true);
+        qsu13a.SetSection(section3.Id);
+        qsu13a.AddOption("yes", "Yes", 1);
+        qsu13a.AddOption("no", "No", 2);
+        qsu13a.SetConditionalRules("{\"showWhen\":{\"allOf\":[{\"fieldKey\":\"QSU01\",\"equals\":\"yes\"},{\"fieldKey\":\"QSU02\",\"equals\":\"yes\"},{\"fieldKey\":\"QSU03\",\"gte\":\"1\"},{\"serviceFieldKey\":\"SMD02\",\"in\":[\"0\",\"1\"]}]}}");
+
+        // QSU13 age breakdown: its own QSU13B_* group, kept distinct from the QSU13A gate above and the
+        // bare QSU13 outcome-scores question below. Still gated on the QSU13A "do you have age data?" answer.
+        var qsu13b_0_2 = module.AddField("QSU13B_0_2", "0-2", FieldType.Number, 31, false, "parents/carers");
+        qsu13b_0_2.SetSection(section3.Id);
+        qsu13b_0_2.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"QSU13A\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
+        qsu13b_0_2.SetConfiguration("{\"group\":\"QSU13B\",\"groupLabel\":\"How many parents or carers have used this service, broken down by age?\",\"groupHint\":\"For each age group, give a figure for the last 3 months, from 1 October to 31 December 2026.\",\"suffix\":\"parents/carers\",\"width\":\"5\",\"sumGroup\":\"age\",\"maxSumField\":\"QSU03\",\"min\":0}");
+
+        var qsu13b_3_4 = module.AddField("QSU13B_3_4", "3-4", FieldType.Number, 32, false, "parents/carers");
+        qsu13b_3_4.SetSection(section3.Id);
+        qsu13b_3_4.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"QSU13A\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
+        qsu13b_3_4.SetConfiguration("{\"group\":\"QSU13B\",\"suffix\":\"parents/carers\",\"width\":\"5\",\"sumGroup\":\"age\",\"maxSumField\":\"QSU03\",\"min\":0}");
+
+        var qsu13b_5_11 = module.AddField("QSU13B_5_11", "5-11", FieldType.Number, 33, false, "parents/carers");
+        qsu13b_5_11.SetSection(section3.Id);
+        qsu13b_5_11.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"QSU13A\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
+        qsu13b_5_11.SetConfiguration("{\"group\":\"QSU13B\",\"suffix\":\"parents/carers\",\"width\":\"5\",\"sumGroup\":\"age\",\"maxSumField\":\"QSU03\",\"min\":0}");
+
+        var qsu13b_12_17 = module.AddField("QSU13B_12_17", "12-17", FieldType.Number, 34, false, "parents/carers");
+        qsu13b_12_17.SetSection(section3.Id);
+        qsu13b_12_17.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"QSU13A\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
+        qsu13b_12_17.SetConfiguration("{\"group\":\"QSU13B\",\"suffix\":\"parents/carers\",\"width\":\"5\",\"sumGroup\":\"age\",\"maxSumField\":\"QSU03\",\"min\":0}");
+
+        var qsu13b_18_25 = module.AddField("QSU13B_18_25", "18-25", FieldType.Number, 35, false, "parents/carers");
+        qsu13b_18_25.SetSection(section3.Id);
+        qsu13b_18_25.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"QSU13A\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
+        qsu13b_18_25.SetConfiguration("{\"group\":\"QSU13B\",\"suffix\":\"parents/carers\",\"width\":\"5\",\"sumGroup\":\"age\",\"maxSumField\":\"QSU03\",\"min\":0}");
+
+        var qsu13b_26_plus = module.AddField("QSU13B_26_plus", "26 and older", FieldType.Number, 36, false, "parents/carers");
+        qsu13b_26_plus.SetSection(section3.Id);
+        qsu13b_26_plus.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"QSU13A\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
+        qsu13b_26_plus.SetConfiguration("{\"group\":\"QSU13B\",\"suffix\":\"parents/carers\",\"width\":\"5\",\"sumGroup\":\"age\",\"maxSumField\":\"QSU03\",\"min\":0}");
+
+        var qsu13b_unknown = module.AddField("QSU13B_unknown", "Unknown", FieldType.Number, 37, false, "parents/carers");
+        qsu13b_unknown.SetSection(section3.Id);
+        qsu13b_unknown.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"QSU13A\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
+        qsu13b_unknown.SetConfiguration("{\"group\":\"QSU13B\",\"suffix\":\"parents/carers\",\"width\":\"5\",\"sumGroup\":\"age\",\"maxSumField\":\"QSU03\",\"min\":0}");
+
         // QSU13: Outcome scores collected?
-        var qsu13 = module.AddField("QSU13", "Does the service provider collect pre- and post-outcome scores for users who access this service?", FieldType.Radio, 30, true);
+        var qsu13 = module.AddField("QSU13", "Does the service provider collect pre- and post-outcome scores for users who access this service?", FieldType.Radio, 38, true);
         qsu13.SetSection(section3.Id);
         qsu13.AddOption("yes", "Yes", 1);
         qsu13.AddOption("no", "No", 2);
-        qsu13.SetConditionalRules("{\"showWhen\":{\"allOf\":[{\"fieldKey\":\"QSU01\",\"equals\":\"yes\"},{\"fieldKey\":\"QSU02\",\"equals\":\"yes\"}]}}");
+
+        // Per the updated spec QSU02 is intentionally dropped here (unlike QSU07/09/11); gate on service
+        // delivery (QSU01) and programme funding (SMD02) only.
+        qsu13.SetConditionalRules("{\"showWhen\":{\"allOf\":[{\"fieldKey\":\"QSU01\",\"equals\":\"yes\"},{\"serviceFieldKey\":\"SMD02\",\"in\":[\"0\",\"1\"]}]}}");
 
         // QSU14: Number of users with outcome scores
-        var qsu14 = module.AddField("QSU14", "How many of all service users completed a pre- and post-outcome score for at least one service they accessed during the quarter?", FieldType.Number, 31, false, "users", "Give a figure for the last 3 months, from 1 October to 31 December 2026.");
+        var qsu14 = module.AddField("QSU14", "How many of all service users completed a pre- and post-outcome score for at least one service they accessed during the quarter?", FieldType.Number, 39, false, "users", "Give a figure for the last 3 months, from 1 October to 31 December 2026.");
         qsu14.SetSection(section3.Id);
-        qsu14.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"QSU13\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
+        qsu14.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"QSU13\",\"equals\":\"yes\"},\"requiredWhen\":{\"fieldKey\":\"QSU13\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
         qsu14.SetConfiguration("{\"suffix\":\"users\",\"width\":\"5\",\"maxSumField\":\"QSU03\",\"min\":0}");
 
         // QSU15: Waiting time data collected?
-        var qsu15 = module.AddField("QSU15", "Does the service provider collect waiting time data for this service?", FieldType.Radio, 32, true);
+        var qsu15 = module.AddField("QSU15", "Does the service provider collect waiting time data for this service?", FieldType.Radio, 40, true);
         qsu15.SetSection(section3.Id);
         qsu15.AddOption("yes", "Yes", 1);
         qsu15.AddOption("no", "No", 2);
-        qsu15.SetConditionalRules("{\"showWhen\":{\"allOf\":[{\"fieldKey\":\"QSU01\",\"equals\":\"yes\"},{\"fieldKey\":\"QSU02\",\"equals\":\"yes\"}]}}");
+
+        // Per the updated spec QSU02 is intentionally dropped here; waiting-time data is only asked of funded
+        // services (SMD02) on the perinatal-mental-health/parent-infant or infant-feeding strands (SMD09).
+        qsu15.SetConditionalRules("{\"showWhen\":{\"allOf\":[{\"fieldKey\":\"QSU01\",\"equals\":\"yes\"},{\"serviceFieldKey\":\"SMD02\",\"in\":[\"0\",\"1\"]},{\"serviceFieldKey\":\"SMD09\",\"in\":[\"1\",\"2\"]}]}}");
 
         // QSU16: Average waiting time
-        var qsu16 = module.AddField("QSU16", "What is the average waiting time for service users from referral to receiving their first appointment or session?", FieldType.Number, 33, false, "days", "Give the average for the last 3 months, from 1 October to 31 December 2026, in number of days.");
+        var qsu16 = module.AddField("QSU16", "What is the average waiting time for service users from referral to receiving their first appointment or session?", FieldType.Number, 41, false, "days", "Give the average for the last 3 months, from 1 October to 31 December 2026, in number of days.");
         qsu16.SetSection(section3.Id);
         qsu16.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"QSU15\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
         qsu16.SetConfiguration("{\"suffix\":\"days\",\"width\":\"5\"}");
 
         // ========== STEP 4: Clarification comments (Section 4) ==========
         // QSU17: Clarification comments
-        var qsu17 = module.AddField("QSU17", "Clarification comments", FieldType.Textarea, 34, false, null, "Please provide any relevant additional information – for example if one of the questions doesn't properly capture the information about users. Please only add comments in this section if necessary.");
+        var qsu17 = module.AddField("QSU17", "Clarification comments", FieldType.Textarea, 42, false, null, "Please provide any relevant additional information – for example if one of the questions doesn't properly capture the information about users. Please only add comments in this section if necessary.");
         qsu17.SetSection(section4.Id);
         qsu17.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"QSU01\",\"equals\":\"yes\"}}");
 
@@ -547,7 +599,8 @@ public static class DataCollectionFormModuleSeeder
             3,
             "Wider service users",
             "Tell us about the users who accessed the wider services in this category over the past 3 months. This information will be included in your quarterly Management Information data collection.",
-            lastChangedOn);
+            lastChangedOn,
+            type: DataCollectionType.ManagementInformation);
 
         var section1 = module.AddSection(1, "Wider Service Users", "Provide data for {widerServiceCategoryName}");
 
@@ -577,7 +630,8 @@ public static class DataCollectionFormModuleSeeder
             4,
             "Outcome scores",
             "Tell us about outcome scores for your service users. If services delivered by your local authority, or arranged on its behalf through the Best Start Family Hubs and Start for Life programme, collect scores before and after an intervention, provide these outcome scores for service users in the past 3 months.",
-            lastChangedOn);
+            lastChangedOn,
+            type: DataCollectionType.ManagementInformation);
 
         // Section 1: Service Selection
         var section1 = module.AddSection(1, "Service selection", "Tell us about outcome scores for a service user who used one of your services in the past 3 months. This information will be included in your quarterly Management Information data collection.");
@@ -779,7 +833,8 @@ public static class DataCollectionFormModuleSeeder
             5,
             "Breastfeeding rates",
             "Tell us about breastfeeding rates in your local authority over the past 3 months. This information will be included in your quarterly Management Information data collection.",
-            lastChangedOn);
+            lastChangedOn,
+            type: DataCollectionType.ManagementInformation);
 
         // Step 1: Breastfeeding rates data
         var section1 = module.AddSection(1, "Breastfeeding Rates", "Tell us about breastfeeding rates in your local authority over the past 3 months. This information will be included in your quarterly Management Information data collection.");
@@ -843,5 +898,41 @@ public static class DataCollectionFormModuleSeeder
         }
 
         await context.SaveChangesAsync(cancellationToken);
+    }
+
+    private static DataCollectionFormModule CreateDeliveryPlanSectionModule(UserId systemUserId, string code, int sectionNumber)
+    {
+        return DataCollectionFormModule.Create(
+            DataCollectionFormModuleId.New(),
+            code,
+            sectionNumber,
+            $"Section {sectionNumber} - TBC",
+            "To be confirmed",
+            DateTime.UtcNow,
+            type: DataCollectionType.DeliveryPlan);
+    }
+
+    private static DataCollectionFormModule CreateSection8Module(UserId systemUserId)
+    {
+        return DataCollectionFormModule.Create(
+            DataCollectionFormModuleId.New(),
+            DataCollectionFormModuleCodes.Section8,
+            8,
+            "Section 8 - TBC",
+            "To be confirmed",
+            DateTime.UtcNow,
+            type: DataCollectionType.DeliveryPlan);
+    }
+
+    private static DataCollectionFormModule CreateSection9Module(UserId systemUserId)
+    {
+        return DataCollectionFormModule.Create(
+            DataCollectionFormModuleId.New(),
+            DataCollectionFormModuleCodes.Section9,
+            9,
+            "Section 9 - TBC",
+            "To be confirmed",
+            DateTime.UtcNow,
+            type: DataCollectionType.DeliveryPlan);
     }
 }

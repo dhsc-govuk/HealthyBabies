@@ -16,8 +16,9 @@ export interface UpdateServiceFormQuestionRequest {
   helpText: string | null;
   conditionalQuestionCode: string | null;
   conditionalValue: string | null;
+  dateValidationRule: string | null;
+  conditionalRules: string | null;
   options: ServiceFormQuestionOption[];
 }
 
-export const updateServiceFormQuestion = (data: UpdateServiceFormQuestionRequest) =>
-  axios.put<ServiceFormQuestion>(`/service-form-questions/${data.id}`, data);
+export const updateServiceFormQuestion = (data: UpdateServiceFormQuestionRequest) => axios.put<ServiceFormQuestion>(`/service-form-questions/${data.id}`, data);

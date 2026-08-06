@@ -50,6 +50,18 @@ public class DataCollectionFormModuleRepository(ApplicationDbContext dbContext)
         return entity ?? Option<DataCollectionFormModule>.None;
     }
 
+    public async Task<IReadOnlyList<DataCollectionFormModule>> GetByTypeWithFieldsAsync(string type, CancellationToken cancellationToken = default)
+    {
+        var collectionType = DataCollectionType.From(type);
+
+        return await _context.DataCollectionFormModules
+            .AsNoTracking()
+            .Include(x => x.Fields)
+            .Where(x => x.IsActive && x.Type == collectionType)
+            .OrderBy(x => x.SectionNumber)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<Option<DataCollectionFormModule>> GetById(DataCollectionFormModuleId id, CancellationToken cancellationToken = default)
     {
         var entity = await Context.DataCollectionFormModules

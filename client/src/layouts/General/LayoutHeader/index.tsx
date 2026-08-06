@@ -31,6 +31,12 @@ const organisationAdminNavigation = [
   { label: 'Guidance', href: '/organisation-admin/help' },
 ];
 
+const deliveryPlanNavigation = [
+  { label: 'Core data', href: '/delivery-plan/core-data' },
+  { label: 'Submissions', href: '/delivery-plan/submissions' },
+  { label: 'Guidance', href: '/delivery-plan/help' },
+];
+
 interface Props {
   serviceName?: string;
   navigation?: { label: string; href: string }[];
@@ -46,6 +52,7 @@ const LayoutHeader = ({
   const effectiveNavigation = React.useMemo(() => {
     if (navigation) return navigation;
     if (userRole === EnumUserRole.ORGANISATION_ADMIN) return organisationAdminNavigation;
+    if (userRole === EnumUserRole.DELIVERY_PLAN_LEAD) return deliveryPlanNavigation;
     return adminNavigation;
   }, [navigation, userRole]);
 
@@ -88,7 +95,9 @@ const LayoutHeader = ({
 
   const homeUrl = userRole === EnumUserRole.ORGANISATION_ADMIN
     ? '/organisation-admin/home'
-    : '/admin/home';
+    : userRole === EnumUserRole.DELIVERY_PLAN_LEAD
+      ? '/delivery-plan/home'
+      : '/admin/home';
 
   return (
     <Box component="header" role="banner">

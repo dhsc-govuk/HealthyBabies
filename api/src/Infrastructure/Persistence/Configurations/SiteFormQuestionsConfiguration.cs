@@ -28,7 +28,9 @@ public class SiteFormQuestionsConfiguration : IEntityTypeConfiguration<SiteFormQ
         builder.Property(x => x.HelpText).HasColumnType("text");
         builder.Property(x => x.ConditionalQuestionCode).HasColumnType("varchar(50)");
         builder.Property(x => x.ConditionalValue).HasColumnType("varchar(255)");
+        builder.Property(x => x.ConditionalRules).HasColumnType("jsonb");
         builder.Property(x => x.IsActive);
+        builder.Property(x => x.DateValidationRule).HasColumnType("varchar(50)");
 
         builder.Property(x => x.CreatedAt);
         builder.Property(x => x.CreatedById).HasConversion(

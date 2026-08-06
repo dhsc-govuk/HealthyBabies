@@ -92,6 +92,10 @@ public class FormSubmissionConfiguration : IEntityTypeConfiguration<FormSubmissi
             .HasColumnType("varchar(500)")
             .IsRequired(false);
 
+        builder.Property(x => x.Name)
+            .HasColumnType("varchar(500)")
+            .IsRequired(false);
+
         // Audit fields
         builder.Property(x => x.CreatedAt)
             .HasConversion(new DateTimeUtcConverter())

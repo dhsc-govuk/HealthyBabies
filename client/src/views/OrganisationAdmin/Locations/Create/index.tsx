@@ -1,10 +1,10 @@
-import React, { useReducer, useState, useEffect } from 'react';
+import React, { useReducer, useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from 'react-query';
 import { GeneralLayout } from '../../../../layouts';
-import { GovUKStepper, ErrorSummary, LoadingSpinner, useGovUKNotification } from '../../../../components/GovUKComponents';
+import { GovUKStepper, GovUKErrorSummary, LoadingSpinner, useGovUKNotification } from '../../../../components/GovUKComponents';
 import { useAuthProvider } from '../../../../components/AuthProvider';
-import { getSiteFormQuestions, siteFormQuestionsCacheKey } from '../../../../components/Global/SiteForms';
+import { getSiteFormQuestions, siteFormQuestionsCacheKey, SiteFormQuestionType } from '../../../../components/Global/SiteForms';
 import { processError } from '../../../../helpers/axiosErrorFallback';
 import useErrorSummaryFocus from '../../../../hooks/useErrorSummaryFocus';
 import useFormTelemetry from '../../../../hooks/useFormTelemetry';
@@ -29,7 +29,7 @@ const LocationsCreate = (): React.ReactElement => {
 
   useEffect(() => {
     trackStarted();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const { data: questionsResponse, isLoading: isLoadingQuestions } = useQuery(siteFormQuestionsCacheKey(), () => getSiteFormQuestions(), {
@@ -61,7 +61,9 @@ const LocationsCreate = (): React.ReactElement => {
       setErrors(validationErrors);
       setSubmitAttempts((n) => n + 1);
       if (Object.keys(validationErrors).length > 0) {
-        Object.entries(validationErrors).forEach(([field, message]) => { if (message) trackValidationFailed(field, message); });
+        Object.entries(validationErrors).forEach(([field, message]) => {
+          if (message) trackValidationFailed(field, message);
+        });
         return true;
       }
       return false;
@@ -82,6 +84,28 @@ const LocationsCreate = (): React.ReactElement => {
     });
   };
 
+  const errorList = useMemo(() => {
+    return Object.entries(errors)
+      .filter(([, value]) => value)
+      .map(([key, value]) => {
+        const lcKey = key.toLowerCase();
+        const question = questions.find((q) => q.code === key);
+        let targetName = lcKey;
+        if (question) {
+          if (question.questionType === SiteFormQuestionType.Date) {
+            targetName = `${lcKey}-day`;
+          } else if (
+            (question.questionType === SiteFormQuestionType.Radio || question.questionType === SiteFormQuestionType.Checkbox) &&
+            question.options.length > 0
+          ) {
+            const firstOption = [...question.options].sort((a, b) => a.displayOrder - b.displayOrder)[0];
+            targetName = `${lcKey}-${firstOption.value}`;
+          }
+        }
+        return { targetName, text: value || '' };
+      });
+  }, [errors, questions]);
+
   if (isLoadingQuestions) {
     return (
       <GeneralLayout>
@@ -90,13 +114,6 @@ const LocationsCreate = (): React.ReactElement => {
     );
   }
 
-  const errorList = Object.entries(errors)
-    .map(([key, value]) => ({
-      targetName: key,
-      text: value || '',
-    }))
-    .filter((e) => e.text);
-
   const stepperSteps = [
     {
       label: 'Delivery location details',
@@ -104,7 +121,7 @@ const LocationsCreate = (): React.ReactElement => {
     },
     {
       label: 'Check your answers',
-      component: <SummaryStep state={state} questions={questions} />,
+      component: <SummaryStep state={state} questions={questions} onChangeAll={() => handleStepChange(0)} />,
     },
   ];
 
@@ -113,9 +130,8 @@ const LocationsCreate = (): React.ReactElement => {
       breadcrumbs={[
         { label: 'Home', link: '/organisation-admin/home' },
         { label: 'Delivery locations', link: '/organisation-admin/core-data/delivery-locations' },
-      ]}
-      currentPage="Add delivery location">
-      {errorList.length > 0 && <ErrorSummary errors={errorList} />}
+      ]}>
+      {errorList.length > 0 && <GovUKErrorSummary errors={errorList} />}
       <GovUKStepper
         step={step}
         setStep={handleStepChange}

@@ -299,7 +299,8 @@ public class SeederDataImporter(
                     q.HelpTextSummary,
                     q.HelpText,
                     q.ConditionalQuestionCode,
-                    q.ConditionalValue);
+                    q.ConditionalValue,
+                    existingQuestion.DateValidationRule);
 
                 existingQuestion.ClearOptions();
                 foreach (var opt in q.Options)

@@ -113,21 +113,9 @@ const GovUKFileUpload: React.FC<GovUKFileUploadProps> = ({
   const hasFile = !!displayFileName;
 
   return (
-    <div className={`govuk-form-group ${displayError ? 'govuk-form-group--error' : ''}`} style={{ position: 'relative' }}>
-      {questionCode && (
-        <span style={{ 
-          position: 'absolute', 
-          right: 0, 
-          top: 0, 
-          color: '#505a5f', 
-          fontSize: '16px', 
-          fontWeight: 'normal', 
-          whiteSpace: 'nowrap' 
-        }}>
-          {questionCode}
-        </span>
-      )}
-      <label className="govuk-label govuk-label--s" htmlFor={id} style={{ paddingRight: questionCode ? '100px' : undefined }}>
+    <div className={`govuk-form-group ${displayError ? 'govuk-form-group--error' : ''}`}>
+      <label className="govuk-label govuk-label--s" htmlFor={id}>
+        {questionCode && <span className="govuk-visually-hidden">{questionCode}: </span>}
         {label}
       </label>
       {hint && <div className="govuk-hint">{hint}</div>}

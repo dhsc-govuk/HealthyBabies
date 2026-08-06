@@ -70,7 +70,7 @@ public class SubmissionsBulkUploadService(
             labels.Add("Service Name");
         }
 
-        labels.AddRange(fields.Select(f => EscapeCsvField(f.Label)));
+        labels.AddRange(fields.Select(f => EscapeCsvField(f.Label.Replace("{serviceName}", "this service", StringComparison.OrdinalIgnoreCase))));
         sb.AppendLine(string.Join(",", labels));
 
         // Row 3+: Pre-fill rows with incomplete service names (empty values for user to fill)

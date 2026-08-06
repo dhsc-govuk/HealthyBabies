@@ -1,0 +1,501 @@
+{
+    "id": "2ae37498-6d2b-4b5b-93bb-cf7085944db7",
+    "submissionId": "384e4f3e-9d25-4e58-b06f-7c8c0f9f9e01",
+    "code": "healthy-babies",
+    "sectionNumber": 1,
+    "name": "Healthy Babies offer and parent-carer panels",
+    "description": "Questions about healthy babies offer and parent-carer panels",
+    "status": "Completed",
+    "formDefinitionId": "396837de-e4b2-44b6-bad0-3d8e8184c4fe",
+    "currentStep": 1,
+    "totalSteps": 3,
+    "sections": [
+        {
+            "id": "8091cedf-32d8-436c-9b23-c4c9ebb770f1",
+            "sectionNumber": 1,
+            "title": "Healthy Babies offer",
+            "description": "Tell us about the users who accessed the service over the past 3 months.",
+            "helpText": null,
+            "helpUrl": null
+        },
+        {
+            "id": "c13cc118-f417-4c6d-9a7f-aa13f4834738",
+            "sectionNumber": 2,
+            "title": "Parent-Carer Panel meetings",
+            "description": "Questions about Parent-Carer Panel meetings and engagement.",
+            "helpText": null,
+            "helpUrl": null
+        },
+        {
+            "id": "a0599bab-50c8-403a-a9cb-cb65eed7885c",
+            "sectionNumber": 3,
+            "title": "Parent-Carer Panel demographics",
+            "description": "Questions about Parent-Carer Panel membership demographics.",
+            "helpText": null,
+            "helpUrl": null
+        }
+    ],
+    "fields": [
+        {
+            "id": "b6342214-c25f-4f4f-9662-6b54d3893479",
+            "code": "SPCP01",
+            "label": "Have you published your Healthy Babies offer?",
+            "helpText": null,
+            "fieldType": "radio",
+            "isRequired": true,
+            "displayOrder": 1,
+            "stepNumber": 1,
+            "value": "no",
+            "conditionalRules": null,
+            "configuration": "{\"size\":\"small\"}",
+            "placeholder": null,
+            "options": [
+                {
+                    "value": "yes_both",
+                    "label": "Yes, both physically and online",
+                    "displayOrder": 1
+                },
+                {
+                    "value": "yes_physical",
+                    "label": "Yes, physical only",
+                    "displayOrder": 2
+                },
+                {
+                    "value": "yes_online",
+                    "label": "Yes, online only",
+                    "displayOrder": 3
+                },
+                {
+                    "value": "no",
+                    "label": "No",
+                    "displayOrder": 4
+                }
+            ]
+        },
+        {
+            "id": "a252ff73-fb82-40c2-a304-c04163455a32",
+            "code": "SPCP04",
+            "label": "What Parent-Carer Panel meetings and engagement do you have?",
+            "helpText": null,
+            "fieldType": "checkbox",
+            "isRequired": true,
+            "displayOrder": 2,
+            "stepNumber": 2,
+            "value": "informal_contact,online_group,panel_meetings",
+            "conditionalRules": null,
+            "configuration": "{\"size\":\"small\"}",
+            "placeholder": null,
+            "options": [
+                {
+                    "value": "informal_contact",
+                    "label": "Informal contact between meetings",
+                    "displayOrder": 1
+                },
+                {
+                    "value": "online_group",
+                    "label": "Online group or forum",
+                    "displayOrder": 2
+                },
+                {
+                    "value": "panel_meetings",
+                    "label": "Parent-Carer Panel meetings",
+                    "displayOrder": 3
+                },
+                {
+                    "value": "other",
+                    "label": "Other",
+                    "displayOrder": 4
+                }
+            ]
+        },
+        {
+            "id": "4a034082-4789-43ad-9878-9d154c104264",
+            "code": "SPCP05",
+            "label": "How many Parent-Carer Panel meetings have occurred in the past quarter?",
+            "helpText": "Give a figure for the last 3 months, from 1 January to 31 March 2026.",
+            "fieldType": "number",
+            "isRequired": true,
+            "displayOrder": 3,
+            "stepNumber": 2,
+            "value": "3",
+            "conditionalRules": null,
+            "configuration": null,
+            "placeholder": "meetings",
+            "options": []
+        },
+        {
+            "id": "614305d7-9e19-4375-be67-fdc45a2ea11a",
+            "code": "SPCP06",
+            "label": "Have you used feedback from Parent-Carer Panels to influence service design and delivery?",
+            "helpText": null,
+            "fieldType": "radio",
+            "isRequired": true,
+            "displayOrder": 4,
+            "stepNumber": 2,
+            "value": "yes",
+            "conditionalRules": null,
+            "configuration": "{\"size\":\"small\"}",
+            "placeholder": null,
+            "options": [
+                {
+                    "value": "yes",
+                    "label": "Yes",
+                    "displayOrder": 1
+                },
+                {
+                    "value": "no",
+                    "label": "No",
+                    "displayOrder": 2
+                }
+            ]
+        },
+        {
+            "id": "2af53af5-a959-4914-9874-d2e792aeb6eb",
+            "code": "SPCP06a",
+            "label": "Case study upload",
+            "helpText": "This is optional. If you choose to upload one, use the case study template provided.",
+            "fieldType": "file",
+            "isRequired": false,
+            "displayOrder": 5,
+            "stepNumber": 2,
+            "value": null,
+            "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"SPCP06\"}}",
+            "configuration": null,
+            "placeholder": null,
+            "options": []
+        },
+        {
+            "id": "175dccfc-c5b4-4ebc-9ebd-642c13fbec38",
+            "code": "SPCP07",
+            "label": "How many parents/carers are on your Parent Carer Panel?",
+            "helpText": "Give a figure as of 31 March 2026.",
+            "fieldType": "number",
+            "isRequired": true,
+            "displayOrder": 6,
+            "stepNumber": 3,
+            "value": "3",
+            "conditionalRules": null,
+            "configuration": null,
+            "placeholder": "parents/carers",
+            "options": []
+        },
+        {
+            "id": "e589dfd8-dd8d-43b9-aefc-be163e7578af",
+            "code": "SPCP08",
+            "label": "Do you have data on how many parents/carers are on your Parent Carer Panel, broken down by sex?",
+            "helpText": null,
+            "fieldType": "radio",
+            "isRequired": true,
+            "displayOrder": 7,
+            "stepNumber": 3,
+            "value": "yes",
+            "conditionalRules": null,
+            "configuration": "{\"size\":\"small\"}",
+            "placeholder": null,
+            "options": [
+                {
+                    "value": "yes",
+                    "label": "Yes",
+                    "displayOrder": 1
+                },
+                {
+                    "value": "no",
+                    "label": "No",
+                    "displayOrder": 2
+                }
+            ]
+        },
+        {
+            "id": "7f6da322-98cc-47c5-9fe2-f7922191d311",
+            "code": "SPCP08a_female",
+            "label": "Female",
+            "helpText": null,
+            "fieldType": "number",
+            "isRequired": false,
+            "displayOrder": 8,
+            "stepNumber": 3,
+            "value": "12",
+            "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"SPCP08\"}}",
+            "configuration": null,
+            "placeholder": "parents/carers",
+            "options": []
+        },
+        {
+            "id": "5de38f24-7dcb-42ae-96b9-680c004c675a",
+            "code": "SPCP08a_male",
+            "label": "Male",
+            "helpText": null,
+            "fieldType": "number",
+            "isRequired": false,
+            "displayOrder": 9,
+            "stepNumber": 3,
+            "value": "12",
+            "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"SPCP08\"}}",
+            "configuration": null,
+            "placeholder": "parents/carers",
+            "options": []
+        },
+        {
+            "id": "76fefd51-b92e-4816-a5cf-adf127629ca1",
+            "code": "SPCP08a_other",
+            "label": "Other",
+            "helpText": null,
+            "fieldType": "number",
+            "isRequired": false,
+            "displayOrder": 10,
+            "stepNumber": 3,
+            "value": "13",
+            "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"SPCP08\"}}",
+            "configuration": null,
+            "placeholder": "parents/carers",
+            "options": []
+        },
+        {
+            "id": "fd42ebf1-0caf-43c3-90d8-f64b364b87f1",
+            "code": "SPCP08a_prefer_not_to_say",
+            "label": "Prefer not to say",
+            "helpText": null,
+            "fieldType": "number",
+            "isRequired": false,
+            "displayOrder": 11,
+            "stepNumber": 3,
+            "value": "13",
+            "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"SPCP08\"}}",
+            "configuration": null,
+            "placeholder": "parents/carers",
+            "options": []
+        },
+        {
+            "id": "e3eb745d-fc3d-41f0-83b4-8d8380e55aa7",
+            "code": "SPCP09",
+            "label": "Do you have data on how many parents/carers are on your Parent Carer Panel, broken down by age?",
+            "helpText": null,
+            "fieldType": "radio",
+            "isRequired": true,
+            "displayOrder": 12,
+            "stepNumber": 3,
+            "value": "yes",
+            "conditionalRules": null,
+            "configuration": "{\"size\":\"small\"}",
+            "placeholder": null,
+            "options": [
+                {
+                    "value": "yes",
+                    "label": "Yes",
+                    "displayOrder": 1
+                },
+                {
+                    "value": "no",
+                    "label": "No",
+                    "displayOrder": 2
+                }
+            ]
+        },
+        {
+            "id": "27f52ef4-6959-461c-94a8-fcc3433433ad",
+            "code": "SPCP09a_18_24",
+            "label": "18-24",
+            "helpText": null,
+            "fieldType": "number",
+            "isRequired": false,
+            "displayOrder": 13,
+            "stepNumber": 3,
+            "value": "12",
+            "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"SPCP09\"}}",
+            "configuration": null,
+            "placeholder": "parents/carers",
+            "options": []
+        },
+        {
+            "id": "6a9cc0b9-aac5-4a02-8ddb-dece4f64dd1b",
+            "code": "SPCP09a_25_34",
+            "label": "25-34",
+            "helpText": null,
+            "fieldType": "number",
+            "isRequired": false,
+            "displayOrder": 14,
+            "stepNumber": 3,
+            "value": "13",
+            "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"SPCP09\"}}",
+            "configuration": null,
+            "placeholder": "parents/carers",
+            "options": []
+        },
+        {
+            "id": "a44e50a1-5814-49dc-9d08-57f4f53a5b39",
+            "code": "SPCP09a_35_44",
+            "label": "35-44",
+            "helpText": null,
+            "fieldType": "number",
+            "isRequired": false,
+            "displayOrder": 15,
+            "stepNumber": 3,
+            "value": "43",
+            "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"SPCP09\"}}",
+            "configuration": null,
+            "placeholder": "parents/carers",
+            "options": []
+        },
+        {
+            "id": "ba4b7bdb-a851-40d3-9eec-ed9a5c2cda03",
+            "code": "SPCP09a_45_54",
+            "label": "45-54",
+            "helpText": null,
+            "fieldType": "number",
+            "isRequired": false,
+            "displayOrder": 16,
+            "stepNumber": 3,
+            "value": "43",
+            "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"SPCP09\"}}",
+            "configuration": null,
+            "placeholder": "parents/carers",
+            "options": []
+        },
+        {
+            "id": "f93eeb4c-667f-4501-a153-b71cea92e892",
+            "code": "SPCP09a_55_64",
+            "label": "55-64",
+            "helpText": null,
+            "fieldType": "number",
+            "isRequired": false,
+            "displayOrder": 17,
+            "stepNumber": 3,
+            "value": "55",
+            "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"SPCP09\"}}",
+            "configuration": null,
+            "placeholder": "parents/carers",
+            "options": []
+        },
+        {
+            "id": "7cadeb04-b320-4526-a2f8-bf72e00356f1",
+            "code": "SPCP09a_65_plus",
+            "label": "65+",
+            "helpText": null,
+            "fieldType": "number",
+            "isRequired": false,
+            "displayOrder": 18,
+            "stepNumber": 3,
+            "value": "11",
+            "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"SPCP09\"}}",
+            "configuration": null,
+            "placeholder": "parents/carers",
+            "options": []
+        },
+        {
+            "id": "fc9810a0-372f-4949-a9e8-4a824ea5a854",
+            "code": "SPCP010",
+            "label": "Do you have data on how many parents/carers are on your Parent Carer Panel, broken down by ethnicity?",
+            "helpText": null,
+            "fieldType": "radio",
+            "isRequired": true,
+            "displayOrder": 19,
+            "stepNumber": 3,
+            "value": "no",
+            "conditionalRules": null,
+            "configuration": "{\"size\":\"small\"}",
+            "placeholder": null,
+            "options": [
+                {
+                    "value": "yes",
+                    "label": "Yes",
+                    "displayOrder": 1
+                },
+                {
+                    "value": "no",
+                    "label": "No",
+                    "displayOrder": 2
+                }
+            ]
+        },
+        {
+            "id": "f02fef7a-da29-4380-bead-b3eb951e9bfd",
+            "code": "SPCP010a_white",
+            "label": "White/White British",
+            "helpText": null,
+            "fieldType": "number",
+            "isRequired": false,
+            "displayOrder": 20,
+            "stepNumber": 3,
+            "value": "1",
+            "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"SPCP010\"}}",
+            "configuration": null,
+            "placeholder": "parents/carers",
+            "options": []
+        },
+        {
+            "id": "065318ec-f26d-4fa4-8cfe-b68fd4b467f1",
+            "code": "SPCP010a_mixed",
+            "label": "Mixed/Multiple ethnic groups",
+            "helpText": null,
+            "fieldType": "number",
+            "isRequired": false,
+            "displayOrder": 21,
+            "stepNumber": 3,
+            "value": "2",
+            "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"SPCP010\"}}",
+            "configuration": null,
+            "placeholder": "parents/carers",
+            "options": []
+        },
+        {
+            "id": "f2ba0921-77f0-443f-92c2-e2b651ad231e",
+            "code": "SPCP010a_asian",
+            "label": "Asian/Asian British",
+            "helpText": null,
+            "fieldType": "number",
+            "isRequired": false,
+            "displayOrder": 22,
+            "stepNumber": 3,
+            "value": "2",
+            "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"SPCP010\"}}",
+            "configuration": null,
+            "placeholder": "parents/carers",
+            "options": []
+        },
+        {
+            "id": "ebf13fde-3dc9-4c93-84ee-a65f5bc18e14",
+            "code": "SPCP010a_black",
+            "label": "Black/African/Caribbean/Black British",
+            "helpText": null,
+            "fieldType": "number",
+            "isRequired": false,
+            "displayOrder": 23,
+            "stepNumber": 3,
+            "value": "6",
+            "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"SPCP010\"}}",
+            "configuration": null,
+            "placeholder": "parents/carers",
+            "options": []
+        },
+        {
+            "id": "7eda90dc-bd78-485d-aa3f-97e0482224ef",
+            "code": "SPCP010a_other",
+            "label": "Other ethnic group",
+            "helpText": null,
+            "fieldType": "number",
+            "isRequired": false,
+            "displayOrder": 24,
+            "stepNumber": 3,
+            "value": "5",
+            "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"SPCP010\"}}",
+            "configuration": null,
+            "placeholder": "parents/carers",
+            "options": []
+        },
+        {
+            "id": "8c1d0b45-1ca2-47ac-b3fe-21c19e214430",
+            "code": "SPCP010a_prefer_not_to_say",
+            "label": "Prefer not to say",
+            "helpText": null,
+            "fieldType": "number",
+            "isRequired": false,
+            "displayOrder": 25,
+            "stepNumber": 3,
+            "value": "1",
+            "conditionalRules": "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"SPCP010\"}}",
+            "configuration": null,
+            "placeholder": "parents/carers",
+            "options": []
+        }
+    ]
+}

@@ -1,4 +1,5 @@
 import { QuestionFormState, ServiceFormQuestionOption } from './types';
+import { uniqueSlug } from '../../../../../helpers/slug';
 
 export enum QuestionFormAction {
   SET_CODE = 'SET_CODE',
@@ -15,6 +16,8 @@ export enum QuestionFormAction {
   SET_HELP_TEXT = 'SET_HELP_TEXT',
   SET_CONDITIONAL_QUESTION_CODE = 'SET_CONDITIONAL_QUESTION_CODE',
   SET_CONDITIONAL_VALUE = 'SET_CONDITIONAL_VALUE',
+  SET_DATE_VALIDATION_RULE = 'SET_DATE_VALIDATION_RULE',
+  SET_CONDITIONAL_RULES = 'SET_CONDITIONAL_RULES',
   SET_OPTIONS = 'SET_OPTIONS',
   ADD_OPTION = 'ADD_OPTION',
   REMOVE_OPTION = 'REMOVE_OPTION',
@@ -38,6 +41,8 @@ type Action =
   | { type: QuestionFormAction.SET_HELP_TEXT; value: string }
   | { type: QuestionFormAction.SET_CONDITIONAL_QUESTION_CODE; value: string }
   | { type: QuestionFormAction.SET_CONDITIONAL_VALUE; value: string }
+  | { type: QuestionFormAction.SET_DATE_VALIDATION_RULE; value: string }
+  | { type: QuestionFormAction.SET_CONDITIONAL_RULES; value: string }
   | { type: QuestionFormAction.SET_OPTIONS; value: ServiceFormQuestionOption[] }
   | { type: QuestionFormAction.ADD_OPTION }
   | { type: QuestionFormAction.REMOVE_OPTION; index: number }
@@ -75,6 +80,10 @@ export const questionFormReducer = (state: QuestionFormState, action: Action): Q
       return { ...state, conditionalQuestionCode: action.value, conditionalValue: '' };
     case QuestionFormAction.SET_CONDITIONAL_VALUE:
       return { ...state, conditionalValue: action.value };
+    case QuestionFormAction.SET_DATE_VALIDATION_RULE:
+      return { ...state, dateValidationRule: action.value };
+    case QuestionFormAction.SET_CONDITIONAL_RULES:
+      return { ...state, conditionalRules: action.value };
     case QuestionFormAction.SET_OPTIONS:
       return { ...state, options: action.value };
     case QuestionFormAction.ADD_OPTION: {
@@ -82,21 +91,30 @@ export const questionFormReducer = (state: QuestionFormState, action: Action): Q
         value: '',
         label: '',
         displayOrder: state.options.length + 1,
+        isPersisted: false,
       };
       return { ...state, options: [...state.options, newOption] };
     }
     case QuestionFormAction.REMOVE_OPTION: {
-      const newOptions = state.options
-        .filter((_, i) => i !== action.index)
-        .map((opt, i) => ({ ...opt, displayOrder: i + 1 }));
+      const newOptions = state.options.filter((_, i) => i !== action.index).map((opt, i) => ({ ...opt, displayOrder: i + 1 }));
       return { ...state, options: newOptions };
     }
     case QuestionFormAction.UPDATE_OPTION: {
       const updatedOptions = state.options.map((opt, i) => {
-        if (i === action.index) {
-          return { ...opt, [action.field]: action.value };
+        if (i !== action.index) {
+          return opt;
         }
-        return opt;
+        if (action.field === 'label') {
+          // Persisted options keep their locked, system-owned value; only the label changes.
+          if (opt.isPersisted) {
+            return { ...opt, label: action.value };
+          }
+          // New options auto-generate a value from the label, unique across siblings.
+          const takenValues = state.options.filter((_, j) => j !== i).map((o) => o.value);
+          return { ...opt, label: action.value, value: uniqueSlug(action.value, takenValues) };
+        }
+        // Value is system-owned and not directly editable; ignore direct edits to persisted values.
+        return opt.isPersisted ? opt : { ...opt, value: action.value };
       });
       return { ...state, options: updatedOptions };
     }

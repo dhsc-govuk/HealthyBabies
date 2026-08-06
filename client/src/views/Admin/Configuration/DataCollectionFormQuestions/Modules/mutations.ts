@@ -1,16 +1,21 @@
 import axios from 'axios';
-import { FormModule, FormSection } from '../Common/types';
+import { FormModule, FormModuleType, FormSection } from '../Common/types';
 
 export interface CreateModuleRequest {
   code: string;
   name: string;
   description?: string;
+  type: FormModuleType;
 }
 
 export interface UpdateModuleRequest {
   name: string;
   description?: string;
   isActive: boolean;
+}
+
+export interface ChangeModuleTypeRequest {
+  type: FormModuleType;
 }
 
 export interface CreateSectionRequest {
@@ -39,6 +44,11 @@ export const updateModule = async (moduleId: string, request: UpdateModuleReques
 
 export const deleteModule = async (moduleId: string): Promise<void> => {
   await axios.delete(`/data-collection-form-questions/modules/${moduleId}`);
+};
+
+export const changeModuleType = async (moduleId: string, request: ChangeModuleTypeRequest): Promise<FormModule> => {
+  const response = await axios.put<FormModule>(`/data-collection-form-questions/modules/${moduleId}/type`, request);
+  return response.data;
 };
 
 export const createSection = async (moduleId: string, request: CreateSectionRequest): Promise<FormSection> => {

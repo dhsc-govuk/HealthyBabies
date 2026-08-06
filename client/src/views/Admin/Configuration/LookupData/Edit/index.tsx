@@ -72,12 +72,11 @@ const EditLookupData = (): React.ReactElement => {
   const dataReady = !loading && !!data?.data;
 
   return (
-    <SettingsLayout
-      currentPage="Edit lookup data"
-      backLink={{ href: '/admin/configuration/lookup-data', onClick: () => navigate('/admin/configuration/lookup-data') }}>
+    <SettingsLayout>
       <LoadingBox loading={loading || saving}>
         {dataReady && (
           <LookupDataSteps
+            title="Edit lookup data"
             completeLabel="Save"
             lookupData={lookupData}
             dispatch={dispatchLookupData}

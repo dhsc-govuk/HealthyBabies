@@ -130,6 +130,144 @@ public class ConditionalRuleEvaluatorTests
     }
 
     [Fact]
+    public void EvaluateCondition_AllOf_AcrossDifferentFields_RequiresAllToMatch()
+    {
+        var fields = BuildTwoRadioFixture();
+        var condition = new ShowWhenCondition
+        {
+            AllOf = new List<ShowWhenCondition>
+            {
+                new() { FieldKey = "Q_SEX", Equals = "male" },
+                new() { FieldKey = "Q_AGE", Equals = "adult" }
+            }
+        };
+
+        ConditionalRuleEvaluator.EvaluateCondition(condition, Row(("Q_SEX", "Male"), ("Q_AGE", "Adult")), fields).Should().BeTrue();
+        ConditionalRuleEvaluator.EvaluateCondition(condition, Row(("Q_SEX", "Male"), ("Q_AGE", "Child")), fields).Should().BeFalse();
+        ConditionalRuleEvaluator.EvaluateCondition(condition, Row(("Q_SEX", "Female"), ("Q_AGE", "Adult")), fields).Should().BeFalse();
+    }
+
+    [Fact]
+    public void IsFieldVisible_AllOf_DeserializesAndEvaluatesCorrectly()
+    {
+        var fields = BuildTwoRadioFixture();
+        const string rule = "{\"showWhen\":{\"allOf\":[{\"fieldKey\":\"Q_SEX\",\"equals\":\"male\"},{\"fieldKey\":\"Q_AGE\",\"equals\":\"adult\"}]}}";
+
+        var target = fields.First(f => f.FieldKey == "Q_SEX");
+        target.SetConditionalRules(rule);
+
+        ConditionalRuleEvaluator.IsFieldVisible(target, Row(("Q_SEX", "male"), ("Q_AGE", "adult")), fields).Should().BeTrue();
+        ConditionalRuleEvaluator.IsFieldVisible(target, Row(("Q_SEX", "male"), ("Q_AGE", "child")), fields).Should().BeFalse();
+    }
+
+    [Theory]
+    [InlineData("3", true)]
+    [InlineData("2", true)]
+    [InlineData("1", false)]
+    [InlineData("", false)]
+    public void EvaluateCondition_Gte_ComparesNumerically(string value, bool expected)
+    {
+        var fields = BuildNumericFixture();
+        var condition = new ShowWhenCondition { FieldKey = "Q_COUNT", Gte = "2" };
+
+        ConditionalRuleEvaluator.EvaluateCondition(condition, Row(("Q_COUNT", value)), fields).Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("3", true)]
+    [InlineData("2", false)]
+    [InlineData("1", false)]
+    public void EvaluateCondition_Gt_ComparesNumerically(string value, bool expected)
+    {
+        var fields = BuildNumericFixture();
+        var condition = new ShowWhenCondition { FieldKey = "Q_COUNT", Gt = "2" };
+
+        ConditionalRuleEvaluator.EvaluateCondition(condition, Row(("Q_COUNT", value)), fields).Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("1", true)]
+    [InlineData("2", false)]
+    [InlineData("3", false)]
+    public void EvaluateCondition_Lt_ComparesNumerically(string value, bool expected)
+    {
+        var fields = BuildNumericFixture();
+        var condition = new ShowWhenCondition { FieldKey = "Q_COUNT", Lt = "2" };
+
+        ConditionalRuleEvaluator.EvaluateCondition(condition, Row(("Q_COUNT", value)), fields).Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("1", true)]
+    [InlineData("2", true)]
+    [InlineData("3", false)]
+    public void EvaluateCondition_Lte_ComparesNumerically(string value, bool expected)
+    {
+        var fields = BuildNumericFixture();
+        var condition = new ShowWhenCondition { FieldKey = "Q_COUNT", Lte = "2" };
+
+        ConditionalRuleEvaluator.EvaluateCondition(condition, Row(("Q_COUNT", value)), fields).Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("2", true)]
+    [InlineData("2.0", true)]
+    [InlineData("3", false)]
+    public void EvaluateCondition_Eq_ComparesNumerically(string value, bool expected)
+    {
+        var fields = BuildNumericFixture();
+        var condition = new ShowWhenCondition { FieldKey = "Q_COUNT", Eq = "2" };
+
+        ConditionalRuleEvaluator.EvaluateCondition(condition, Row(("Q_COUNT", value)), fields).Should().Be(expected);
+    }
+
+    [Theory]
+    [InlineData("3", true)]
+    [InlineData("2", false)]
+    [InlineData("2.0", false)]
+    public void EvaluateCondition_Neq_ComparesNumerically(string value, bool expected)
+    {
+        var fields = BuildNumericFixture();
+        var condition = new ShowWhenCondition { FieldKey = "Q_COUNT", Neq = "2" };
+
+        ConditionalRuleEvaluator.EvaluateCondition(condition, Row(("Q_COUNT", value)), fields).Should().Be(expected);
+    }
+
+    [Fact]
+    public void IsFieldVisible_NumericOperator_DeserializesAndEvaluatesCorrectly()
+    {
+        var fields = BuildNumericFixture();
+        var target = fields.First(f => f.FieldKey == "Q_DEPENDENT");
+        target.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"Q_COUNT\",\"gt\":\"0\"}}");
+
+        ConditionalRuleEvaluator.IsFieldVisible(target, Row(("Q_COUNT", "5")), fields).Should().BeTrue();
+        ConditionalRuleEvaluator.IsFieldVisible(target, Row(("Q_COUNT", "0")), fields).Should().BeFalse();
+    }
+
+    [Fact]
+    public void EvaluateCondition_AllOf_WithNumericAndServiceFieldKeyIn_GatesLikeQsu07()
+    {
+        // Mirrors the QSU07-style gate: QSU03 >= 1 (same entity) AND SMD02 funded/partially funded (Service entity).
+        var fields = BuildNumericFixture();
+        var condition = new ShowWhenCondition
+        {
+            AllOf = new List<ShowWhenCondition>
+            {
+                new() { FieldKey = "Q_COUNT", Gte = "1" },
+                new() { ServiceFieldKey = "SMD02", In = new List<string> { "0", "1" } }
+            }
+        };
+        var rowData = Row(("Q_COUNT", "5"));
+        var funded = new Dictionary<string, string> { ["SMD02"] = "0" };
+        var notFunded = new Dictionary<string, string> { ["SMD02"] = "2" };
+
+        ConditionalRuleEvaluator.EvaluateCondition(condition, rowData, fields, funded).Should().BeTrue();
+        ConditionalRuleEvaluator.EvaluateCondition(condition, rowData, fields, notFunded).Should().BeFalse();
+        ConditionalRuleEvaluator.EvaluateCondition(condition, Row(("Q_COUNT", "0")), fields, funded).Should().BeFalse();
+        ConditionalRuleEvaluator.EvaluateCondition(condition, rowData, fields).Should().BeFalse();
+    }
+
+    [Fact]
     public void EvaluateCondition_AnyOf_MatchesAtLeastOne()
     {
         var fields = BuildPps02AndPps08Fields();
@@ -215,6 +353,31 @@ public class ConditionalRuleEvaluatorTests
         var field = module.AddField("Q_SEX", "Sex", FieldType.Radio, 1, true);
         field.AddOption("male", "Male", 1);
         field.AddOption("female", "Female", 2);
+
+        return module.Fields.ToList();
+    }
+
+    private static List<FormField> BuildTwoRadioFixture()
+    {
+        var module = NewModule();
+
+        var sex = module.AddField("Q_SEX", "Sex", FieldType.Radio, 1, true);
+        sex.AddOption("male", "Male", 1);
+        sex.AddOption("female", "Female", 2);
+
+        var age = module.AddField("Q_AGE", "Age group", FieldType.Radio, 2, true);
+        age.AddOption("adult", "Adult", 1);
+        age.AddOption("child", "Child", 2);
+
+        return module.Fields.ToList();
+    }
+
+    private static List<FormField> BuildNumericFixture()
+    {
+        var module = NewModule();
+
+        module.AddField("Q_COUNT", "Overall user count", FieldType.Number, 1, true);
+        module.AddField("Q_DEPENDENT", "Ethnicity availability", FieldType.Radio, 2);
 
         return module.Fields.ToList();
     }

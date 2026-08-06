@@ -1,7 +1,7 @@
 import React, { useReducer, useState, useCallback, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from 'react-query';
-import { GeneralLayout } from '../../../../../layouts';
+import { SettingsLayout } from '../../../../../layouts';
 import { LoadingSpinner, Button, useGovUKNotification } from '../../../../../components/GovUKComponents';
 import useErrorSummaryFocus from '../../../../../hooks/useErrorSummaryFocus';
 import { processError } from '../../../../../helpers/axiosErrorFallback';
@@ -12,6 +12,7 @@ import QuestionForm from '../Common/QuestionForm';
 import { questionFormReducer, ActionType } from '../Common/reducer';
 import { encodeForWaf, encodeNullableForWaf } from '../../../../../helpers/stringUtils';
 import { ValidationErrors, validationMessages, initialFormState, requiresOptions } from '../Common/types';
+import { getConditionFieldKeys } from '../../DataCollectionFormQuestions/Common/ConditionalRulesBuilder';
 
 const EditSiteFormQuestion = (): React.ReactElement => {
   const { id } = useParams<{ id: string }>();
@@ -59,10 +60,14 @@ const EditSiteFormQuestion = (): React.ReactElement => {
           helpText: q.helpText || '',
           conditionalQuestionCode: q.conditionalQuestionCode || '',
           conditionalValue: q.conditionalValue || '',
+          conditionalRules: q.conditionalRules || '',
+          dateValidationRule: q.dateValidationRule || '',
           options: q.options.map((opt) => ({
             value: opt.value,
             label: opt.label,
             displayOrder: opt.displayOrder,
+            // Existing options: value is locked and must never change on relabel.
+            isPersisted: true,
           })),
         },
       });
@@ -84,7 +89,15 @@ const EditSiteFormQuestion = (): React.ReactElement => {
     },
   });
 
+  const allQuestions = questionsData?.data ?? [];
+
   const validate = useCallback(() => {
+    const conditionFieldKeys = getConditionFieldKeys(formState.conditionalRules);
+    const hasDuplicateCondition = new Set(conditionFieldKeys).size !== conditionFieldKeys.length;
+    const forwardReferencedKey = conditionFieldKeys.find((fk) => {
+      const referenced = allQuestions.find((q) => q.code === fk);
+      return referenced && referenced.displayOrder > formState.displayOrder;
+    });
     const errorItems: ValidationErrors = {
       code: false,
       label: !formState.label ? validationMessages.label : false,
@@ -95,11 +108,16 @@ const EditSiteFormQuestion = (): React.ReactElement => {
               formState.options.some((opt) => !opt.value || !opt.label)
             ? 'All options must have a value and label'
             : false,
+      conditionalRules: hasDuplicateCondition
+        ? validationMessages.conditionalRulesDuplicate
+        : forwardReferencedKey
+          ? validationMessages.conditionalRulesForwardRef
+          : false,
     };
     setErrors(errorItems);
     setSubmitAttempts((n) => n + 1);
     return !Object.values(errorItems).some((e) => e);
-  }, [formState]);
+  }, [formState, allQuestions]);
 
   const handleSave = async () => {
     if (!validate()) return;
@@ -115,6 +133,8 @@ const EditSiteFormQuestion = (): React.ReactElement => {
       helpText: encodeNullableForWaf(formState.helpText),
       conditionalQuestionCode: formState.conditionalQuestionCode || null,
       conditionalValue: encodeNullableForWaf(formState.conditionalValue),
+      conditionalRules: formState.conditionalRules || null,
+      dateValidationRule: formState.dateValidationRule || null,
       options: formState.options.map((opt) => ({ ...opt, label: encodeForWaf(opt.label), value: encodeForWaf(opt.value) })),
     });
   };
@@ -125,15 +145,15 @@ const EditSiteFormQuestion = (): React.ReactElement => {
 
   if (loadingQuestion) {
     return (
-      <GeneralLayout>
+      <SettingsLayout>
         <LoadingSpinner label="Loading question" />
-      </GeneralLayout>
+      </SettingsLayout>
     );
   }
 
   return (
     <>
-      <GeneralLayout
+      <SettingsLayout
         breadcrumbs={[
           { label: 'Admin', link: '/admin/home' },
           { label: 'Configuration', link: '/admin/configuration' },
@@ -154,7 +174,7 @@ const EditSiteFormQuestion = (): React.ReactElement => {
             Cancel
           </Button>
         </Stack>
-      </GeneralLayout>
+      </SettingsLayout>
       {isLoading && <LoadingSpinner label="Saving question" />}
     </>
   );

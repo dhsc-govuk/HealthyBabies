@@ -18,9 +18,9 @@ public class ProcessStagedBulkUploadCommandValidator : AbstractValidator<Process
             .NotEmpty()
             .WithMessage("Staging ID is required");
 
-        RuleFor(x => x.SelectedServiceNames)
+        RuleFor(x => x.SelectedRowIndices)
             .NotEmpty()
-            .WithMessage("At least one service must be selected");
+            .WithMessage("At least one row must be selected");
 
         RuleForEach(x => x.CellEdits).ChildRules(edit =>
         {

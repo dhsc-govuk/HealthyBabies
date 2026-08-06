@@ -28,6 +28,9 @@ export { default as CreateLocations } from './Organisations/Locations/Create';
 export { default as EditLocations } from './Organisations/Locations/Edit';
 export { default as BulkUploadLocations } from './Organisations/Locations/BulkUpload';
 
+export { default as AddFinancialData } from './Organisations/FinancialData/Add';
+export { default as CheckFinancialData } from './Organisations/FinancialData/Check';
+
 export { default as ListOrganisationContacts } from './Organisations/Contacts/List';
 export { default as ViewOrganisationContact } from './Organisations/Contacts/View';
 
@@ -36,6 +39,7 @@ export { default as Settings } from './Settings';
 export { LookupDataList, CreateLookupData, EditLookupData, ViewLookupData } from './Configuration';
 export { ServiceFormQuestionsList, CreateServiceFormQuestion, EditServiceFormQuestion } from './Configuration';
 export { DataCollectionFormQuestionsList, DataCollectionFormQuestionsCreate, DataCollectionFormQuestionsEdit, DataCollectionFormModules } from './Configuration';
+export { DeliveryPlanFormQuestionsList, DeliveryPlanFormQuestionsCreate, DeliveryPlanFormQuestionsEdit } from './Configuration';
 
 export { DataCollectionsList, CreateDataCollection, ViewDataCollection, EditDataCollection, DeleteDataCollection, RevertToDraft, CloseDataCollection } from './DataCollections';
 export { SiteFormQuestionsList, CreateSiteFormQuestion, EditSiteFormQuestion } from './Configuration';

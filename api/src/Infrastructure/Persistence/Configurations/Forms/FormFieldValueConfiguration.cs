@@ -39,6 +39,36 @@ public class FormFieldValueConfiguration : IEntityTypeConfiguration<FormFieldVal
             .HasColumnType("text")
             .IsRequired(false);
 
+        // Self-describing answer snapshot (nullable; legacy rows fall back to the live field).
+        builder.Property(x => x.QuestionCode)
+            .HasColumnName("question_code")
+            .HasColumnType("varchar(100)")
+            .IsRequired(false);
+
+        builder.Property(x => x.QuestionLabel)
+            .HasColumnName("question_label")
+            .HasColumnType("text")
+            .IsRequired(false);
+
+        builder.Property(x => x.QuestionHint)
+            .HasColumnName("question_hint")
+            .HasColumnType("text")
+            .IsRequired(false);
+
+        builder.Property(x => x.FieldType)
+            .HasColumnName("field_type")
+            .HasColumnType("varchar(50)")
+            .IsRequired(false);
+
+        builder.Property(x => x.DisplayOrder)
+            .HasColumnName("display_order")
+            .IsRequired(false);
+
+        builder.Property(x => x.OptionsSnapshot)
+            .HasColumnName("options_snapshot")
+            .HasColumnType("text")
+            .IsRequired(false);
+
         builder.Property(x => x.FileReference)
             .HasColumnName("file_reference")
             .HasColumnType("varchar(1000)")

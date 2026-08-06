@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo } from 'react';
-import { GovUKFieldset, ErrorSummary } from '../../../../../components/GovUKComponents';
+import { GovUKFieldset, GovUKErrorSummary } from '../../../../../components/GovUKComponents';
 import OptionsManager from './OptionsManager';
 import ConditionalRulesBuilder from './ConditionalRulesBuilder';
 import { QuestionFormAction } from './reducer';
@@ -90,6 +90,7 @@ const QuestionForm = ({
     if (errors.fieldKey) list.push({ targetName: 'field-key', text: String(errors.fieldKey) });
     if (errors.label) list.push({ targetName: 'field-label', text: String(errors.label) });
     if (errors.options) list.push({ targetName: 'field-options', text: String(errors.options) });
+    if (errors.conditionalRules) list.push({ targetName: 'conditional-field-0', text: String(errors.conditionalRules) });
     return list;
   }, [errors]);
 
@@ -97,7 +98,7 @@ const QuestionForm = ({
 
   return (
     <>
-      {errorList.length > 0 && <ErrorSummary errors={errorList} />}
+      {errorList.length > 0 && <GovUKErrorSummary errors={errorList} />}
       <GovUKFieldset legend="Question Details" legendSize="m">
         <GovUKFieldset.Select
           id="form-module"

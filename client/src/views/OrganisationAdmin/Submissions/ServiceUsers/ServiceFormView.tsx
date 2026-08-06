@@ -6,18 +6,34 @@ import { GeneralLayout } from '../../../../layouts';
 import { LoadingSpinner, GovUKButton, SummaryList } from '../../../../components/GovUKComponents';
 import { getServiceForm, getSubmission, deleteServiceForm, FormModuleFieldDto } from '../queries';
 import { WarningPanel, WarningPanelTitle, WarningPanelBody, WarningPanelActions, WarningPanelAnchor } from '../../../../styles/govuk-global';
+import { evaluateNumericOperators } from '../../../../helpers/conditionalOperators';
 import './styles.css';
 
 interface ConditionalRule {
   displayInline?: boolean;
   showWhen?: {
     fieldKey?: string;
+    serviceFieldKey?: string;
     equals?: string;
     notEquals?: string;
     in?: string[];
+    gt?: string;
+    gte?: string;
+    lt?: string;
+    lte?: string;
+    eq?: string;
+    neq?: string;
     allOf?: Array<{
-      fieldKey: string;
+      fieldKey?: string;
+      serviceFieldKey?: string;
       equals?: string;
+      in?: string[];
+      gt?: string;
+      gte?: string;
+      lt?: string;
+      lte?: string;
+      eq?: string;
+      neq?: string;
     }>;
   };
 }
@@ -114,7 +130,17 @@ const ServiceFormView = (): React.ReactElement => {
 
       if (showWhen.allOf) {
         return showWhen.allOf.every((condition) => {
-          const parentValue = fieldValues[condition.fieldKey];
+          if (condition.serviceFieldKey) {
+            const serviceValue = serviceForm?.serviceAnswers?.[condition.serviceFieldKey] ?? null;
+            const numeric = evaluateNumericOperators(serviceValue, condition);
+            if (numeric !== null) return numeric;
+            if (condition.equals !== undefined) return valueMatches(serviceValue, condition.equals);
+            if (condition.in !== undefined && Array.isArray(condition.in)) return condition.in.includes(serviceValue ?? '');
+            return true;
+          }
+          const parentValue = fieldValues[condition.fieldKey!];
+          const numeric = evaluateNumericOperators(parentValue, condition);
+          if (numeric !== null) return numeric;
           if (condition.equals !== undefined) {
             return valueMatches(parentValue, condition.equals);
           }
@@ -122,8 +148,19 @@ const ServiceFormView = (): React.ReactElement => {
         });
       }
 
+      if (showWhen.serviceFieldKey) {
+        const serviceValue = serviceForm?.serviceAnswers?.[showWhen.serviceFieldKey] ?? null;
+        const numeric = evaluateNumericOperators(serviceValue, showWhen);
+        if (numeric !== null) return numeric;
+        if (showWhen.equals !== undefined) return valueMatches(serviceValue, showWhen.equals);
+        if (showWhen.in !== undefined && Array.isArray(showWhen.in)) return showWhen.in.includes(serviceValue ?? '');
+        return true;
+      }
+
       if (showWhen.fieldKey) {
         const parentValue = fieldValues[showWhen.fieldKey];
+        const numeric = evaluateNumericOperators(parentValue, showWhen);
+        if (numeric !== null) return numeric;
         if (showWhen.equals !== undefined) {
           return valueMatches(parentValue, showWhen.equals);
         }
@@ -140,7 +177,7 @@ const ServiceFormView = (): React.ReactElement => {
 
       return true;
     },
-    [fieldValues]
+    [fieldValues, serviceForm]
   );
 
   const hasFieldValue = (field: FormModuleFieldDto): boolean => {
@@ -161,6 +198,14 @@ const ServiceFormView = (): React.ReactElement => {
     if (!value || (Array.isArray(value) && value.length === 0)) return '';
 
     if (value === 'n/a') return 'N/A';
+
+    // Prefer the server's snapshot-resolved display, but only when rendering the stored answer
+    // (not an in-progress edit), so historic answers survive later form/option changes.
+    const storedValue = field.value ?? '';
+    const currentAsString = Array.isArray(value) ? value.join(',') : (value ?? '');
+    if (field.displayValue && currentAsString === storedValue) {
+      return field.displayValue;
+    }
 
     if (Array.isArray(value)) {
       return value.map((v) => field.options.find((o) => o.value === v)?.label ?? v).join(', ');

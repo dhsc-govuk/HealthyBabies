@@ -6,21 +6,24 @@ import axios from 'axios';
 import { GeneralLayout } from '../../../../layouts';
 import { LoadingSpinner, useGovUKNotification } from '../../../../components/GovUKComponents';
 import useErrorSummaryFocus from '../../../../hooks/useErrorSummaryFocus';
+import useStepFocus from '../../../../hooks/useStepFocus';
 import { getServiceFormQuestions, serviceFormQuestionsCacheKey } from '../../../../components/Global/Services';
 import { useAuthProvider } from '../../../../components/AuthProvider';
 import {
   downloadServicesTemplate,
   matchServicesByName,
-  bulkUpdateServices,
+  validateBulkUpload,
+  processStagedBulkUpload,
   TemplateFormat,
   getServicesTemplateFileName,
   getServicesTemplateMimeType,
+  BulkUploadServicesResultDto,
 } from '../../../../components/Global/Services/mutations';
 import { processError } from '../../../../helpers/axiosErrorFallback';
 
-import { BulkUploadState, Delimiter, RowData, ServiceUpdateSelection, BulkUpdateServicesResult, initialBulkUploadState } from './types';
+import { BulkUploadState, Delimiter, RowData, ServiceUpdateSelection, initialBulkUploadState, dataRowFileOffset } from './types';
 import { bulkUploadReducer, BulkUploadActionType } from './reducer';
-import { validateAllRows, getValidRows, normalizeRowData } from './validation';
+import { validateAllRows, getValidRows } from './validation';
 import StepUpload from './StepUpload';
 import StepPreview from './StepPreview';
 import StepCheckData from './StepCheckData';
@@ -36,19 +39,20 @@ interface LocationDto {
 }
 
 const BulkUploadServices: React.FC = () => {
-  usePageTitle('Bulk upload services');
   const navigate = useNavigate();
   const { readString } = usePapaParse();
   const { setNotification } = useGovUKNotification();
   const { organisationId } = useAuthProvider();
 
   const [state, dispatch] = useReducer(bulkUploadReducer, initialBulkUploadState);
+  const stepFocusRef = useStepFocus<HTMLDivElement>(state.currentStep);
   const [fullScreenOpen, setFullScreenOpen] = useState(false);
-  const [updateResult, setUpdateResult] = useState<BulkUpdateServicesResult | null>(null);
+  const [updateResult, setUpdateResult] = useState<BulkUploadServicesResultDto | null>(null);
   const [submitAttempts, setSubmitAttempts] = useState(0);
 
   const totalRowErrors = useMemo(() => state.rows.reduce((sum, row) => sum + row.errors.length, 0), [state.rows]);
   const hasCheckErrors = state.currentStep === 'check' && totalRowErrors > 0;
+  usePageTitle('Bulk upload services', hasCheckErrors);
   useErrorSummaryFocus(submitAttempts, hasCheckErrors);
 
   useEffect(() => {
@@ -137,10 +141,19 @@ const BulkUploadServices: React.FC = () => {
     },
   });
 
-  // Bulk update mutation
-  const { mutateAsync: bulkUpdate, isLoading: updatingServices } = useMutation({
-    mutationKey: ['bulk-update-services'],
-    mutationFn: bulkUpdateServices,
+  // Validate (zip-upload) mutation - parses and row-validates the file server-side, stages it for confirm
+  const { mutateAsync: validateUpload, isLoading: validatingUpload } = useMutation({
+    mutationKey: ['validate-services-bulk-upload'],
+    mutationFn: (file: File) => validateBulkUpload(file),
+    onError: (error) => {
+      processError(error, (e) => setNotification({ type: 'important', title: 'Error', message: e }));
+    },
+  });
+
+  // Confirm mutation - sends only the staging id, selected rows and cell edits, not the file
+  const { mutateAsync: confirmUpload, isLoading: updatingServices } = useMutation({
+    mutationKey: ['process-staged-services-bulk-upload'],
+    mutationFn: processStagedBulkUpload,
     onSuccess: (data) => {
       if (data.data.errorCount === 0) {
         // Success - redirect to services list with notification
@@ -285,21 +298,24 @@ const BulkUploadServices: React.FC = () => {
   }, [state.file, state.delimiter, parseCSV]);
 
   const handlePreviewContinue = useCallback(async () => {
+    if (!state.file) return;
     dispatch({ type: BulkUploadActionType.SET_LOADING, payload: true });
 
     try {
       // Get service names from rows
       const serviceNames = state.rows.map((row) => row.data['SMD01']).filter(Boolean);
 
-      // Match services
-      const result = await matchServices(serviceNames);
-      const matchResults = result.data;
+      // Match services and validate the zip-uploaded file server-side in parallel
+      const [matchResult, validationResult] = await Promise.all([matchServices(serviceNames), validateUpload(state.file)]);
+      const matchResults = matchResult.data;
 
       dispatch({ type: BulkUploadActionType.SET_MATCH_RESULTS, payload: matchResults });
+      dispatch({ type: BulkUploadActionType.SET_STAGING_ID, payload: validationResult.data.stagingId });
 
-      // Validate all rows
+      // Validate all rows client-side, then merge in server-detected errors (e.g. duplicate-in-file)
       const validatedRows = validateAllRows(state.rows, questions, matchResults);
       dispatch({ type: BulkUploadActionType.SET_ROWS, payload: validatedRows });
+      dispatch({ type: BulkUploadActionType.MERGE_ROW_VALIDATIONS, payload: { rowValidations: validationResult.data.rowValidations, questions } });
 
       goToStep('check');
     } catch (error) {
@@ -307,7 +323,7 @@ const BulkUploadServices: React.FC = () => {
     } finally {
       dispatch({ type: BulkUploadActionType.SET_LOADING, payload: false });
     }
-  }, [state.rows, questions, matchServices, setNotification]);
+  }, [state.file, state.rows, questions, matchServices, validateUpload, setNotification]);
 
   const handleCheckContinue = useCallback(async () => {
     dispatch({ type: BulkUploadActionType.SET_LOADING, payload: true });
@@ -353,6 +369,7 @@ const BulkUploadServices: React.FC = () => {
   }, [state.rows, questions, matchServices, setNotification]);
 
   const handleSubmit = useCallback(async () => {
+    if (!state.stagingId) return;
     const servicesToUpdate = state.updateSelections.filter((s) => s.updateFromFile);
 
     if (servicesToUpdate.length === 0) {
@@ -360,45 +377,33 @@ const BulkUploadServices: React.FC = () => {
       return;
     }
 
-    // Build request
-    const request = {
-      services: servicesToUpdate.map((selection) => {
-        const row = state.rows.find((r) => r.data['SMD01'] === selection.serviceName);
-
-        // Normalize labels to values before submission
-        const normalizedData = row ? normalizeRowData(row.data, questions) : {};
-
-        return {
-          serviceId: selection.serviceId || null,
-          name: normalizedData['SMD01'] || selection.serviceName,
-          answers: state.headers
-            .filter((h) => h !== 'SMD01') // SMD01 is handled separately
-            .map((code) => ({
-              questionCode: code,
-              value: normalizedData[code] || undefined,
-            })),
-        };
-      }),
-    };
+    const selectedRowNumbers = servicesToUpdate
+      .map((selection) => state.rows.find((r) => r.data['SMD01'] === selection.serviceName))
+      .filter((row): row is RowData => !!row)
+      .map((row) => row.rowIndex + dataRowFileOffset);
 
     try {
-      await bulkUpdate(request);
+      await confirmUpload({
+        stagingId: state.stagingId,
+        selectedRowNumbers,
+        cellEdits: state.editedCells,
+      });
     } catch (error) {
       // Error is handled by the mutation's onError callback
     }
-  }, [state.updateSelections, state.rows, state.headers, questions, bulkUpdate, setNotification]);
+  }, [state.stagingId, state.updateSelections, state.rows, state.editedCells, confirmUpload, setNotification]);
 
   const handleFinish = useCallback(() => {
     setNotification({ type: 'success', title: 'Services updated', message: `${updateResult?.successCount || 0} services were updated successfully.` });
     navigate('/organisation-admin/core-data/services');
   }, [navigate, updateResult, setNotification]);
 
-  const isLoading = questionsLoading || downloadingTemplate || matchingServices || updatingServices || state.isLoading;
+  const isLoading = questionsLoading || downloadingTemplate || matchingServices || validatingUpload || updatingServices || state.isLoading;
 
   return (
     <>
       <GeneralLayout backLink={{ href: '/organisation-admin/core-data/services' }}>
-        <div style={{ maxWidth: '960px', margin: '0 auto', paddingBottom: '40px' }}>
+        <div ref={stepFocusRef} style={{ maxWidth: '960px', margin: '0 auto', paddingBottom: '40px' }}>
           {/* Step content */}
           {state.currentStep === 'upload' && (
             <StepUpload

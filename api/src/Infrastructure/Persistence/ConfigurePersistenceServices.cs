@@ -9,7 +9,6 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Npgsql;
 
 namespace Infrastructure.Persistence;
 
@@ -19,9 +18,9 @@ public static class ConfigurePersistenceServices
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        var dataSourceBuilder = new NpgsqlDataSourceBuilder(configuration.GetConnectionString("DefaultConnection"));
-        dataSourceBuilder.EnableDynamicJson();
-        var dataSource = dataSourceBuilder.Build();
+        var dataSource = PostgresDataSourceFactory.Build(
+            configuration.GetConnectionString("DefaultConnection")!,
+            configuration["Database:ManagedIdentityClientId"]);
 
         services.AddDbContext<ApplicationDbContext>(
             options => options
@@ -86,6 +85,10 @@ public static class ConfigurePersistenceServices
         services.AddScoped<OrganisationContactRepository>();
         services.AddScoped<IOrganisationContactRepository>(provider => provider.GetRequiredService<OrganisationContactRepository>());
         services.AddScoped<IOrganisationContactQueries>(provider => provider.GetRequiredService<OrganisationContactRepository>());
+
+        services.AddScoped<OrganisationFinancialDataRepository>();
+        services.AddScoped<IOrganisationFinancialDataRepository>(provider => provider.GetRequiredService<OrganisationFinancialDataRepository>());
+        services.AddScoped<IOrganisationFinancialDataQueries>(provider => provider.GetRequiredService<OrganisationFinancialDataRepository>());
 
         services.AddScoped<GlobalDataRepository>();
         services.AddScoped<IGlobalDataRepository>(provider => provider.GetRequiredService<GlobalDataRepository>());

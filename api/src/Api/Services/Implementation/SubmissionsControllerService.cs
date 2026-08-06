@@ -10,6 +10,7 @@ using Domain.DataCollections;
 using Domain.DataCollections.Forms;
 using Domain.DataCollections.Forms.ValueObjects;
 using Domain.Organisations;
+using Domain.Services;
 using Domain.Users;
 using LanguageExt;
 
@@ -67,10 +68,11 @@ public class SubmissionsControllerService(
 
         foreach (var dc in dataCollections)
         {
-            var daysRemaining = (dc.EndDate - DateTime.UtcNow).Days;
+            var endDate = dc.GetEffectiveEndDate(orgId);
+            var daysRemaining = dc.GetDaysRemaining(orgId);
             string status;
 
-            if (dc.EndDate < DateTime.UtcNow)
+            if (dc.IsClosedFor(orgId))
             {
                 status = "Closed";
             }
@@ -95,9 +97,62 @@ public class SubmissionsControllerService(
                 dc.Name,
                 dc.Description,
                 dc.StartDate,
-                dc.EndDate,
+                endDate,
                 status,
-                Math.Max(0, daysRemaining)));
+                Math.Max(0, daysRemaining),
+                dc.IsClosedFor(orgId)));
+        }
+
+        return result;
+    }
+
+    public async Task<IEnumerable<SubmissionDto>> GetByOrganisationIdAndType(
+        Guid organisationId,
+        string type,
+        CancellationToken cancellationToken)
+    {
+        var orgId = new OrganisationId(organisationId);
+        var dataCollectionType = DataCollectionType.From(type);
+        var dataCollections = await dataCollectionQueries.GetByOrganisationIdAndTypeAsync(orgId, dataCollectionType, cancellationToken);
+
+        var allSubmissions = await formSubmissionRepository.GetByOrganisationIdAsync(orgId, cancellationToken);
+        var dcSubmissions = await submissionQueries.GetByOrganisationIdAsync(orgId, cancellationToken);
+
+        var result = new List<SubmissionDto>();
+
+        foreach (var dc in dataCollections)
+        {
+            var endDate = dc.GetEffectiveEndDate(orgId);
+            var daysRemaining = dc.GetDaysRemaining(orgId);
+            string status;
+
+            if (dc.IsClosedFor(orgId))
+            {
+                status = "Closed";
+            }
+            else
+            {
+                var dcSubmission = dcSubmissions.FirstOrDefault(s => s.DataCollectionId == dc.Id);
+                if (dcSubmission != null)
+                {
+                    status = GetOverallStatus(dcSubmission.Status);
+                }
+                else
+                {
+                    var hasAnyProgress = allSubmissions.Any(s => s.DataCollectionId == dc.Id);
+                    status = hasAnyProgress ? "In progress" : "Incomplete";
+                }
+            }
+
+            result.Add(new SubmissionDto(
+                dc.Id.Value,
+                dc.Name,
+                dc.Description,
+                dc.StartDate,
+                endDate,
+                status,
+                Math.Max(0, daysRemaining),
+                dc.IsClosedFor(orgId)));
         }
 
         return result;
@@ -120,20 +175,22 @@ public class SubmissionsControllerService(
         }
 
         var submission = submissionOption.Match(s => s, () => null!);
-        var daysRemaining = (submission.DataCollection!.EndDate - DateTime.UtcNow).Days;
+        var endDate = submission.DataCollection!.GetEffectiveEndDate(orgId);
+        var daysRemaining = submission.DataCollection.GetDaysRemaining(orgId);
         var overallStatus = GetOverallStatus(submission.Status);
 
         var formModules = await BuildFormModuleDtos(
-            submission.DataCollection.FormModuleAssignments, orgId, cancellationToken);
+            submission.DataCollection!.FormModuleAssignments, orgId, cancellationToken);
 
         return Option<SubmissionDetailDto>.Some(new SubmissionDetailDto(
             submission.DataCollectionId.Value,
             submission.DataCollection!.Name,
             submission.DataCollection.Description,
             submission.DataCollection.StartDate,
-            submission.DataCollection.EndDate,
+            endDate,
             overallStatus,
             Math.Max(0, daysRemaining),
+            submission.DataCollection.IsClosedFor(orgId),
             formModules));
     }
 
@@ -150,7 +207,8 @@ public class SubmissionsControllerService(
             return Option<SubmissionDetailDto>.None;
         }
 
-        var daysRemaining = (dataCollection.EndDate - DateTime.UtcNow).Days;
+        var endDate = dataCollection.GetEffectiveEndDate(orgId);
+        var daysRemaining = dataCollection.GetDaysRemaining(orgId);
 
         var formModules = await BuildFormModuleDtos(
             dataCollection.FormModuleAssignments, orgId, cancellationToken);
@@ -160,9 +218,10 @@ public class SubmissionsControllerService(
             dataCollection.Name,
             dataCollection.Description,
             dataCollection.StartDate,
-            dataCollection.EndDate,
+            endDate,
             "Not started",
             Math.Max(0, daysRemaining),
+            dataCollection.IsClosedFor(orgId),
             formModules);
     }
 
@@ -215,6 +274,7 @@ public class SubmissionsControllerService(
                 fma.FormModule.Name,
                 fma.FormModule.Description,
                 moduleStatus,
+                fma.FormModule.AllowsMultipleActivities,
                 new List<SubmissionSectionDto>()));
         }
 
@@ -234,8 +294,18 @@ public class SubmissionsControllerService(
         }
 
         var dataCollection = dataCollectionOption.Match(dc => dc, () => null!);
-
         var allServices = await serviceQueries.GetByOrganisationIdAsync(organisationId, cancellationToken);
+        var serviceSubmissions = await formSubmissionRepository.GetByFormModuleOrganisationDataCollectionAndEntityTypeAsync(
+            moduleId, organisationId, dataCollectionId, "Service", cancellationToken);
+
+        return ComputeServiceUsersModuleStatus(dataCollection, allServices, serviceSubmissions);
+    }
+
+    private static string ComputeServiceUsersModuleStatus(
+        DataCollection dataCollection,
+        IReadOnlyList<Service> allServices,
+        IReadOnlyList<FormSubmission> serviceSubmissions)
+    {
         var services = allServices
             .Where(s => ServiceQuarterlyInclusion.IsIncludedInQuarterlyServiceUsers(s, dataCollection.StartDate))
             .ToList();
@@ -244,9 +314,6 @@ public class SubmissionsControllerService(
         {
             return "Not started";
         }
-
-        var serviceSubmissions = await formSubmissionRepository.GetByFormModuleOrganisationDataCollectionAndEntityTypeAsync(
-            moduleId, organisationId, dataCollectionId, "Service", cancellationToken);
 
         var completedCount = 0;
         var inProgressCount = 0;
@@ -392,6 +459,20 @@ public class SubmissionsControllerService(
         var serviceRequirements = await GetServiceOutcomeScoreRequirementsAsync(
             organisationId, dataCollectionId, cancellationToken);
 
+        return ComputeOutcomeScoresModuleStatus(serviceUsersStatus, serviceRequirements, allRecords);
+    }
+
+    /// <summary>
+    /// Section 4 reaches a terminal state ("Completed" pre-submit, "Submitted" post-submit) once
+    /// Section 2 (Service Users) is in a terminal state and each service requiring outcome scores has
+    /// at least one record. The record check is aligned with the SubmitSubmission validation so the UI
+    /// never reports "In progress" for a submission the backend would accept.
+    /// </summary>
+    private static string ComputeOutcomeScoresModuleStatus(
+        string serviceUsersStatus,
+        Dictionary<Guid, int> serviceRequirements,
+        IReadOnlyList<FormSubmission> allRecords)
+    {
         // If no services require outcome scores, return same status as Service Users
         if (serviceRequirements.Count == 0)
         {
@@ -404,29 +485,26 @@ public class SubmissionsControllerService(
             return "Not started";
         }
 
-        // Count completed records per service
+        // Count completed records per service. "approved" is the pre-submission terminal state;
+        // after final submission MarkAsSubmitted() flips every record to "submitted", so both count.
         var completedRecordsPerService = allRecords
-            .Where(r => r.Status.Value == "approved" && r.EntityId.HasValue && r.EntityId.Value != Guid.Empty)
+            .Where(r => (r.Status.Value == "approved" || r.Status.Value == "submitted") && r.EntityId.HasValue && r.EntityId.Value != Guid.Empty)
             .GroupBy(r => r.EntityId!.Value)
             .ToDictionary(g => g.Key, g => g.Count());
 
-        // Section 4 can only be "Completed" if:
-        // 1. Section 2 (Service Users) is "Completed" (not just "Submitted")
-        // 2. Each service has exactly the number of records specified in QSU14
-        var isSection2Complete = serviceUsersStatus == "Completed";
+        // Section 4 reaches a terminal state when:
+        // 1. Section 2 (Service Users) is in a terminal state ("Completed" pre-submit or "Submitted" post-submit)
+        // 2. Each service requiring outcome scores has at least one record - aligned with the
+        //    SubmitSubmission validation so the UI never blocks a submit the backend would accept.
+        var isSection2Complete = serviceUsersStatus == "Completed" || serviceUsersStatus == "Submitted";
 
-        var allRecordCountsMatch = serviceRequirements.All(kvp =>
-        {
-            var serviceId = kvp.Key;
-            var expectedCount = kvp.Value;
-            var actualCount = completedRecordsPerService.GetValueOrDefault(serviceId, 0);
-            return actualCount == expectedCount;
-        });
+        var allServicesHaveRecords = serviceRequirements.All(kvp =>
+            completedRecordsPerService.GetValueOrDefault(kvp.Key, 0) >= 1);
 
-        // Only mark as "Completed" if Section 2 is complete AND all record counts match exactly
-        if (isSection2Complete && allRecordCountsMatch)
+        if (isSection2Complete && allServicesHaveRecords)
         {
-            return "Completed";
+            // Mirror Section 2's terminal state: "Submitted" after final submission, otherwise "Completed".
+            return serviceUsersStatus == "Submitted" ? "Submitted" : "Completed";
         }
 
         // If any records exist (even incomplete), status is "In progress"
@@ -466,6 +544,24 @@ public class SubmissionsControllerService(
 
         var serviceUsersModule = serviceUsersModuleOption.Match(m => m, () => null!);
 
+        // Get all Service Users form submissions for this organisation and data collection
+        var serviceSubmissions = await formSubmissionRepository.GetByFormModuleOrganisationDataCollectionAndEntityTypeAsync(
+            serviceUsersModule.Id, organisationId, dataCollectionId, "Service", cancellationToken);
+
+        return ComputeServiceOutcomeScoreRequirements(serviceUsersModule, serviceSubmissions);
+    }
+
+    /// <summary>
+    /// Gets the expected number of outcome score records per service based on QSU13 and QSU14 values.
+    /// Returns a dictionary where key is ServiceId and value is the expected record count from QSU14.
+    /// Only includes services where QSU13 = "yes".
+    /// </summary>
+    private static Dictionary<Guid, int> ComputeServiceOutcomeScoreRequirements(
+        DataCollectionFormModule serviceUsersModule,
+        IReadOnlyList<FormSubmission> serviceSubmissions)
+    {
+        var serviceRequirements = new Dictionary<Guid, int>();
+
         // Find the QSU13 field (outcome scores collected question) and QSU14 field (number of users with outcome scores)
         var qsu13Field = serviceUsersModule.Fields.FirstOrDefault(f => f.FieldKey == "QSU13");
         var qsu14Field = serviceUsersModule.Fields.FirstOrDefault(f => f.FieldKey == "QSU14");
@@ -474,10 +570,6 @@ public class SubmissionsControllerService(
         {
             return serviceRequirements;
         }
-
-        // Get all Service Users form submissions for this organisation and data collection
-        var serviceSubmissions = await formSubmissionRepository.GetByFormModuleOrganisationDataCollectionAndEntityTypeAsync(
-            serviceUsersModule.Id, organisationId, dataCollectionId, "Service", cancellationToken);
 
         // Check each service submission for QSU13 = "yes" and get QSU14 value
         foreach (var submission in serviceSubmissions)
@@ -563,6 +655,8 @@ public class SubmissionsControllerService(
         var formSubmission = existingSubmissions.FirstOrDefault();
         var savedValues = formSubmission?.FieldValues.ToDictionary(fv => fv.FormFieldId, fv => fv.Value)
             ?? new Dictionary<FormFieldId, string?>();
+        var savedFieldValues = formSubmission?.FieldValues.ToDictionary(fv => fv.FormFieldId)
+            ?? new Dictionary<FormFieldId, FormFieldValue>();
 
         if (formSubmission != null)
         {
@@ -608,6 +702,7 @@ public class SubmissionsControllerService(
                         f.DisplayOrder,
                         stepNumber,
                         savedValue,
+                        savedFieldValues.TryGetValue(f.Id, out var fv) ? AnswerSnapshotResolver.ResolveDisplayValue(fv, f) : null,
                         f.ConditionalRules,
                         f.Configuration,
                         f.Placeholder,
@@ -628,9 +723,10 @@ public class SubmissionsControllerService(
             formModule.Description,
             moduleStatus,
             dataCollection.StartDate,
-            dataCollection.EndDate,
+            dataCollection.GetEffectiveEndDate(orgId),
             currentStep,
             totalSteps,
+            formModule.AllowsMultipleActivities,
             sections,
             fields);
     }
@@ -645,6 +741,11 @@ public class SubmissionsControllerService(
         var orgId = new OrganisationId(organisationId);
         var dcId = new DataCollectionId(dataCollectionId);
         var modId = new DataCollectionFormModuleId(moduleId);
+
+        if (await IsSubmissionLockedAsync(orgId, dcId, cancellationToken))
+        {
+            return Either<string, FormModuleDetailDto>.Left(SubmissionLockedMessage);
+        }
 
         var dataCollections = await dataCollectionQueries.GetByOrganisationIdAsync(orgId, cancellationToken);
         var dataCollection = dataCollections.FirstOrDefault(dc => dc.Id == dcId);
@@ -697,7 +798,7 @@ public class SubmissionsControllerService(
             var field = formModuleWithFields.Fields.FirstOrDefault(f => f.FieldKey == fieldEntry.Key);
             if (field != null)
             {
-                formSubmission.SetFieldValue(field.Id, Utility.HtmlDecodeNullableField(fieldEntry.Value));
+                formSubmission.SetFieldValue(field, Utility.HtmlDecodeNullableField(fieldEntry.Value));
             }
         }
 
@@ -731,6 +832,11 @@ public class SubmissionsControllerService(
         var dcId = new DataCollectionId(dataCollectionId);
         var modId = new DataCollectionFormModuleId(moduleId);
 
+        if (await IsSubmissionLockedAsync(orgId, dcId, cancellationToken))
+        {
+            return Either<string, bool>.Left(SubmissionLockedMessage);
+        }
+
         // Get existing submissions for this form module (scoped by organisation and data collection)
         var existingSubmissions = await formSubmissionRepository.GetByFormModuleOrganisationAndDataCollectionAsync(
             modId, orgId, dcId, cancellationToken);
@@ -755,6 +861,11 @@ public class SubmissionsControllerService(
         Microsoft.AspNetCore.Http.IFormFile file,
         CancellationToken cancellationToken)
     {
+        if (await IsSubmissionLockedAsync(new OrganisationId(organisationId), new DataCollectionId(submissionId), cancellationToken))
+        {
+            return Either<string, FileUploadResultDto>.Left(SubmissionLockedMessage);
+        }
+
         var validationResult = await fileValidationService.ValidateAsync(
             file,
             FileUploadProfile.SubmissionAttachment,
@@ -914,6 +1025,10 @@ public class SubmissionsControllerService(
             s => s.FieldValues.ToDictionary(fv => fv.FormFieldId, fv => fv.Value),
             () => new Dictionary<FormFieldId, string?>());
 
+        var savedFieldValues = submissionOption.Match(
+            s => s.FieldValues.ToDictionary(fv => fv.FormFieldId),
+            () => new Dictionary<FormFieldId, FormFieldValue>());
+
         var status = submissionOption.Match(
             s => GetFormSubmissionStatus(s.Status),
             () => "Not started");
@@ -961,6 +1076,7 @@ public class SubmissionsControllerService(
                     f.DisplayOrder,
                     stepNumber,
                     savedValue,
+                    savedFieldValues.TryGetValue(f.Id, out var fv) ? AnswerSnapshotResolver.ResolveDisplayValue(fv, f) : null,
                     conditionalRules,
                     f.Configuration,
                     f.Placeholder,
@@ -971,6 +1087,8 @@ public class SubmissionsControllerService(
             })
             .ToList();
 
+        var serviceAnswers = service.Answers.ToDictionary(a => a.QuestionCode, a => a.Value ?? string.Empty, StringComparer.OrdinalIgnoreCase);
+
         return new ServiceFormDetailDto(
             service.Id.Value,
             service.Name,
@@ -978,7 +1096,8 @@ public class SubmissionsControllerService(
             formModule.Id.Value,
             status,
             sections,
-            fields);
+            fields,
+            serviceAnswers);
     }
 
     public async Task<Either<string, ServiceFormDetailDto>> SaveServiceForm(
@@ -992,6 +1111,11 @@ public class SubmissionsControllerService(
         var orgId = new OrganisationId(organisationId);
         var dcId = new DataCollectionId(dataCollectionId);
         var modId = new DataCollectionFormModuleId(moduleId);
+
+        if (await IsSubmissionLockedAsync(orgId, dcId, cancellationToken))
+        {
+            return Either<string, ServiceFormDetailDto>.Left(SubmissionLockedMessage);
+        }
 
         var dataCollectionOption = await dataCollectionQueries.GetByIdAsync(dcId, cancellationToken);
         if (dataCollectionOption.IsNone)
@@ -1040,7 +1164,7 @@ public class SubmissionsControllerService(
             var field = formModule.Fields.FirstOrDefault(f => f.FieldKey == fieldEntry.Key);
             if (field != null)
             {
-                formSubmission.SetFieldValue(field.Id, Utility.HtmlDecodeNullableField(fieldEntry.Value));
+                formSubmission.SetFieldValue(field, Utility.HtmlDecodeNullableField(fieldEntry.Value));
             }
         }
 
@@ -1080,7 +1204,7 @@ public class SubmissionsControllerService(
         var dcId = new DataCollectionId(dataCollectionId);
         var modId = new DataCollectionFormModuleId(moduleId);
 
-        var dataCollectionOption = await dataCollectionQueries.GetByIdAsync(dcId, cancellationToken);
+        var dataCollectionOption = await dataCollectionQueries.GetByIdWithLocalAuthoritiesAsync(dcId, cancellationToken);
         if (dataCollectionOption.IsNone)
         {
             return Option<WiderServiceUsersModuleDetailDto>.None;
@@ -1154,7 +1278,7 @@ public class SubmissionsControllerService(
             formModule.Description,
             serviceCategories.Count == 0 || completedCount == serviceCategories.Count ? "Completed" : "In progress",
             dataCollection.StartDate,
-            dataCollection.EndDate,
+            dataCollection.GetEffectiveEndDate(orgId),
             serviceCategories.Count,
             completedCount,
             categoryStatuses));
@@ -1171,7 +1295,7 @@ public class SubmissionsControllerService(
         var dcId = new DataCollectionId(dataCollectionId);
         var modId = new DataCollectionFormModuleId(moduleId);
 
-        var dataCollectionOption = await dataCollectionQueries.GetByIdAsync(dcId, cancellationToken);
+        var dataCollectionOption = await dataCollectionQueries.GetByIdWithLocalAuthoritiesAsync(dcId, cancellationToken);
         if (dataCollectionOption.IsNone)
         {
             return Option<WiderServiceCategoryFormDto>.None;
@@ -1198,34 +1322,70 @@ public class SubmissionsControllerService(
         var submissionOption = await formSubmissionRepository.GetByFormModuleDataCollectionAndServiceCategoryAsync(
             modId, dcId, categoryId, cancellationToken);
 
-        var status = "Not started";
-        int? userCount = null;
+        var status = submissionOption.Match(
+            s => GetFormSubmissionStatus(s.Status),
+            () => "Not started");
 
-        if (submissionOption.IsSome)
-        {
-            var submission = submissionOption.Match(s => s, () => null!);
-            status = GetFormSubmissionStatus(submission.Status);
+        var savedValues = submissionOption.Match(
+            s => s.FieldValues.ToDictionary(fv => fv.FormFieldId, fv => fv.Value),
+            () => new Dictionary<FormFieldId, string?>());
 
-            var userCountField = submission.FieldValues.FirstOrDefault(fv =>
-                formModule.Fields.Any(f => f.Id == fv.FormFieldId && f.FieldKey == "QWSU01"));
+        var savedFieldValues = submissionOption.Match(
+            s => s.FieldValues.ToDictionary(fv => fv.FormFieldId),
+            () => new Dictionary<FormFieldId, FormFieldValue>());
 
-            if (userCountField != null && int.TryParse(userCountField.Value, out var count))
+        var sections = formModule.Sections
+            .Where(s => s.IsActive)
+            .OrderBy(s => s.SectionNumber)
+            .Select(s => new FormModuleSectionDto(
+                s.Id.Value,
+                s.SectionNumber,
+                s.Title,
+                s.Description,
+                s.HelpText,
+                s.HelpUrl))
+            .ToList();
+
+        var fields = formModule.Fields
+            .Where(f => f.IsActive)
+            .OrderBy(f => f.DisplayOrder)
+            .Select(f =>
             {
-                userCount = count;
-            }
-        }
+                int? stepNumber = f.FormSectionId != null
+                    ? formModule.Sections.FirstOrDefault(s => s.Id == f.FormSectionId)?.SectionNumber
+                    : null;
 
-        var qwsu01Field = formModule.Fields.FirstOrDefault(f => f.FieldKey == "QWSU01");
+                var savedValue = savedValues.TryGetValue(f.Id, out var val) ? val : f.DefaultValue;
+
+                return new FormModuleFieldDto(
+                    f.Id.Value,
+                    f.FieldKey,
+                    f.Label,
+                    f.HelpText,
+                    f.FieldType.ToString(),
+                    f.IsRequired,
+                    f.DisplayOrder,
+                    stepNumber,
+                    savedValue,
+                    savedFieldValues.TryGetValue(f.Id, out var fv) ? AnswerSnapshotResolver.ResolveDisplayValue(fv, f) : null,
+                    f.ConditionalRules,
+                    f.Configuration,
+                    f.Placeholder,
+                    f.Options.OrderBy(o => o.DisplayOrder).Select(o => new SectionFieldOptionDto(
+                        o.Value,
+                        o.Label,
+                        o.DisplayOrder)).ToList());
+            })
+            .ToList();
 
         return Option<WiderServiceCategoryFormDto>.Some(new WiderServiceCategoryFormDto(
             category.Id.Value,
             category.CategoryName,
             status,
             dataCollection.StartDate.ToString("d MMMM yyyy"),
-            dataCollection.EndDate.ToString("d MMMM yyyy"),
-            userCount,
-            qwsu01Field?.Label ?? string.Empty,
-            qwsu01Field?.HelpText));
+            dataCollection.GetEffectiveEndDate(orgId).ToString("d MMMM yyyy"),
+            sections,
+            fields));
     }
 
     public async Task<Either<string, WiderServiceCategoryFormDto>> SaveWiderServiceCategoryForm(
@@ -1239,6 +1399,11 @@ public class SubmissionsControllerService(
         var orgId = new OrganisationId(organisationId);
         var dcId = new DataCollectionId(dataCollectionId);
         var modId = new DataCollectionFormModuleId(moduleId);
+
+        if (await IsSubmissionLockedAsync(orgId, dcId, cancellationToken))
+        {
+            return Either<string, WiderServiceCategoryFormDto>.Left(SubmissionLockedMessage);
+        }
 
         var formModuleOption = await formModuleQueries.GetByIdWithFieldsAsync(modId, cancellationToken);
         if (formModuleOption.IsNone)
@@ -1270,10 +1435,13 @@ public class SubmissionsControllerService(
             await formSubmissionRepository.AddAsync(formSubmission, cancellationToken);
         }
 
-        var userCountField = formModule.Fields.FirstOrDefault(f => f.FieldKey == "QWSU01");
-        if (userCountField != null && request.UserCount.HasValue)
+        foreach (var fieldEntry in request.FieldValues)
         {
-            formSubmission.SetFieldValue(userCountField.Id, request.UserCount.Value.ToString());
+            var field = formModule.Fields.FirstOrDefault(f => f.FieldKey == fieldEntry.Key);
+            if (field != null)
+            {
+                formSubmission.SetFieldValue(field, Utility.HtmlDecodeNullableField(fieldEntry.Value));
+            }
         }
 
         if (request.MarkComplete)
@@ -1325,6 +1493,23 @@ public class SubmissionsControllerService(
         var allRecords = await formSubmissionRepository.GetByFormModuleOrganisationDataCollectionAndEntityTypeAsync(
             modId, orgId, dcId, "OutcomeScore", cancellationToken);
 
+        // Clean up abandoned "Add record" stubs (no service ever selected) once they're stale enough that
+        // nobody is still actively filling the form in, rather than letting them accumulate indefinitely.
+        var staleAbandonedStubs = allRecords
+            .Where(r => (!r.EntityId.HasValue || r.EntityId.Value == Guid.Empty) && r.CreatedAt < DateTime.UtcNow.AddHours(-24))
+            .ToList();
+
+        if (staleAbandonedStubs.Count > 0)
+        {
+            foreach (var stub in staleAbandonedStubs)
+            {
+                await formSubmissionRepository.DeleteAsync(stub.Id, cancellationToken);
+            }
+
+            var staleIds = staleAbandonedStubs.Select(s => s.Id).ToHashSet();
+            allRecords = allRecords.Where(r => !staleIds.Contains(r.Id)).ToList();
+        }
+
         // Filter out records with no service selected (incomplete/abandoned records)
         var validRecords = allRecords
             .Where(r => r.EntityId.HasValue && r.EntityId.Value != Guid.Empty)
@@ -1348,8 +1533,27 @@ public class SubmissionsControllerService(
             })
             .ToList();
 
-        // Get service requirements (expected record counts from QSU14)
-        var serviceRequirements = await GetServiceOutcomeScoreRequirementsAsync(orgId, dcId, cancellationToken);
+        // Check Section 2 (Service Users) status and requirements once, and reuse below for
+        // availability/isSection2Complete/overallStatus instead of each re-fetching the same data.
+        var serviceUsersModuleOption = await formModuleQueries.GetByCodeWithFieldsAsync(
+            DataCollectionFormModuleCodes.ServiceUsers, cancellationToken);
+
+        var serviceUsersStatus = "Not started";
+        var serviceRequirements = new Dictionary<Guid, int>();
+
+        if (serviceUsersModuleOption.IsSome)
+        {
+            var serviceUsersModule = serviceUsersModuleOption.Match(m => m, () => null!);
+            var serviceUsersSubmissions = await formSubmissionRepository.GetByFormModuleOrganisationDataCollectionAndEntityTypeAsync(
+                serviceUsersModule.Id, orgId, dcId, "Service", cancellationToken);
+
+            serviceUsersStatus = ComputeServiceUsersModuleStatus(dataCollection, services, serviceUsersSubmissions);
+            serviceRequirements = ComputeServiceOutcomeScoreRequirements(serviceUsersModule, serviceUsersSubmissions);
+        }
+
+        // A submitted Section 2 is a terminal state too - treat it as complete so Section 4 doesn't
+        // regress to "In progress" after the quarterly return is submitted.
+        var isSection2Complete = serviceUsersStatus == "Completed" || serviceUsersStatus == "Submitted";
 
         // Only show services that have QSU13 = "yes" (collect pre/post outcome scores)
         var availableServices = services
@@ -1357,9 +1561,10 @@ public class SubmissionsControllerService(
             .Select(s => new AvailableServiceDto(s.Id.Value, s.Name))
             .ToList();
 
-        // Count completed records per service
+        // Count completed records per service. Include "submitted" so the per-service actual counts
+        // still reflect the data after final submission (MarkAsSubmitted flips approved -> submitted).
         var completedRecordsPerService = validRecords
-            .Where(r => r.Status.Value == "approved")
+            .Where(r => r.Status.Value == "approved" || r.Status.Value == "submitted")
             .GroupBy(r => r.EntityId!.Value)
             .ToDictionary(g => g.Key, g => g.Count());
 
@@ -1378,23 +1583,13 @@ public class SubmissionsControllerService(
             })
             .ToList();
 
-        // Check if Section 2 (Service Users) is complete
-        var serviceUsersModuleOption = await formModuleQueries.GetByCodeWithFieldsAsync(
-            DataCollectionFormModuleCodes.ServiceUsers, cancellationToken);
-        var isSection2Complete = false;
-        if (serviceUsersModuleOption.IsSome)
-        {
-            var serviceUsersModule = serviceUsersModuleOption.Match(m => m, () => null!);
-            var serviceUsersStatus = await GetServiceUsersModuleStatus(
-                serviceUsersModule.Id, orgId, dcId, cancellationToken);
-            isSection2Complete = serviceUsersStatus == "Completed";
-        }
-
         // Calculate total expected records
         var totalExpectedRecords = serviceRequirements.Values.Sum();
 
         // Determine overall status
-        var overallStatus = await GetOutcomeScoresModuleStatus(modId, orgId, dcId, cancellationToken);
+        var overallStatus = serviceUsersModuleOption.IsSome && serviceUsersStatus != "Completed" && serviceUsersStatus != "Submitted"
+            ? "Not started"
+            : ComputeOutcomeScoresModuleStatus(serviceUsersStatus, serviceRequirements, allRecords);
 
         return new OutcomeScoresModuleDetailDto(
             formModule.Id.Value,
@@ -1422,6 +1617,11 @@ public class SubmissionsControllerService(
         var orgId = new OrganisationId(organisationId);
         var dcId = new DataCollectionId(dataCollectionId);
         var modId = new DataCollectionFormModuleId(moduleId);
+
+        if (await IsSubmissionLockedAsync(orgId, dcId, cancellationToken))
+        {
+            return Either<string, OutcomeScoreFormDetailDto>.Left(SubmissionLockedMessage);
+        }
 
         var formModuleOption = await formModuleQueries.GetByIdWithFieldsAsync(modId, cancellationToken);
         if (formModuleOption.IsNone)
@@ -1477,6 +1677,7 @@ public class SubmissionsControllerService(
                     f.DisplayOrder,
                     stepNumber,
                     f.DefaultValue,
+                    null,
                     f.ConditionalRules,
                     f.Configuration,
                     f.Placeholder,
@@ -1532,6 +1733,7 @@ public class SubmissionsControllerService(
         }
 
         var savedValues = submission.FieldValues.ToDictionary(fv => fv.FormFieldId, fv => fv.Value);
+        var savedFieldValues = submission.FieldValues.ToDictionary(fv => fv.FormFieldId);
 
         var services = await serviceQueries.GetByOrganisationIdAsync(orgId, cancellationToken);
         var service = services.FirstOrDefault(s => s.Id.Value == submission.EntityId);
@@ -1579,6 +1781,7 @@ public class SubmissionsControllerService(
                     f.DisplayOrder,
                     stepNumber,
                     savedValue,
+                    savedFieldValues.TryGetValue(f.Id, out var fv) ? AnswerSnapshotResolver.ResolveDisplayValue(fv, f) : null,
                     f.ConditionalRules,
                     f.Configuration,
                     f.Placeholder,
@@ -1634,6 +1837,12 @@ public class SubmissionsControllerService(
             return Either<string, OutcomeScoreFormDetailDto>.Left("Record not found");
         }
 
+        if (formSubmission.DataCollectionId != null &&
+            await IsSubmissionLockedAsync(orgId, formSubmission.DataCollectionId, cancellationToken))
+        {
+            return Either<string, OutcomeScoreFormDetailDto>.Left(SubmissionLockedMessage);
+        }
+
         if (request.FieldValues.TryGetValue("PPS01", out var serviceIdStr) && Guid.TryParse(serviceIdStr, out var serviceId))
         {
             formSubmission.LinkToEntity("OutcomeScore", serviceId);
@@ -1644,7 +1853,7 @@ public class SubmissionsControllerService(
             var field = formModule.Fields.FirstOrDefault(f => f.FieldKey == fieldEntry.Key);
             if (field != null)
             {
-                formSubmission.SetFieldValue(field.Id, fieldEntry.Value);
+                formSubmission.SetFieldValue(field, fieldEntry.Value);
             }
         }
 
@@ -1690,6 +1899,12 @@ public class SubmissionsControllerService(
             return Either<string, bool>.Left("Record not found");
         }
 
+        if (submission.DataCollectionId != null &&
+            await IsSubmissionLockedAsync(orgId, submission.DataCollectionId, cancellationToken))
+        {
+            return Either<string, bool>.Left(SubmissionLockedMessage);
+        }
+
         await formSubmissionRepository.DeleteAsync(submissionId, cancellationToken);
 
         return Either<string, bool>.Right(true);
@@ -1701,6 +1916,76 @@ public class SubmissionsControllerService(
     {
         var count = await formSubmissionRepository.DeleteAllAsync(cancellationToken);
         return Either<string, int>.Right(count);
+    }
+
+    private const string SubmissionLockedMessage = "This quarter can no longer be edited - it has either already been submitted or its submission window has closed. Reopen it to make changes.";
+
+    private async Task<bool> IsDataCollectionClosedAsync(
+        OrganisationId organisationId,
+        DataCollectionId dataCollectionId,
+        CancellationToken cancellationToken)
+    {
+        var dataCollectionOption = await dataCollectionQueries.GetByIdWithLocalAuthoritiesAsync(dataCollectionId, cancellationToken);
+        return dataCollectionOption.Match(
+            dc => dc.IsClosedFor(organisationId),
+            () => false);
+    }
+
+    private async Task<bool> IsSubmissionLockedAsync(
+        OrganisationId organisationId,
+        DataCollectionId dataCollectionId,
+        CancellationToken cancellationToken)
+    {
+        if (await IsDataCollectionClosedAsync(organisationId, dataCollectionId, cancellationToken))
+        {
+            return true;
+        }
+
+        var existingSubmission = await dataCollectionSubmissionRepository.GetByDataCollectionAndOrganisationAsync(
+            dataCollectionId, organisationId, cancellationToken);
+
+        return existingSubmission.Match(s => s.IsLockedForEditing(), () => false);
+    }
+
+    public async Task<Either<string, SubmissionDetailDto>> ReopenSubmission(
+        Guid organisationId,
+        Guid dataCollectionId,
+        CancellationToken cancellationToken)
+    {
+        var orgId = new OrganisationId(organisationId);
+        var dcId = new DataCollectionId(dataCollectionId);
+
+        var existingSubmission = await dataCollectionSubmissionRepository.GetByDataCollectionAndOrganisationAsync(
+            dcId, orgId, cancellationToken);
+
+        if (existingSubmission.IsNone)
+        {
+            return Either<string, SubmissionDetailDto>.Left("This data collection has not been submitted yet");
+        }
+
+        var dcSubmission = existingSubmission.Match(s => s, () => null!);
+
+        var canReopen = dcSubmission.Status == DataCollectionSubmissionStatus.Submitted ||
+            dcSubmission.Status == DataCollectionSubmissionStatus.Rejected ||
+            dcSubmission.Status == DataCollectionSubmissionStatus.RequiresChanges;
+
+        if (!canReopen)
+        {
+            return Either<string, SubmissionDetailDto>.Left("Only a submitted, rejected, or requires-changes data collection can be reopened");
+        }
+
+        if (await IsDataCollectionClosedAsync(orgId, dcId, cancellationToken))
+        {
+            return Either<string, SubmissionDetailDto>.Left("This quarter's submission window has already closed and cannot be reopened");
+        }
+
+        dcSubmission.Reopen();
+        await dataCollectionSubmissionRepository.UpdateAsync(dcSubmission, cancellationToken);
+
+        var result = await GetById(organisationId, dataCollectionId, cancellationToken);
+        return result.Match<Either<string, SubmissionDetailDto>>(
+            dto => Either<string, SubmissionDetailDto>.Right(dto),
+            () => Either<string, SubmissionDetailDto>.Left("Failed to retrieve updated submission"));
     }
 
     public async Task<Either<string, SubmissionDetailDto>> SubmitSubmission(
@@ -1731,10 +2016,45 @@ public class SubmissionsControllerService(
         var allSubmissions = await formSubmissionRepository.GetByOrganisationIdAsync(orgId, cancellationToken);
         var dcSubmissions = allSubmissions.Where(s => s.DataCollectionId == dcId).ToList();
 
+        // A record counts as complete for submission when it is "approved" (the pre-submission
+        // terminal state) or "submitted". After a quarter is submitted MarkAsSubmitted() flips every
+        // record to "submitted"; reopening the quarter resets the DataCollectionSubmission but leaves
+        // those records at "submitted", so a re-submit must accept both states - otherwise the UI shows
+        // every section "Completed" (its status calc counts both) while this gate rejects with a 400.
+        static bool IsComplete(FormSubmission submission) =>
+            submission.Status.Value == "approved" || submission.Status.Value == "submitted";
+
         // Check if all assigned modules are complete
         foreach (var module in assignedFormModules)
         {
             var moduleSubmissions = dcSubmissions.Where(s => s.FormModuleId == module.Id).ToList();
+
+            // Special handling for Service Users module - every included service needs its own approved submission,
+            // not just whatever submissions happen to already exist (which is all the generic fallback checks below).
+            if (module.Code == DataCollectionFormModuleCodes.ServiceUsers)
+            {
+                var allServices = await serviceQueries.GetByOrganisationIdAsync(orgId, cancellationToken);
+                var includedServices = allServices
+                    .Where(s => ServiceQuarterlyInclusion.IsIncludedInQuarterlyServiceUsers(s, dataCollection.StartDate))
+                    .ToList();
+
+                if (includedServices.Count == 0)
+                {
+                    // No services in scope this quarter, so this module is considered complete
+                    continue;
+                }
+
+                var serviceSubmissions = moduleSubmissions.Where(s => s.EntityType == "Service" && IsComplete(s)).ToList();
+                var servicesWithSubmissions = serviceSubmissions.Where(s => s.EntityId.HasValue).Select(s => s.EntityId!.Value).Distinct().ToHashSet();
+                var allServicesHaveSubmissions = includedServices.All(s => servicesWithSubmissions.Contains(s.Id.Value));
+
+                if (!allServicesHaveSubmissions)
+                {
+                    return Either<string, SubmissionDetailDto>.Left($"Module '{module.Name}' is not complete - not all services have been submitted");
+                }
+
+                continue;
+            }
 
             // Special handling for Wider Service Users module - check if any wider service categories exist
             if (module.Code == DataCollectionFormModuleCodes.WiderServiceUsers)
@@ -1757,7 +2077,7 @@ public class SubmissionsControllerService(
                 }
 
                 // For Wider Service Users, check that all categories have approved submissions
-                var categorySubmissions = moduleSubmissions.Where(s => s.EntityType == "WiderServiceCategory" && s.Status.Value == "approved").ToList();
+                var categorySubmissions = moduleSubmissions.Where(s => s.EntityType == "WiderServiceCategory" && IsComplete(s)).ToList();
                 var categoriesWithSubmissions = categorySubmissions.Where(s => s.EntityId.HasValue).Select(s => s.EntityId!.Value).Distinct().ToHashSet();
                 var allCategoriesHaveSubmissions = widerServiceCategories.All(c => categoriesWithSubmissions.Contains(c.Id.Value));
 
@@ -1780,7 +2100,7 @@ public class SubmissionsControllerService(
                 }
 
                 // For Outcome Scores, check that all services requiring scores have at least one approved submission
-                var outcomeSubmissions = moduleSubmissions.Where(s => s.EntityType == "OutcomeScore" && s.Status.Value == "approved").ToList();
+                var outcomeSubmissions = moduleSubmissions.Where(s => s.EntityType == "OutcomeScore" && IsComplete(s)).ToList();
                 var servicesWithScores = outcomeSubmissions.Where(s => s.EntityId.HasValue).Select(s => s.EntityId!.Value).Distinct().ToHashSet();
                 var allServicesHaveScores = servicesRequiringScores.All(serviceId => servicesWithScores.Contains(serviceId));
 
@@ -1797,18 +2117,23 @@ public class SubmissionsControllerService(
                 return Either<string, SubmissionDetailDto>.Left($"Module '{module.Name}' has not been started");
             }
 
-            var allComplete = moduleSubmissions.All(s => s.Status.Value == "approved");
+            var allComplete = moduleSubmissions.All(IsComplete);
             if (!allComplete)
             {
                 return Either<string, SubmissionDetailDto>.Left($"Module '{module.Name}' is not complete");
             }
         }
 
-        // Mark all form submissions as submitted (they're already approved/complete, this is the final submission)
-        foreach (var submission in dcSubmissions)
+        // Mark all form submissions as submitted (they're already approved/complete, this is the final submission).
+        // Skip orphaned records with no entity attached (e.g. an Outcome Scores "Add record" click that was
+        // never followed through to a service selection) - there's nothing real to submit for those.
+        // All writes below are staged (saveChanges: false) and committed in one SaveChangesAsync call at the
+        // end, so the whole submission is atomic: a failure/timeout part-way through leaves nothing committed,
+        // rather than some records flipping to "submitted" while others are left behind.
+        foreach (var submission in dcSubmissions.Where(s => !s.EntityId.HasValue || s.EntityId.Value != Guid.Empty))
         {
             submission.MarkAsSubmitted();
-            await formSubmissionRepository.UpdateAsync(submission, cancellationToken);
+            await formSubmissionRepository.UpdateAsync(submission, cancellationToken, saveChanges: false);
         }
 
         // Create or update the DataCollectionSubmission record for admin visibility
@@ -1820,19 +2145,461 @@ public class SubmissionsControllerService(
         {
             var dcSubmission = existingSubmission.Match(s => s, () => null!);
             dcSubmission.Submit(submittedById);
-            await dataCollectionSubmissionRepository.UpdateAsync(dcSubmission, cancellationToken);
+            await dataCollectionSubmissionRepository.UpdateAsync(dcSubmission, cancellationToken, saveChanges: false);
         }
         else
         {
             var dcSubmission = DataCollectionSubmission.Create(dcId, orgId);
             dcSubmission.Submit(submittedById);
-            await dataCollectionSubmissionRepository.AddAsync(dcSubmission, cancellationToken);
+            await dataCollectionSubmissionRepository.AddAsync(dcSubmission, cancellationToken, saveChanges: false);
         }
+
+        await formSubmissionRepository.SaveChangesAsync(cancellationToken);
 
         // Return the updated submission detail
         var result = await GetById(organisationId, dataCollectionId, cancellationToken);
         return result.Match<Either<string, SubmissionDetailDto>>(
             dto => Either<string, SubmissionDetailDto>.Right(dto),
             () => Either<string, SubmissionDetailDto>.Left("Failed to retrieve updated submission"));
+    }
+
+    // ── Admin support tools (BLUM-7047) ─────────────────────────────────────────
+    // Detects/repairs a submission left orphaned by a SubmitSubmission call that was cut off
+    // before it reached the parent DataCollectionSubmission write. Detection is deliberately
+    // narrow: a legitimately reopened submission also has "submitted" children with no parent in
+    // Submitted/Approved status (Reopen() flips only the parent, never the children), so we key
+    // off the parent record's *existence*, not its status - a missing parent row can only happen
+    // if the loop never reached the end of SubmitSubmission, which is exactly the crash scenario.
+
+    private const string OrphanedSubmitRevertNote =
+        "Reverted by admin reset: SubmitSubmission was cut off before the parent DataCollectionSubmission was created (BLUM-7047).";
+
+    public async Task<SubmissionIntegrityDto> GetSubmissionIntegrity(
+        Guid organisationId,
+        Guid dataCollectionId,
+        CancellationToken cancellationToken)
+    {
+        var orphaned = await GetOrphanedSubmittedFormSubmissions(organisationId, dataCollectionId, cancellationToken);
+
+        var orphanedIds = orphaned.Select(s => s.Id.Value).ToList();
+        return new SubmissionIntegrityDto(orphanedIds.Count > 0, orphanedIds.Count, orphanedIds);
+    }
+
+    public async Task<ResetCorruptedSubmissionResultDto> ResetCorruptedSubmission(
+        Guid organisationId,
+        Guid dataCollectionId,
+        CancellationToken cancellationToken)
+    {
+        var orphaned = await GetOrphanedSubmittedFormSubmissions(organisationId, dataCollectionId, cancellationToken);
+
+        if (orphaned.Count == 0)
+        {
+            return new ResetCorruptedSubmissionResultDto(false, 0);
+        }
+
+        foreach (var submission in orphaned)
+        {
+            submission.RevertOrphanedSubmit(OrphanedSubmitRevertNote);
+            await formSubmissionRepository.UpdateAsync(submission, cancellationToken, saveChanges: false);
+        }
+
+        await formSubmissionRepository.SaveChangesAsync(cancellationToken);
+
+        return new ResetCorruptedSubmissionResultDto(true, orphaned.Count);
+    }
+
+    private async Task<IReadOnlyList<FormSubmission>> GetOrphanedSubmittedFormSubmissions(
+        Guid organisationId,
+        Guid dataCollectionId,
+        CancellationToken cancellationToken)
+    {
+        var orgId = new OrganisationId(organisationId);
+        var dcId = new DataCollectionId(dataCollectionId);
+
+        var allSubmissions = await formSubmissionRepository.GetByOrganisationIdAsync(orgId, cancellationToken);
+        var submittedForThisDataCollection = allSubmissions
+            .Where(s => s.DataCollectionId == dcId && s.Status.Value == "submitted")
+            .ToList();
+
+        if (submittedForThisDataCollection.Count == 0)
+        {
+            return Array.Empty<FormSubmission>();
+        }
+
+        var existingParent = await dataCollectionSubmissionRepository.GetByDataCollectionAndOrganisationAsync(
+            dcId, orgId, cancellationToken);
+
+        // Parent exists (regardless of its status) => some past submit attempt completed the loop in
+        // full, so "submitted" children with no further action are the normal, un-corrupted state.
+        return existingParent.IsSome ? Array.Empty<FormSubmission>() : submittedForThisDataCollection;
+    }
+
+    // ── Activity module methods ────────────────────────────────────────────────
+
+    public async Task<Option<ActivitiesModuleDetailDto>> GetActivitiesModule(
+        Guid organisationId,
+        Guid dataCollectionId,
+        Guid moduleId,
+        CancellationToken cancellationToken)
+    {
+        var orgId = new OrganisationId(organisationId);
+        var dcId = new DataCollectionId(dataCollectionId);
+        var modId = new DataCollectionFormModuleId(moduleId);
+
+        var dataCollectionOption = await dataCollectionQueries.GetByIdAsync(dcId, cancellationToken);
+        if (dataCollectionOption.IsNone)
+        {
+            return Option<ActivitiesModuleDetailDto>.None;
+        }
+
+        var dataCollection = dataCollectionOption.Match(dc => dc, () => null!);
+
+        var formModuleOption = await formModuleQueries.GetByIdWithFieldsAsync(modId, cancellationToken);
+        if (formModuleOption.IsNone)
+        {
+            return Option<ActivitiesModuleDetailDto>.None;
+        }
+
+        var formModule = formModuleOption.Match(fm => fm, () => null!);
+
+        var submissions = await formSubmissionRepository.GetByFormModuleOrganisationDataCollectionAndEntityTypeAsync(
+            modId, orgId, dcId, "Activity", cancellationToken);
+
+        var activities = submissions
+            .OrderBy(s => s.CreatedAt)
+            .Select(s => new ActivityRecordDto(
+                s.Id.Value,
+                s.Name ?? "(untitled)",
+                GetFormSubmissionStatus(s.Status),
+                s.UpdatedAt ?? s.CreatedAt))
+            .ToList();
+
+        var overallStatus = activities.Count == 0 ? "Not started"
+            : activities.All(a => a.Status == "Completed") ? "Completed"
+            : "In progress";
+
+        return new ActivitiesModuleDetailDto(
+            formModule.Id.Value,
+            dataCollectionId,
+            dataCollection.Name,
+            formModule.Code,
+            formModule.SectionNumber,
+            formModule.Name,
+            formModule.Description,
+            overallStatus,
+            formModule.AllowsMultipleActivities,
+            activities);
+    }
+
+    public async Task<Either<string, ActivityFormDetailDto>> CreateActivity(
+        Guid organisationId,
+        Guid dataCollectionId,
+        Guid moduleId,
+        CancellationToken cancellationToken)
+    {
+        var orgId = new OrganisationId(organisationId);
+        var dcId = new DataCollectionId(dataCollectionId);
+        var modId = new DataCollectionFormModuleId(moduleId);
+
+        var dataCollectionOption = await dataCollectionQueries.GetByIdAsync(dcId, cancellationToken);
+        if (dataCollectionOption.IsNone)
+        {
+            return Either<string, ActivityFormDetailDto>.Left("Data collection not found");
+        }
+
+        var dataCollection = dataCollectionOption.Match(dc => dc, () => null!);
+
+        var formModuleOption = await formModuleQueries.GetByIdWithFieldsAsync(modId, cancellationToken);
+        if (formModuleOption.IsNone)
+        {
+            return Either<string, ActivityFormDetailDto>.Left("Form module not found");
+        }
+
+        var formModule = formModuleOption.Match(fm => fm, () => null!);
+
+        var formSubmission = FormSubmission.Create(modId, orgId, dcId, "Activity", null, null);
+
+        var idField = formModule.Fields.FirstOrDefault(f => f.FieldType == FieldType.ReadOnly && f.DisplayOrder == 1);
+        if (idField != null)
+        {
+            var generatedCode = "ACT-" + Guid.NewGuid().ToString("N")[..8].ToUpper();
+            formSubmission.SetFieldValue(idField, generatedCode);
+        }
+
+        await formSubmissionRepository.AddAsync(formSubmission, cancellationToken);
+
+        var savedValues = formSubmission.FieldValues.ToDictionary(fv => fv.FormFieldId, fv => fv.Value);
+        var savedFieldValues = formSubmission.FieldValues.ToDictionary(fv => fv.FormFieldId);
+        var (sections, fields) = BuildFormDto(formModule, savedValues, savedFieldValues);
+
+        return Either<string, ActivityFormDetailDto>.Right(new ActivityFormDetailDto(
+            formSubmission.Id.Value,
+            dataCollectionId,
+            dataCollection.Name,
+            formModule.Id.Value,
+            formModule.Name,
+            formModule.Code,
+            formModule.SectionNumber,
+            null!,
+            "Draft",
+            sections,
+            fields));
+    }
+
+    public async Task<Option<ActivityFormDetailDto>> GetActivityTemplate(
+        Guid organisationId,
+        Guid dataCollectionId,
+        Guid moduleId,
+        CancellationToken cancellationToken)
+    {
+        var dcId = new DataCollectionId(dataCollectionId);
+        var modId = new DataCollectionFormModuleId(moduleId);
+
+        var dataCollectionOption = await dataCollectionQueries.GetByIdAsync(dcId, cancellationToken);
+        if (dataCollectionOption.IsNone)
+        {
+            return Option<ActivityFormDetailDto>.None;
+        }
+
+        var dataCollection = dataCollectionOption.Match(dc => dc, () => null!);
+
+        var formModuleOption = await formModuleQueries.GetByIdWithFieldsAsync(modId, cancellationToken);
+        if (formModuleOption.IsNone)
+        {
+            return Option<ActivityFormDetailDto>.None;
+        }
+
+        var formModule = formModuleOption.Match(fm => fm, () => null!);
+
+        var (sections, fields) = BuildFormDto(formModule, null);
+
+        return Option<ActivityFormDetailDto>.Some(new ActivityFormDetailDto(
+            Guid.Empty,
+            dataCollectionId,
+            dataCollection.Name,
+            formModule.Id.Value,
+            formModule.Name,
+            formModule.Code,
+            formModule.SectionNumber,
+            null!,
+            "Draft",
+            sections,
+            fields));
+    }
+
+    public async Task<Option<ActivityFormDetailDto>> GetActivityForm(
+        Guid organisationId,
+        Guid dataCollectionId,
+        Guid moduleId,
+        Guid activityId,
+        CancellationToken cancellationToken)
+    {
+        var orgId = new OrganisationId(organisationId);
+        var dcId = new DataCollectionId(dataCollectionId);
+        var modId = new DataCollectionFormModuleId(moduleId);
+        var submissionId = new FormSubmissionId(activityId);
+
+        var dataCollectionOption = await dataCollectionQueries.GetByIdAsync(dcId, cancellationToken);
+        if (dataCollectionOption.IsNone)
+        {
+            return Option<ActivityFormDetailDto>.None;
+        }
+
+        var dataCollection = dataCollectionOption.Match(dc => dc, () => null!);
+
+        var formModuleOption = await formModuleQueries.GetByIdWithFieldsAsync(modId, cancellationToken);
+        if (formModuleOption.IsNone)
+        {
+            return Option<ActivityFormDetailDto>.None;
+        }
+
+        var formModule = formModuleOption.Match(fm => fm, () => null!);
+
+        var submissionOption = await formSubmissionRepository.GetByIdWithValuesAsync(submissionId, cancellationToken);
+        if (submissionOption.IsNone)
+        {
+            return Option<ActivityFormDetailDto>.None;
+        }
+
+        var submission = submissionOption.Match(s => s, () => null!);
+
+        if (submission.OrganisationId != orgId)
+        {
+            return Option<ActivityFormDetailDto>.None;
+        }
+
+        var savedValues = submission.FieldValues.ToDictionary(fv => fv.FormFieldId, fv => fv.Value);
+        var savedFieldValues = submission.FieldValues.ToDictionary(fv => fv.FormFieldId);
+        var (sections, fields) = BuildFormDto(formModule, savedValues, savedFieldValues);
+
+        return new ActivityFormDetailDto(
+            submission.Id.Value,
+            dataCollectionId,
+            dataCollection.Name,
+            formModule.Id.Value,
+            formModule.Name,
+            formModule.Code,
+            formModule.SectionNumber,
+            submission.Name ?? "(untitled)",
+            GetFormSubmissionStatus(submission.Status),
+            sections,
+            fields);
+    }
+
+    public async Task<Either<string, ActivityFormDetailDto>> SaveActivityForm(
+        Guid organisationId,
+        Guid dataCollectionId,
+        Guid moduleId,
+        Guid activityId,
+        SaveActivityFormRequest request,
+        CancellationToken cancellationToken)
+    {
+        var orgId = new OrganisationId(organisationId);
+        var modId = new DataCollectionFormModuleId(moduleId);
+        var submissionId = new FormSubmissionId(activityId);
+
+        var formModuleOption = await formModuleQueries.GetByIdWithFieldsAsync(modId, cancellationToken);
+        if (formModuleOption.IsNone)
+        {
+            return Either<string, ActivityFormDetailDto>.Left("Form module not found");
+        }
+
+        var formModule = formModuleOption.Match(fm => fm, () => null!);
+
+        var submissionOption = await formSubmissionRepository.GetByIdWithValuesAsync(submissionId, cancellationToken);
+        if (submissionOption.IsNone)
+        {
+            return Either<string, ActivityFormDetailDto>.Left("Activity not found");
+        }
+
+        var formSubmission = submissionOption.Match(s => s, () => null!);
+
+        if (formSubmission.OrganisationId != orgId)
+        {
+            return Either<string, ActivityFormDetailDto>.Left("Activity not found");
+        }
+
+        foreach (var fieldEntry in request.FieldValues)
+        {
+            var field = formModule.Fields.FirstOrDefault(f => f.FieldKey == fieldEntry.Key);
+            if (field != null)
+            {
+                formSubmission.SetFieldValue(field, fieldEntry.Value);
+            }
+        }
+
+        // Backfill Activity ID if not yet set (e.g. activity created before auto-generate was in place)
+        var activityIdField = formModule.Fields.FirstOrDefault(f => f.FieldType == FieldType.ReadOnly && f.DisplayOrder == 1);
+        if (activityIdField != null && !formSubmission.FieldValues.Any(fv => fv.FormFieldId == activityIdField.Id && !string.IsNullOrWhiteSpace(fv.Value)))
+        {
+            formSubmission.SetFieldValue(activityIdField, "ACT-" + Guid.NewGuid().ToString("N")[..8].ToUpper());
+        }
+
+        // Derive display name from the first user-editable field by display order
+        var nameField = formModule.Fields
+            .Where(f => f.FieldType.Value != FieldTypeConstants.ReadOnly && f.FieldType.Value != FieldTypeConstants.Calculation)
+            .OrderBy(f => f.DisplayOrder)
+            .FirstOrDefault();
+        if (nameField != null && request.FieldValues.TryGetValue(nameField.FieldKey, out var nameValue) && !string.IsNullOrWhiteSpace(nameValue))
+        {
+            formSubmission.SetName(nameValue.Length > 500 ? nameValue[..500] : nameValue);
+        }
+
+        if (request.MarkComplete)
+        {
+            formSubmission.MarkAsComplete();
+        }
+        else
+        {
+            formSubmission.SaveAsDraft();
+        }
+
+        await formSubmissionRepository.UpdateAsync(formSubmission, cancellationToken);
+
+        var result = await GetActivityForm(organisationId, dataCollectionId, moduleId, activityId, cancellationToken);
+
+        return result.Match<Either<string, ActivityFormDetailDto>>(
+            dto => Either<string, ActivityFormDetailDto>.Right(dto),
+            () => Either<string, ActivityFormDetailDto>.Left("Failed to retrieve updated activity"));
+    }
+
+    public async Task<Either<string, bool>> DeleteActivity(
+        Guid organisationId,
+        Guid dataCollectionId,
+        Guid moduleId,
+        Guid activityId,
+        CancellationToken cancellationToken)
+    {
+        var orgId = new OrganisationId(organisationId);
+        var submissionId = new FormSubmissionId(activityId);
+
+        var submissionOption = await formSubmissionRepository.GetByIdAsync(submissionId, cancellationToken);
+        if (submissionOption.IsNone)
+        {
+            return Either<string, bool>.Left("Activity not found");
+        }
+
+        var submission = submissionOption.Match(s => s, () => null!);
+
+        if (submission.OrganisationId != orgId)
+        {
+            return Either<string, bool>.Left("Activity not found");
+        }
+
+        await formSubmissionRepository.DeleteAsync(submissionId, cancellationToken);
+
+        return Either<string, bool>.Right(true);
+    }
+
+    private (IReadOnlyList<FormModuleSectionDto> Sections, IReadOnlyList<FormModuleFieldDto> Fields) BuildFormDto(
+        DataCollectionFormModule formModule,
+        Dictionary<FormFieldId, string?>? savedValues,
+        Dictionary<FormFieldId, FormFieldValue>? savedFieldValues = null)
+    {
+        var sections = formModule.Sections
+            .Where(s => s.IsActive)
+            .OrderBy(s => s.SectionNumber)
+            .Select(s => new FormModuleSectionDto(
+                s.Id.Value,
+                s.SectionNumber,
+                s.Title,
+                s.Description,
+                s.HelpText,
+                s.HelpUrl))
+            .ToList();
+
+        var fields = formModule.Fields
+            .Where(f => f.IsActive)
+            .OrderBy(f => f.DisplayOrder)
+            .Select(f =>
+            {
+                int? stepNumber = f.FormSectionId != null
+                    ? formModule.Sections.FirstOrDefault(s => s.Id == f.FormSectionId)?.SectionNumber
+                    : null;
+
+                var savedValue = savedValues != null && savedValues.TryGetValue(f.Id, out var val) ? val : f.DefaultValue;
+
+                return new FormModuleFieldDto(
+                    f.Id.Value,
+                    f.FieldKey,
+                    f.Label,
+                    f.HelpText,
+                    f.FieldType.ToString(),
+                    f.IsRequired,
+                    f.DisplayOrder,
+                    stepNumber,
+                    savedValue,
+                    savedFieldValues != null && savedFieldValues.TryGetValue(f.Id, out var fv) ? AnswerSnapshotResolver.ResolveDisplayValue(fv, f) : null,
+                    f.ConditionalRules,
+                    f.Configuration,
+                    f.Placeholder,
+                    f.Options.OrderBy(o => o.DisplayOrder).Select(o => new SectionFieldOptionDto(
+                        o.Value,
+                        o.Label,
+                        o.DisplayOrder)).ToList());
+            })
+            .ToList();
+
+        return (sections, fields);
     }
 }

@@ -3,6 +3,7 @@ import {
   SiteFormQuestionOptionDto,
   SiteFormQuestionType,
 } from '../../../SiteForms';
+import { evaluateConditionalRules } from '../../../../../helpers/conditionalRules';
 import { CellError, RowData } from './types';
 import { LocationMatchResult } from './mutations';
 
@@ -24,6 +25,24 @@ const findOptionMatch = (
 };
 
 /**
+ * Checks if a question should be visible based on its conditional rules.
+ * Prefers the multi-condition Conditional Display Rules (showWhen/allOf/anyOf) when present,
+ * falling back to the legacy single-condition conditionalQuestionCode/conditionalValue fields.
+ */
+const isConditionalQuestionVisible = (
+  question: SiteFormQuestionDto,
+  allAnswers: Record<string, string>
+): boolean => {
+  if (question.conditionalRules) {
+    return evaluateConditionalRules(question.conditionalRules, allAnswers);
+  }
+  if (!question.conditionalQuestionCode || !question.conditionalValue) {
+    return true;
+  }
+  return allAnswers[question.conditionalQuestionCode] === question.conditionalValue;
+};
+
+/**
  * Validates a single cell value against the question rules
  */
 export const validateCell = (
@@ -31,13 +50,9 @@ export const validateCell = (
   question: SiteFormQuestionDto,
   allAnswers: Record<string, string>
 ): string | null => {
-  // Check if this is a conditional question
-  if (question.conditionalQuestionCode && question.conditionalValue) {
-    const parentValue = allAnswers[question.conditionalQuestionCode];
-    if (parentValue !== question.conditionalValue) {
-      // Question is not visible/applicable, skip validation
-      return null;
-    }
+  // Question not visible/applicable (parent condition not met) — skip validation
+  if (!isConditionalQuestionVisible(question, allAnswers)) {
+    return null;
   }
 
   // Check required fields

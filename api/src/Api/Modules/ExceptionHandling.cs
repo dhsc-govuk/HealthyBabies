@@ -1,10 +1,45 @@
 using FluentValidation;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 namespace Api.Modules;
 
 public static class ExceptionHandling
 {
+    public static IApplicationBuilder UseUnhandledExceptionHandler(this IApplicationBuilder app)
+    {
+        app.Use(async (context, next) =>
+        {
+            try
+            {
+                await next();
+            }
+            catch (Exception ex)
+            {
+                var logger = context.RequestServices
+                    .GetRequiredService<ILoggerFactory>()
+                    .CreateLogger("Api.UnhandledExceptionHandler");
+                logger.LogError(ex, "Unhandled exception processing request {TraceId}", context.TraceIdentifier);
+
+                context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+                context.Response.ContentType = "application/json";
+
+                var problemDetails = new ProblemDetails
+                {
+                    Status = StatusCodes.Status500InternalServerError,
+                    Title = "Something went wrong submitting this request.",
+                    Detail = $"Refresh and try again. If this keeps happening, contact support with reference {context.TraceIdentifier}.",
+                    Type = "https://tools.ietf.org/html/rfc7231#section-6.6.1",
+                };
+
+                await context.Response.WriteAsJsonAsync(problemDetails);
+            }
+        });
+
+        return app;
+    }
+
     public static IApplicationBuilder UseValidationExceptionHandler(this IApplicationBuilder app)
     {
         app.Use(async (context, next) =>

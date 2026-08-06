@@ -6,6 +6,6 @@
   "ad_scope": "https://your-tenant.onmicrosoft.com/your-api-client-id/API",
   "ad_redirect_uri": "/",
   "ad_domain_hint": "your-tenant.onmicrosoft.com",
-  "accessibility_testing_enabled": "true",
+  "accessibility_testing_enabled": "false",
   "app_insights_connection_string": ""
 }

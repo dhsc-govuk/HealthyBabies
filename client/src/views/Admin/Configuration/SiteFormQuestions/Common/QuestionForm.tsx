@@ -1,16 +1,21 @@
 import React, { useCallback, useMemo } from 'react';
-import { Box, FormControlLabel, Checkbox } from '@mui/material';
-import { GovUKFieldset, ErrorSummary } from '../../../../../components/GovUKComponents';
+import { GovUKFieldset, GovUKErrorSummary, GovUKCheckbox } from '../../../../../components/GovUKComponents';
 import {
   QuestionFormState,
   ValidationErrors,
   validationMessages,
   questionTypeOptions,
   requiresOptions,
+  isDateQuestion,
+  dateValidationRuleOptions,
   SiteFormQuestion,
 } from './types';
 import { ActionType } from './reducer';
 import OptionsManager from './OptionsManager';
+import ConditionalRulesBuilder, { ConditionalTriggerField } from '../../DataCollectionFormQuestions/Common/ConditionalRulesBuilder';
+
+// Site question types map to the field-type strings the shared ConditionalRulesBuilder understands.
+const QUESTION_TYPE_TO_FIELD_TYPE: Record<number, string> = { 0: 'text', 1: 'radio', 2: 'checkbox', 3: 'select', 4: 'date' };
 
 interface Props {
   formState: QuestionFormState;
@@ -60,6 +65,19 @@ const QuestionForm = ({
     return options;
   }, [allQuestions, formState.conditionalQuestionCode]);
 
+  // Map site questions to the minimal shape the shared multi-condition builder expects.
+  const conditionalTriggerFields = useMemo<ConditionalTriggerField[]>(
+    () =>
+      allQuestions.map((q) => ({
+        fieldKey: q.code,
+        label: q.label,
+        fieldType: QUESTION_TYPE_TO_FIELD_TYPE[q.questionType] ?? 'text',
+        displayOrder: q.displayOrder,
+        options: q.options.map((o) => ({ value: o.value, label: o.label })),
+      })),
+    [allQuestions]
+  );
+
   const validate = useCallback(
     (field: string) => {
       const errorItems: Record<string, string | boolean> = {};
@@ -85,6 +103,7 @@ const QuestionForm = ({
     if (errors.code) list.push({ targetName: 'question-code', text: String(errors.code) });
     if (errors.label) list.push({ targetName: 'question-label', text: String(errors.label) });
     if (errors.options) list.push({ targetName: 'question-options', text: String(errors.options) });
+    if (errors.conditionalRules) list.push({ targetName: 'conditional-field-0', text: String(errors.conditionalRules) });
     return list;
   }, [errors]);
 
@@ -92,7 +111,7 @@ const QuestionForm = ({
 
   return (
     <>
-      {errorList.length > 0 && <ErrorSummary errors={errorList} />}
+      {errorList.length > 0 && <GovUKErrorSummary errors={errorList} />}
       <GovUKFieldset legend="Question Details" legendSize="m">
         <GovUKFieldset.Input
           id="question-code"
@@ -143,6 +162,17 @@ const QuestionForm = ({
           required
           onChange={(e) => dispatch({ type: ActionType.SET_QUESTION_TYPE, payload: Number(e.target.value) })}
         />
+        {isDateQuestion(formState.questionType) && (
+          <GovUKFieldset.Select
+            id="question-date-validation-rule"
+            name="dateValidationRule"
+            label="Date restriction"
+            hint="Controls whether this date field rejects past or future dates when answered"
+            value={formState.dateValidationRule}
+            options={dateValidationRuleOptions}
+            onChange={(e) => dispatch({ type: ActionType.SET_DATE_VALIDATION_RULE, payload: e.target.value })}
+          />
+        )}
         <GovUKFieldset.Input
           id="question-help-text-summary"
           name="helpTextSummary"
@@ -161,12 +191,12 @@ const QuestionForm = ({
         />
       </GovUKFieldset>
 
-      <GovUKFieldset legend="Conditional Display" legendSize="m">
+      <GovUKFieldset legend="Child question (indented)" legendSize="m">
         <GovUKFieldset.Select
           id="conditional-question"
           name="conditionalQuestionCode"
-          label="Show when question"
-          hint="Optionally show this question only when another question has a specific answer"
+          label="Indent under question"
+          hint="Use this only to nest this question as an indented child under another question's answer. For general show/hide rules across one or more questions, use Conditional Display Rules below."
           value={formState.conditionalQuestionCode}
           options={conditionalQuestionOptions}
           onChange={(e) => dispatch({ type: ActionType.SET_CONDITIONAL_QUESTION_CODE, payload: e.target.value })}
@@ -184,32 +214,32 @@ const QuestionForm = ({
         )}
       </GovUKFieldset>
 
-      <GovUKFieldset legend="Settings" legendSize="m">
-        <Box sx={{ mb: 2 }}>
-          <FormControlLabel
-            control={
-              <Checkbox
-                checked={formState.isRequired}
-                onChange={(e) => dispatch({ type: ActionType.SET_IS_REQUIRED, payload: e.target.checked })}
-              />
-            }
-            label="Required"
-          />
-        </Box>
-        {isEdit && (
-          <Box sx={{ mb: 2 }}>
-            <FormControlLabel
-              control={
-                <Checkbox
-                  checked={formState.isActive}
-                  onChange={(e) => dispatch({ type: ActionType.SET_IS_ACTIVE, payload: e.target.checked })}
-                />
-              }
-              label="Active"
-            />
-          </Box>
-        )}
-      </GovUKFieldset>
+      {/* Advanced: multiple conditions combined with AND (takes precedence over the single rule above when set). */}
+      <ConditionalRulesBuilder
+        value={formState.conditionalRules}
+        onChange={(value) => dispatch({ type: ActionType.SET_CONDITIONAL_RULES, payload: value })}
+        availableFields={conditionalTriggerFields}
+        currentFieldKey={formState.code}
+      />
+
+      <GovUKCheckbox
+        id="question-settings"
+        name="settings"
+        legend="Settings"
+        legendSize="m"
+        options={[
+          { value: 'required', label: 'Required' },
+          ...(isEdit ? [{ value: 'active', label: 'Active' }] : []),
+        ]}
+        value={[
+          ...(formState.isRequired ? ['required'] : []),
+          ...(formState.isActive ? ['active'] : []),
+        ]}
+        onChange={(vals) => {
+          dispatch({ type: ActionType.SET_IS_REQUIRED, payload: vals.includes('required') });
+          if (isEdit) dispatch({ type: ActionType.SET_IS_ACTIVE, payload: vals.includes('active') });
+        }}
+      />
 
       {showOptions && (
         <GovUKFieldset legend="Answer Options" legendSize="m">

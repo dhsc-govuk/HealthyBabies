@@ -17,7 +17,8 @@ namespace Api.Controllers;
 public class OrganisationsController(
     PermissionsService permissionsService,
     ISender sender,
-    IOrganisationsControllerService controllerService)
+    IOrganisationsControllerService controllerService,
+    IOrganisationAnalyticsControllerService analyticsService)
     : ControllerBase
 {
     [HttpGet]
@@ -88,6 +89,58 @@ public class OrganisationsController(
                 org.ONSCode,
                 org.IsActive),
             error => error.ToObjectResult());
+    }
+
+    [HttpGet("{organisationId:guid}/financial-data")]
+    public async Task<ActionResult<IReadOnlyList<FinancialDataEntryDto>>> GetFinancialData(
+        [FromRoute] Guid organisationId,
+        CancellationToken cancellationToken)
+    {
+        var result = await controllerService.GetFinancialData(organisationId, cancellationToken);
+        return result.ToList();
+    }
+
+    [HttpPut("{organisationId:guid}/financial-data")]
+    public async Task<ActionResult<IReadOnlyList<FinancialDataEntryDto>>> UpsertFinancialData(
+        [FromRoute] Guid organisationId,
+        [FromBody] UpsertOrganisationFinancialDataDto dto,
+        CancellationToken cancellationToken)
+    {
+        var command = new UpsertOrganisationFinancialDataCommand
+        {
+            OrganisationId = organisationId,
+            Entries = dto.Entries
+                .Select(e => new FinancialDataEntryCommand(e.Module, e.YearRange, e.Amount))
+                .ToList(),
+        };
+
+        var result = await sender.Send(command, cancellationToken);
+        return result.Match<ActionResult<IReadOnlyList<FinancialDataEntryDto>>>(
+            entries => entries.Select(e => new FinancialDataEntryDto(e.Module.Value, e.YearRange, e.Amount)).ToList(),
+            error => BadRequest(error.Message));
+    }
+
+    [HttpGet("{organisationId:guid}/financial-summary")]
+    public async Task<ActionResult<FinancialSummaryDto>> GetFinancialSummary(
+        [FromRoute] Guid organisationId,
+        [FromQuery] string yearRange,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(yearRange))
+        {
+            return BadRequest("yearRange is required.");
+        }
+
+        return await analyticsService.GetFinancialSummary(organisationId, yearRange, cancellationToken);
+    }
+
+    [HttpGet("{organisationId:guid}/delivery-summary")]
+    public async Task<ActionResult<DeliverySummaryDto>> GetDeliverySummary(
+        [FromRoute] Guid organisationId,
+        [FromQuery] string? strand,
+        CancellationToken cancellationToken)
+    {
+        return await analyticsService.GetDeliverySummary(organisationId, strand, cancellationToken);
     }
 
     [HttpGet("{organisationId:guid}/totals")]

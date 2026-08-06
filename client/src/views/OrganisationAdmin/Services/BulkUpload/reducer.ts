@@ -1,4 +1,5 @@
 import { ServiceFormQuestionDto } from '../../../../components/Global/Services';
+import { BulkUploadServiceCellEdit, BulkUploadServiceRowValidationDto } from '../../../../components/Global/Services/mutations';
 import {
   BulkUploadState,
   BulkUploadStep,
@@ -7,6 +8,7 @@ import {
   ServiceMatchResult,
   ServiceUpdateSelection,
   initialBulkUploadState,
+  dataRowFileOffset,
 } from './types';
 
 export enum BulkUploadActionType {
@@ -23,6 +25,8 @@ export enum BulkUploadActionType {
   TOGGLE_UPDATE_SELECTION = 'TOGGLE_UPDATE_SELECTION',
   SET_LOADING = 'SET_LOADING',
   SET_ERROR = 'SET_ERROR',
+  SET_STAGING_ID = 'SET_STAGING_ID',
+  MERGE_ROW_VALIDATIONS = 'MERGE_ROW_VALIDATIONS',
   RESET = 'RESET',
 }
 
@@ -46,6 +50,8 @@ export type BulkUploadAction =
   | { type: BulkUploadActionType.TOGGLE_UPDATE_SELECTION; payload: { serviceName: string; updateFromFile: boolean } }
   | { type: BulkUploadActionType.SET_LOADING; payload: boolean }
   | { type: BulkUploadActionType.SET_ERROR; payload: string | null }
+  | { type: BulkUploadActionType.SET_STAGING_ID; payload: string }
+  | { type: BulkUploadActionType.MERGE_ROW_VALIDATIONS; payload: { rowValidations: BulkUploadServiceRowValidationDto[]; questions: ServiceFormQuestionDto[] } }
   | { type: BulkUploadActionType.RESET };
 
 export const bulkUploadReducer = (
@@ -93,7 +99,22 @@ export const bulkUploadReducer = (
         }
         return row;
       });
-      return { ...state, rows: updatedRows };
+
+      // Track edited cells as a diff (rowNumber + questionCode + value), so the confirm step can
+      // send just what changed instead of re-uploading the whole file.
+      const rowNumber = rowIndex + dataRowFileOffset;
+      const existingEditIndex = state.editedCells.findIndex(
+        (edit) => edit.rowNumber === rowNumber && edit.questionCode === questionCode
+      );
+      const editedCells = [...state.editedCells];
+      const newEdit: BulkUploadServiceCellEdit = { rowNumber, questionCode, value };
+      if (existingEditIndex >= 0) {
+        editedCells[existingEditIndex] = newEdit;
+      } else {
+        editedCells.push(newEdit);
+      }
+
+      return { ...state, rows: updatedRows, editedCells };
     }
 
     case BulkUploadActionType.SET_MATCH_RESULTS:
@@ -118,6 +139,34 @@ export const bulkUploadReducer = (
 
     case BulkUploadActionType.SET_ERROR:
       return { ...state, error: action.payload };
+
+    case BulkUploadActionType.SET_STAGING_ID:
+      return { ...state, stagingId: action.payload };
+
+    case BulkUploadActionType.MERGE_ROW_VALIDATIONS: {
+      const { rowValidations, questions } = action.payload;
+      const updatedRows = state.rows.map((row) => {
+        const rowNumber = row.rowIndex + dataRowFileOffset;
+        const serverRow = rowValidations.find((rv) => rv.rowNumber === rowNumber);
+        if (!serverRow || serverRow.isValid) {
+          return row;
+        }
+
+        const existingMessages = new Set(row.errors.map((e) => `${e.questionCode}:${e.message}`));
+        const serverErrors = serverRow.errors
+          .filter((e) => !existingMessages.has(`${e.fieldCode}:${e.errorMessage}`))
+          .map((e) => ({
+            rowIndex: row.rowIndex,
+            columnIndex: questions.findIndex((q) => q.code === e.fieldCode),
+            questionCode: e.fieldCode,
+            message: e.errorMessage,
+          }));
+
+        return serverErrors.length > 0 ? { ...row, errors: [...row.errors, ...serverErrors] } : row;
+      });
+
+      return { ...state, rows: updatedRows };
+    }
 
     case BulkUploadActionType.RESET:
       return { ...initialBulkUploadState };

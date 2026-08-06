@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo } from 'react';
-import { GovUKFieldset, ErrorSummary, GovUKDateField } from '../../../../../../../components/GovUKComponents';
+import { GovUKFieldset, GovUKErrorSummary, GovUKDateField } from '../../../../../../../components/GovUKComponents';
 import { GlobalDataDto } from '../../../../../../../components/Global/Queries/globalData';
 import { LocationReducerAction, Location, ValidationErrors, validationErrors, bsfhBrandingOptions, statusOfSiteOptions } from '../types';
 
@@ -58,13 +58,13 @@ const StepDetails = ({ location, errors, setErrors, dispatch, locationTypes, sit
     if (errors.deliverySiteName) list.push({ targetName: 'delivery-site-name', text: String(errors.deliverySiteName) });
     if (errors.postCode) list.push({ targetName: 'post-code', text: String(errors.postCode) });
     if (errors.referenceNumber) list.push({ targetName: 'reference-number', text: String(errors.referenceNumber) });
-    if (errors.statusOfSite) list.push({ targetName: 'status-of-site-fieldset', text: String(errors.statusOfSite) });
-    if (errors.typeOfSite) list.push({ targetName: 'type-of-site-fieldset', text: String(errors.typeOfSite) });
-    if (errors.dateOpened) list.push({ targetName: 'date-opened', text: String(errors.dateOpened) });
-    if (errors.bsfhBranding) list.push({ targetName: 'bsfh-branding-fieldset', text: String(errors.bsfhBranding) });
-    if (errors.locationType) list.push({ targetName: 'location-type-fieldset', text: String(errors.locationType) });
+    if (errors.statusOfSite) list.push({ targetName: `statusOfSite-${statusOfSiteOptions[0].value}`, text: String(errors.statusOfSite) });
+    if (errors.typeOfSite) list.push({ targetName: `typeOfSite-${typeOfSiteOptions[0]?.value ?? ''}`, text: String(errors.typeOfSite) });
+    if (errors.dateOpened) list.push({ targetName: 'date-opened-day', text: String(errors.dateOpened) });
+    if (errors.bsfhBranding) list.push({ targetName: `bsfhBranding-${bsfhBrandingOptions[0].value}`, text: String(errors.bsfhBranding) });
+    if (errors.locationType) list.push({ targetName: `locationType-${locationTypeOptions[0]?.value ?? ''}`, text: String(errors.locationType) });
     return list;
-  }, [errors]);
+  }, [errors, typeOfSiteOptions, locationTypeOptions]);
 
   // Transform your existing option arrays to match the new component interfaces
   const nameChangeOptions = [
@@ -83,7 +83,7 @@ const StepDetails = ({ location, errors, setErrors, dispatch, locationTypes, sit
 
   return (
     <>
-      {errorList.length > 0 && <ErrorSummary errors={errorList} />}
+      {errorList.length > 0 && <GovUKErrorSummary errors={errorList} />}
 
       {/* Basic Information */}
       <GovUKFieldset legend="" legendSize="s">
@@ -202,8 +202,16 @@ const StepDetails = ({ location, errors, setErrors, dispatch, locationTypes, sit
           hint="Enter the date the site was officially opened (DD/MM/YYYY)"
           error={errors.dateOpened ? String(errors.dateOpened) : undefined}
           value={location?.dateOpened ?? ''}
+          allowFuture={false}
           onChange={(dateString: string) => {
             dispatch({ type: LocationReducerAction.DATE_OPENED, value: dateString });
+          }}
+          onValidate={(err) => {
+            if (err) {
+              setErrors({ ...errors, dateOpened: err });
+            } else if (errors.dateOpened) {
+              setErrors({ ...errors, dateOpened: false });
+            }
           }}
         />
       </GovUKFieldset>

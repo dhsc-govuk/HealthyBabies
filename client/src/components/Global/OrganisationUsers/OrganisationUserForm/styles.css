@@ -59,46 +59,6 @@
   border-left: 5px solid #d4351c;
 }
 
-/* Error Summary Box */
-.govuk-error-summary {
-  padding: 15px 20px;
-  margin-bottom: 30px;
-  border: 5px solid #d4351c;
-  background-color: #fff;
-}
-
-.govuk-error-summary__title {
-  font-family: "GDS Transport", arial, sans-serif;
-  font-size: 24px;
-  font-weight: 700;
-  margin: 0 0 15px 0;
-  color: #0b0c0c;
-}
-
-.govuk-error-summary__body {
-  font-family: "GDS Transport", arial, sans-serif;
-  font-size: 19px;
-}
-
-.govuk-error-summary__list {
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-
-.govuk-error-summary__list li {
-  margin-bottom: 5px;
-}
-
-.govuk-error-summary__list a {
-  color: #d4351c;
-  font-weight: 700;
-  text-decoration: underline;
-}
-
-.govuk-error-summary__list a:hover {
-  color: #942514;
-}
 
 .govuk-checkboxes__item {
   display: flex;

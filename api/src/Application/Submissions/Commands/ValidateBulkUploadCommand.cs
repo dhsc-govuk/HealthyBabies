@@ -1,11 +1,13 @@
 using Application.Common;
 using Application.Common.Interfaces;
 using Application.Common.Interfaces.Queries;
+using Application.Common.Interfaces.Repositories;
 using Application.Common.Permissions;
 using Application.Submissions.Dtos;
 using Domain.DataCollections;
 using Domain.DataCollections.Forms;
 using Domain.DataCollections.Forms.ValueObjects;
+using Domain.Organisations;
 using LanguageExt;
 using MediatR;
 
@@ -23,6 +25,7 @@ public class ValidateBulkUploadCommandHandler(
     PermissionsService permissionsService,
     IDataCollectionFormModuleQueries formModuleQueries,
     IServiceQueries serviceQueries,
+    IFormSubmissionRepository formSubmissionRepository,
     IBlobService blobService)
     : IRequestHandler<ValidateBulkUploadCommand, Either<string, BulkUploadValidationResultDto>>
 {
@@ -54,8 +57,25 @@ public class ValidateBulkUploadCommandHandler(
         var fields = GetOrderedFields(formModule);
 
         var orgId = permission.OrganisationId.Match(id => id, () => throw new InvalidOperationException("Organisation ID required"));
-        var services = await serviceQueries.GetByOrganisationIdAsync(orgId, cancellationToken);
+        var dcId = new DataCollectionId(request.SubmissionId);
+        var allServices = await serviceQueries.GetByOrganisationIdAsync(orgId, cancellationToken);
+
+        // For outcome-scores modules, only allow services that have QSU13 = "yes" in the Service Users
+        // module — these are the only services actually collecting pre/post outcome scores.
+        var services = formModule.Code == DataCollectionFormModuleCodes.OutcomeScores
+            ? await FilterToEligibleServicesAsync(allServices, orgId, dcId, cancellationToken)
+            : allServices;
+
         var serviceNames = services.Select(s => s.Name.ToLowerInvariant()).ToHashSet();
+
+        // Service names aren't unique in the DB, so group rather than ToDictionary (which throws on a duplicate
+        // key) — when two services share a name, resolve the ambiguity deterministically by taking the first.
+        var serviceAnswersByName = services
+            .GroupBy(s => s.Name, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(
+                g => g.Key,
+                g => g.First().Answers.ToDictionary(a => a.QuestionCode, a => a.Value ?? string.Empty, StringComparer.OrdinalIgnoreCase),
+                StringComparer.OrdinalIgnoreCase);
 
         var buffer = new MemoryStream();
         await request.FileStream.CopyToAsync(buffer, cancellationToken);
@@ -85,6 +105,29 @@ public class ValidateBulkUploadCommandHandler(
         var dataRows = rows.Skip(1).ToList();
         var skippedRows = 1; // Start with 1 for header row
 
+        // Reject CSVs whose headers have no overlap with this module's field keys.
+        // This catches the case where a user uploads a Service Users CSV on the Outcome Scores
+        // upload page (or vice versa): all row errors would reference field codes that don't exist
+        // in the CSV headers, so the frontend drops them silently and lets the user proceed.
+        var expectedKeys = fields.Select(f => f.FieldKey).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        if (formModule.Code.StartsWith("QSU", StringComparison.OrdinalIgnoreCase))
+        {
+            expectedKeys.Add("ServiceName");
+        }
+
+        if (!headers.Any(h => expectedKeys.Contains(h)))
+        {
+            return new BulkUploadValidationResultDto(
+                IsValid: false,
+                TotalRows: 0,
+                ValidRows: 0,
+                InvalidRows: 0,
+                RowValidations: Array.Empty<BulkUploadRowValidationDto>(),
+                FieldMetadata: Array.Empty<BulkUploadFieldMetadataDto>(),
+                StagingId: Guid.Empty,
+                ModuleError: "This file does not match the expected template for this module. Please download the correct template and try again.");
+        }
+
         // Skip label row if present
         if (dataRows.Count > 0 && BulkUploadCsvHelper.IsLabelRow(dataRows[0], fields))
         {
@@ -111,7 +154,8 @@ public class ValidateBulkUploadCommandHandler(
             var rowData = BulkUploadCsvHelper.MapRowToFields(headers, row);
 
             var serviceName = rowData.GetValueOrDefault("ServiceName") ?? rowData.GetValueOrDefault("PPS01");
-            var errors = ValidateRow(rowData, fields, serviceNames, formModule.Code);
+            var serviceAnswers = serviceName != null ? serviceAnswersByName.GetValueOrDefault(serviceName.ToLowerInvariant()) : null;
+            var errors = ValidateRow(rowData, fields, serviceNames, formModule.Code, serviceAnswers);
 
             var isValid = errors.Count == 0;
             if (isValid)
@@ -127,7 +171,7 @@ public class ValidateBulkUploadCommandHandler(
         }
 
         // Build field metadata for fields with options (radio, select, checkbox)
-        var fieldMetadata = BuildFieldMetadata(fields, services);
+        var fieldMetadata = BuildFieldMetadata(fields, services, formModule.Code);
 
         var stagingId = Guid.NewGuid();
         buffer.Position = 0;
@@ -171,11 +215,65 @@ public class ValidateBulkUploadCommandHandler(
             error => error);
     }
 
+    private async Task<IReadOnlyList<Domain.Services.Service>> FilterToEligibleServicesAsync(
+        IReadOnlyList<Domain.Services.Service> allServices,
+        OrganisationId organisationId,
+        DataCollectionId dataCollectionId,
+        CancellationToken cancellationToken)
+    {
+        var serviceUsersModuleOption = await formModuleQueries.GetByCodeWithFieldsAsync(
+            DataCollectionFormModuleCodes.ServiceUsers, cancellationToken);
+
+        if (serviceUsersModuleOption.IsNone)
+        {
+            return Array.Empty<Domain.Services.Service>();
+        }
+
+        var serviceUsersModule = serviceUsersModuleOption.Match(m => m, () => null!);
+        var qsu13Field = serviceUsersModule.Fields.FirstOrDefault(f => f.FieldKey == "QSU13");
+
+        if (qsu13Field == null)
+        {
+            return Array.Empty<Domain.Services.Service>();
+        }
+
+        var serviceSubmissions = await formSubmissionRepository.GetByFormModuleOrganisationDataCollectionAndEntityTypeAsync(
+            serviceUsersModule.Id, organisationId, dataCollectionId, "Service", cancellationToken);
+
+        var eligibleIds = serviceSubmissions
+            .Where(s => s.EntityId.HasValue && s.FieldValues.Any(fv =>
+                fv.FormFieldId == qsu13Field.Id &&
+                string.Equals(fv.Value, "yes", StringComparison.OrdinalIgnoreCase)))
+            .Select(s => s.EntityId!.Value)
+            .ToHashSet();
+
+        return allServices.Where(s => eligibleIds.Contains(s.Id.Value)).ToList();
+    }
+
     private static List<BulkUploadFieldMetadataDto> BuildFieldMetadata(
         List<FormField> fields,
-        IReadOnlyList<Domain.Services.Service> services)
+        IReadOnlyList<Domain.Services.Service> services,
+        string moduleCode)
     {
         var metadata = new List<BulkUploadFieldMetadataDto>();
+
+        // For service-users, prepend a synthetic ServiceName select so the frontend renders a
+        // dropdown of valid services instead of a free-text input.
+        if (moduleCode == DataCollectionFormModuleCodes.ServiceUsers)
+        {
+            var serviceOptions = services
+                .OrderBy(s => s.Name)
+                .Select(s => new BulkUploadFieldOptionDto(s.Name, s.Name))
+                .ToList();
+
+            metadata.Add(new BulkUploadFieldMetadataDto(
+                "ServiceName",
+                "Select",
+                true,
+                serviceOptions,
+                null,
+                null));
+        }
 
         foreach (var field in fields)
         {
@@ -229,13 +327,14 @@ public class ValidateBulkUploadCommandHandler(
         Dictionary<string, string> rowData,
         List<FormField> fields,
         System.Collections.Generic.HashSet<string> serviceNames,
-        string moduleCode)
+        string moduleCode,
+        Dictionary<string, string>? serviceAnswers)
     {
         var errors = new List<BulkUploadFieldErrorDto>();
 
-        // For QSU module, validate ServiceName column
-        // For PPS module, PPS01 is the service field and is validated as a regular field with dynamic options
-        if (moduleCode.StartsWith("QSU", StringComparison.OrdinalIgnoreCase))
+        // For service-users, validate the ServiceName column.
+        // Outcome scores uses PPS01 as the service field, validated as a regular field with dynamic options.
+        if (moduleCode == DataCollectionFormModuleCodes.ServiceUsers)
         {
             var serviceName = rowData.GetValueOrDefault("ServiceName");
             if (string.IsNullOrWhiteSpace(serviceName))
@@ -250,13 +349,13 @@ public class ValidateBulkUploadCommandHandler(
 
         foreach (var field in fields)
         {
-            if (!IsFieldVisible(field, rowData, fields))
+            if (!IsFieldVisible(field, rowData, fields, serviceAnswers))
             {
                 continue;
             }
 
             var value = rowData.GetValueOrDefault(field.FieldKey);
-            var fieldErrors = ValidateFieldValue(value, field, serviceNames);
+            var fieldErrors = BulkUploadFieldValueValidator.ValidateFieldValue(value, field, serviceNames);
 
             foreach (var error in fieldErrors)
             {
@@ -267,84 +366,10 @@ public class ValidateBulkUploadCommandHandler(
         return errors;
     }
 
-    private static List<string> ValidateFieldValue(string? value, FormField field, System.Collections.Generic.HashSet<string> serviceNames)
-    {
-        var errors = new List<string>();
-
-        if (field.IsRequired && string.IsNullOrWhiteSpace(value))
-        {
-            errors.Add("This field is required");
-            return errors;
-        }
-
-        if (string.IsNullOrWhiteSpace(value))
-        {
-            return errors;
-        }
-
-        var fieldTypeValue = field.FieldType.ToString().ToLowerInvariant();
-
-        // Check if this is a dynamic options field (e.g., PPS01 with dynamicOptions: "services")
-        var hasDynamicOptions = !string.IsNullOrEmpty(field.Configuration) &&
-                                field.Configuration.Contains("dynamicOptions");
-
-        if (fieldTypeValue == FieldTypeConstants.Number)
-        {
-            // Allow integers and decimals, trim whitespace
-            var trimmedValue = value.Trim();
-            if (!int.TryParse(trimmedValue, out _) && !decimal.TryParse(trimmedValue, out _))
-            {
-                errors.Add("Must be a valid number");
-            }
-        }
-        else if (fieldTypeValue == FieldTypeConstants.Radio || fieldTypeValue == FieldTypeConstants.Select)
-        {
-            if (hasDynamicOptions && field.Configuration!.Contains("\"services\""))
-            {
-                // Validate against service names for dynamic service options
-                var trimmedValue = value.Trim().ToLowerInvariant();
-                if (!serviceNames.Contains(trimmedValue))
-                {
-                    errors.Add($"Service '{value}' not found");
-                }
-            }
-            else if (field.Options.Any())
-            {
-                // Validate against static options
-                var validOptions = field.Options.Select(o => o.Value.ToLowerInvariant()).ToHashSet();
-                var validLabels = field.Options.Select(o => o.Label.ToLowerInvariant()).ToHashSet();
-
-                var trimmedValue = value.Trim().ToLowerInvariant();
-                if (!validOptions.Contains(trimmedValue) && !validLabels.Contains(trimmedValue))
-                {
-                    var optionList = string.Join(", ", field.Options.Select(o => o.Label));
-                    errors.Add($"Invalid option. Valid options: {optionList}");
-                }
-            }
-        }
-        else if (fieldTypeValue == FieldTypeConstants.Checkbox)
-        {
-            // Only validate if field has options defined
-            if (field.Options.Any())
-            {
-                var values = value.Split(',').Select(v => v.Trim().ToLowerInvariant()).Where(v => !string.IsNullOrEmpty(v)).ToList();
-                var checkboxOptions = field.Options.Select(o => o.Value.ToLowerInvariant()).ToHashSet();
-                var checkboxLabels = field.Options.Select(o => o.Label.ToLowerInvariant()).ToHashSet();
-
-                var invalidValues = values.Where(v =>
-                    !checkboxOptions.Contains(v) && !checkboxLabels.Contains(v)).ToList();
-
-                if (invalidValues.Any())
-                {
-                    var optionList = string.Join(", ", field.Options.Select(o => o.Label));
-                    errors.Add($"Invalid options: {string.Join(", ", invalidValues)}. Valid options: {optionList}");
-                }
-            }
-        }
-
-        return errors;
-    }
-
-    private static bool IsFieldVisible(FormField field, Dictionary<string, string> rowData, List<FormField> allFields)
-        => ConditionalRuleEvaluator.IsFieldVisible(field, rowData, allFields);
+    private static bool IsFieldVisible(
+        FormField field,
+        Dictionary<string, string> rowData,
+        List<FormField> allFields,
+        Dictionary<string, string>? serviceAnswers)
+        => ConditionalRuleEvaluator.IsFieldVisible(field, rowData, allFields, serviceAnswers);
 }

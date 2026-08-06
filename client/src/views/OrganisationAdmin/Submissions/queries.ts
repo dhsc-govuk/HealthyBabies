@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { sanitizeCsvForUpload, zipCsvForUpload } from '../../../helpers/csvUpload';
 
 export interface SubmissionDto {
   id: string;
@@ -8,6 +9,7 @@ export interface SubmissionDto {
   endDate: string;
   status: string;
   daysRemaining: number;
+  isWindowClosed: boolean;
 }
 
 export interface SubmissionSectionDto {
@@ -25,6 +27,7 @@ export interface SubmissionFormModuleDto {
   name: string;
   description: string | null;
   status: string;
+  allowsMultipleActivities: boolean;
   sections: SubmissionSectionDto[];
 }
 
@@ -36,6 +39,7 @@ export interface SubmissionDetailDto {
   endDate: string;
   status: string;
   daysRemaining: number;
+  isWindowClosed: boolean;
   formModules: SubmissionFormModuleDto[];
 }
 
@@ -54,6 +58,7 @@ export interface SectionFieldDto {
   isRequired: boolean;
   displayOrder: number;
   value: string | null;
+  displayValue?: string | null;
   options: SectionFieldOptionDto[];
 }
 
@@ -88,16 +93,21 @@ export const saveSection = (submissionId: string, sectionId: string, request: Sa
 export const submitSubmission = (submissionId: string) =>
   axios.post<SubmissionDetailDto>(`organisation-admin/submissions/${submissionId}/submit`);
 
+export const reopenSubmission = (submissionId: string) =>
+  axios.post<SubmissionDetailDto>(`organisation-admin/submissions/${submissionId}/reopen`);
+
 export interface ConditionalRule {
   showWhen?: {
     fieldKey?: string;
     equals?: string;
     notEquals?: string;
+    gte?: string;
     in?: string[];
     allOf?: Array<{
       fieldKey: string;
       equals?: string;
       notEquals?: string;
+      gte?: string;
     }>;
   };
   displayInline?: boolean;
@@ -122,6 +132,8 @@ export interface FieldConfiguration {
   maxSumField?: string; // Field code whose value is the max sum for this group
   sumGroup?: string; // Group name for sum validation (all fields in same sumGroup should sum to <= maxSumField)
   mustEqualField?: string; // Field code whose value this group must equal
+  formula?: string; // Arithmetic formula for calculation fields, e.g. "DG09+DG11"
+  warnIfNegative?: boolean; // Show overspend warning when calculated value is negative
 }
 
 export interface FormModuleFieldDto {
@@ -134,6 +146,7 @@ export interface FormModuleFieldDto {
   displayOrder: number;
   stepNumber: number | null;
   value: string | null;
+  displayValue?: string | null;
   conditionalRules: string | null;
   configuration: string | null;
   placeholder: string | null;
@@ -231,6 +244,7 @@ export interface ServiceFormDetailDto {
   status: string;
   sections: FormModuleSectionDto[];
   fields: FormModuleFieldDto[];
+  serviceAnswers: Record<string, string>;
 }
 
 export interface SaveServiceFormRequest {
@@ -298,13 +312,12 @@ export interface WiderServiceCategoryFormDto {
   status: string;
   startDate: string;
   endDate: string;
-  userCount: number | null;
-  label: string;
-  helpText: string | null;
+  sections: FormModuleSectionDto[];
+  fields: FormModuleFieldDto[];
 }
 
 export interface SaveWiderServiceCategoryFormRequest {
-  userCount: number | null;
+  fieldValues: Record<string, string | null>;
   markComplete: boolean;
 }
 
@@ -458,6 +471,10 @@ export interface BulkUploadValidationResultDto {
   rowValidations: BulkUploadRowValidationDto[];
   fieldMetadata: BulkUploadFieldMetadataDto[];
   stagingId: string;
+  moduleError?: string;
+  // Per-service SMD answers (keyed by lower-cased service name) for the fields referenced by
+  // serviceFieldKey conditions, so client-side validation can evaluate service-scoped rules.
+  serviceAnswersByName?: Record<string, Record<string, string>>;
 }
 
 export interface BulkUploadCellEditDto {
@@ -468,7 +485,7 @@ export interface BulkUploadCellEditDto {
 
 export interface ProcessStagedBulkUploadRequestDto {
   stagingId: string;
-  selectedServiceNames: string[];
+  selectedRowIndices: number[];
   cellEdits: BulkUploadCellEditDto[];
 }
 
@@ -514,13 +531,24 @@ export const getBulkUploadTemplateMimeType = (format: TemplateFormat): string =>
     : 'text/csv';
 };
 
-export const validateBulkUpload = (
+const toUploadFile = async (file: File): Promise<File> => {
+  if (!file.name.toLowerCase().endsWith('.csv')) {
+    return file;
+  }
+
+  const sanitizedContent = sanitizeCsvForUpload(await file.text());
+  const zippedContent = zipCsvForUpload(sanitizedContent, file.name);
+  const zipFileName = `${file.name.slice(0, -'.csv'.length)}.zip`;
+  return new File([zippedContent], zipFileName, { type: 'application/zip' });
+};
+
+export const validateBulkUpload = async (
   submissionId: string,
   moduleId: string,
   file: File
 ) => {
   const formData = new FormData();
-  formData.append('file', file);
+  formData.append('file', await toUploadFile(file));
   return axios.post<BulkUploadValidationResultDto>(
     `organisation-admin/submissions/${submissionId}/modules/${moduleId}/bulk-upload/validate`,
     formData,
@@ -532,13 +560,13 @@ export const validateBulkUpload = (
   );
 };
 
-export const processBulkUpload = (
+export const processBulkUpload = async (
   submissionId: string,
   moduleId: string,
   file: File
 ) => {
   const formData = new FormData();
-  formData.append('file', file);
+  formData.append('file', await toUploadFile(file));
   return axios.post<BulkUploadResultDto>(
     `organisation-admin/submissions/${submissionId}/modules/${moduleId}/bulk-upload`,
     formData,
@@ -549,6 +577,54 @@ export const processBulkUpload = (
     }
   );
 };
+
+export interface OutcomeScoreFieldValueCheckDto {
+  fieldKey: string;
+  value: string;
+}
+
+export interface OutcomeScoreRowCheckDto {
+  rowIndex: number;
+  serviceName: string;
+  fieldValues: OutcomeScoreFieldValueCheckDto[];
+}
+
+export interface OutcomeScoreDuplicateCheckItemDto {
+  rowIndex: number;
+  serviceName: string;
+  hasExistingData: boolean;
+}
+
+export interface ServiceUserRowCheckDto {
+  rowIndex: number;
+  serviceName: string;
+}
+
+export interface ServiceUserDuplicateCheckItemDto {
+  rowIndex: number;
+  serviceName: string;
+  hasExistingData: boolean;
+}
+
+export const checkServiceUserDuplicates = (
+  submissionId: string,
+  moduleId: string,
+  rows: ServiceUserRowCheckDto[]
+) =>
+  axios.post<ServiceUserDuplicateCheckItemDto[]>(
+    `organisation-admin/submissions/${submissionId}/modules/${moduleId}/bulk-upload/check-service-user-duplicates`,
+    { rows }
+  );
+
+export const checkOutcomeScoreDuplicates = (
+  submissionId: string,
+  moduleId: string,
+  rows: OutcomeScoreRowCheckDto[]
+) =>
+  axios.post<OutcomeScoreDuplicateCheckItemDto[]>(
+    `organisation-admin/submissions/${submissionId}/modules/${moduleId}/bulk-upload/check-outcome-score-duplicates`,
+    { rows }
+  );
 
 export const processStagedBulkUpload = (
   submissionId: string,

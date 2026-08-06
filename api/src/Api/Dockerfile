@@ -14,12 +14,14 @@ COPY ["src/Infrastructure/Infrastructure.csproj", "src/Infrastructure/"]
 RUN dotnet restore "src/Api/Api.csproj"
 COPY . .
 WORKDIR "/src/src/Api"
-RUN dotnet build "Api.csproj" -c Release -o /app/build
+#RUN dotnet build "Api.csproj" -c Release -o /app/build
+RUN dotnet publish "Api.csproj" --no-restore -c Release -o /app/publish  /p:UseAppHost=false
 
-FROM build AS publish
-RUN dotnet publish "Api.csproj" -c Release -o /app/publish /p:UseAppHost=false
+# FROM build AS publish
+# RUN dotnet publish "Api.csproj" -c Release -o /app/publish /p:UseAppHost=false
 
 FROM base AS final
 WORKDIR /app
-COPY --from=publish /app/publish .
+COPY --chown=app:app --from=build /app/publish .
+USER app
 ENTRYPOINT ["dotnet", "Api.dll"]

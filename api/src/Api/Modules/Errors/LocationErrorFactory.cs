@@ -15,6 +15,7 @@ public static class LocationErrorFactory
                 LocationAlreadyExistsException or LocationReferenceNumberAlreadyExistsException => StatusCodes.Status409Conflict,
                 LocationDoesNotExistException => StatusCodes.Status404NotFound,
                 LocationArgumentException => StatusCodes.Status400BadRequest,
+                LocationInvalidAnswerException => StatusCodes.Status400BadRequest,
                 LocationUnknownException => StatusCodes.Status500InternalServerError,
                 _ => throw new NotImplementedException("Location exception handler does not implemented")
             }
