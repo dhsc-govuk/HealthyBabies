@@ -3,7 +3,7 @@ import { useNavigate, useParams, Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import { LoadingBox } from 'govuk-react';
 import { GeneralLayout } from '../../../../layouts';
-import { ErrorSummary, GovUKButton, SummaryList, H1, H2, Paragraph, GovUKDynamicQuestionRenderer } from '../../../../components/GovUKComponents';
+import { GovUKErrorSummary, GovUKButton, SummaryList, H1, H2, Paragraph, GovUKDynamicQuestionRenderer } from '../../../../components/GovUKComponents';
 import {
   getServiceCategory,
   serviceCategoryCacheKey,
@@ -13,6 +13,7 @@ import {
   serviceCategoriesCacheKey,
 } from '../../../../components/Global/ServiceCategories';
 import useErrorSummaryFocus from '../../../../hooks/useErrorSummaryFocus';
+import useStepFocus from '../../../../hooks/useStepFocus';
 import usePageTitle from '../../../../hooks/usePageTitle';
 import {
   ServiceCategoryReducerAction,
@@ -26,16 +27,17 @@ import {
 } from '../Common';
 
 const EditServiceCategory = (): React.ReactElement => {
-  usePageTitle('Edit wider services category');
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { serviceCategoryId } = useParams<{ serviceCategoryId: string }>();
 
   const [state, dispatch] = useReducer(serviceCategoryReducer, initialServiceCategoryState);
   const [currentStep, setCurrentStep] = useState(1);
+  const stepFocusRef = useStepFocus<HTMLDivElement>(currentStep);
   const [errors, setErrors] = useState<ValidationErrors>({});
   const [submitAttempts, setSubmitAttempts] = useState(0);
   useErrorSummaryFocus(submitAttempts, Object.values(errors).some(Boolean));
+  usePageTitle('Edit wider services category', Object.values(errors).some(Boolean));
   const [isInitialized, setIsInitialized] = useState(false);
 
   const { data: serviceCategoryData, isLoading: isLoadingCategory } = useQuery({
@@ -155,7 +157,7 @@ const EditServiceCategory = (): React.ReactElement => {
       <H1>Change wider service</H1>
       <H2>{state.name}</H2>
 
-      {errorList.length > 0 && <ErrorSummary heading="There is a problem" errors={errorList} />}
+      {errorList.length > 0 && <GovUKErrorSummary heading="There is a problem" errors={errorList} />}
 
       <GovUKDynamicQuestionRenderer
         questions={questions}
@@ -249,7 +251,7 @@ const EditServiceCategory = (): React.ReactElement => {
           href: '/organisation-admin/core-data/wider-service-categories',
           onClick: handleBack,
         }}>
-        {currentStep === 1 ? renderStepOne() : renderStepTwo()}
+        <div ref={stepFocusRef}>{currentStep === 1 ? renderStepOne() : renderStepTwo()}</div>
       </GeneralLayout>
     </LoadingBox>
   );

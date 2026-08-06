@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
-import { Button, LoadingBox, ErrorSummary } from 'govuk-react';
-import { GovUKFieldset, GovUKDateField, GovUKButton, GovUKBackLink } from '../../../GovUKComponents';
+import { Button, LoadingBox } from 'govuk-react';
+import { GovUKFieldset, GovUKDateField, GovUKButton, GovUKBackLink, GovUKErrorSummary } from '../../../GovUKComponents';
 import useErrorSummaryFocus from '../../../../hooks/useErrorSummaryFocus';
 import './styles.css';
 
@@ -70,14 +70,18 @@ const DataCollectionForm = ({
     if (!formData.name.trim()) {
       newErrors.name = 'Enter a data collection name';
     }
-    if (!formData.startDate) {
+    if (errors.startDate) {
+      newErrors.startDate = errors.startDate;
+    } else if (!formData.startDate) {
       newErrors.startDate = 'Enter a start date';
     }
-    if (!formData.endDate) {
+    if (errors.endDate) {
+      newErrors.endDate = errors.endDate;
+    } else if (!formData.endDate) {
       newErrors.endDate = 'Enter an end date';
     }
 
-    if (formData.startDate && formData.endDate) {
+    if (formData.startDate && formData.endDate && !errors.startDate && !errors.endDate) {
       const startParts = formData.startDate.split('/');
       const endParts = formData.endDate.split('/');
       if (startParts.length === 3 && endParts.length === 3) {
@@ -191,7 +195,7 @@ const DataCollectionForm = ({
     <form onSubmit={handleContinue} className="dc-form" noValidate>
       <GovUKBackLink onClick={onCancel}>Back</GovUKBackLink>
 
-      {errorList.length > 0 && <ErrorSummary errors={errorList} />}
+      {errorList.length > 0 && <GovUKErrorSummary errors={errorList} />}
 
       <GovUKFieldset legend={isEdit ? 'Edit data collection' : 'Data collection details'} legendSize="l">
         <GovUKFieldset.Input
@@ -226,11 +230,8 @@ const DataCollectionForm = ({
         onChange={(value) => handleChange('startDate', value)}
         error={errors.startDate}
         hint="For example, 27 3 2024"
-        onBlur={() => {
-          if (!formData.startDate) {
-            setErrors((prev) => ({ ...prev, startDate: 'Enter a start date' }));
-          }
-        }}
+        allowFuture={true}
+        onValidate={(err) => setErrors((prev) => ({ ...prev, startDate: err }))}
       />
 
       <GovUKDateField
@@ -241,21 +242,8 @@ const DataCollectionForm = ({
         onChange={(value) => handleChange('endDate', value)}
         error={errors.endDate}
         hint="For example, 27 6 2024"
-        onBlur={() => {
-          if (!formData.endDate) {
-            setErrors((prev) => ({ ...prev, endDate: 'Enter an end date' }));
-          } else if (formData.startDate && formData.endDate) {
-            const startParts = formData.startDate.split('/');
-            const endParts = formData.endDate.split('/');
-            if (startParts.length === 3 && endParts.length === 3) {
-              const start = new Date(parseInt(startParts[2]), parseInt(startParts[1]) - 1, parseInt(startParts[0]));
-              const end = new Date(parseInt(endParts[2]), parseInt(endParts[1]) - 1, parseInt(endParts[0]));
-              if (start >= end) {
-                setErrors((prev) => ({ ...prev, endDate: 'End date must be after start date' }));
-              }
-            }
-          }
-        }}
+        allowFuture={true}
+        onValidate={(err) => setErrors((prev) => ({ ...prev, endDate: err }))}
       />
 
       <div className="govuk-button-group">

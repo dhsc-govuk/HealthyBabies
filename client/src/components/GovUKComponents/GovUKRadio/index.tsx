@@ -37,13 +37,20 @@ function GovUKRadio({
   onChange,
 }: GovUKRadioProps): React.ReactElement {
   return (
-    <div className={`govuk-form-group ${error ? 'govuk-form-group--error' : ''}`}>
-      {questionCode && <span className="question-code">{questionCode}</span>}
-      <fieldset className="govuk-fieldset" aria-describedby={[hint ? `${id}-hint` : '', error ? `${id}-error` : ''].filter(Boolean).join(' ') || undefined}>
-        <legend className={`govuk-fieldset__legend govuk-fieldset__legend--${legendSize}`}>
+    <div className={`govuk-form-group ${error ? 'govuk-form-group--error' : ''}`} style={{ position: 'relative' }}>
+      <fieldset
+        className="govuk-fieldset"
+        aria-describedby={[hint ? `${id}-hint` : '', error ? `${id}-error` : '', questionCode ? `${id}-question-code` : ''].filter(Boolean).join(' ') || undefined}>
+        <legend className={`govuk-fieldset__legend govuk-fieldset__legend--${legendSize}`} style={{ paddingRight: questionCode ? '100px' : undefined }}>
           {legend}
           {required && <span className="govuk-visually-hidden"> (required)</span>}
         </legend>
+        {questionCode && (
+          <span id={`${id}-question-code`} style={{ position: 'absolute', right: 0, top: 0, color: '#505a5f', fontSize: '16px', fontWeight: 'normal', whiteSpace: 'nowrap' }}>
+            <span className="govuk-visually-hidden">Question ID: </span>
+            {questionCode}
+          </span>
+        )}
 
         {hint && (
           <div className="govuk-hint" id={`${id}-hint`}>

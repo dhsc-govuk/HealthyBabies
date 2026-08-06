@@ -30,8 +30,8 @@ const SubmissionSubmitted = (): React.ReactElement => {
       <p className="govuk-body">We have received your submission. You will receive a confirmation email shortly.</p>
       <p className="govuk-body">
         If you have any questions, contact{' '}
-        <a href="mailto:healthybabies.dataanddigital@dhsc.gov.uk" className="govuk-link">
-          healthybabies.dataanddigital@dhsc.gov.uk
+        <a href="mailto:support@example.gov.uk" className="govuk-link">
+          support@example.gov.uk
         </a>
       </p>
 

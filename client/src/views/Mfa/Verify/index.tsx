@@ -3,8 +3,8 @@ import usePageTitle from '../../../hooks/usePageTitle';
 
 import { useNavigate } from 'react-router-dom';
 
-import { ErrorSummary, InputField } from 'govuk-react';
-import { GovUKButton, H1, H2, H4, Paragraph } from '../../../components/GovUKComponents';
+import { InputField } from 'govuk-react';
+import { GovUKButton, H1, H2, H4, Paragraph, GovUKErrorSummary } from '../../../components/GovUKComponents';
 
 import { useMfa } from '../../../components/MfaProvider';
 
@@ -36,7 +36,6 @@ import {
 } from './styles';
 
 const MfaVerify = (): React.ReactElement => {
-  usePageTitle('Enter authentication code');
   const navigate = useNavigate();
 
   const { userRole, signOut } = useAuthProvider();
@@ -46,6 +45,7 @@ const MfaVerify = (): React.ReactElement => {
   const [code, setCode] = useState('');
 
   const [error, setError] = useState<string | null>(null);
+  usePageTitle('Enter authentication code', !!error);
 
   const [isLoading, setIsLoading] = useState(false);
 
@@ -178,7 +178,7 @@ const MfaVerify = (): React.ReactElement => {
             Back
           </GovUKBackLink>
 
-          {error && <ErrorSummary heading="There is a problem" errors={[{ targetName: 'code-input', text: error }]} />}
+          {error && <GovUKErrorSummary heading="There is a problem" errors={[{ targetName: 'code-input', text: error }]} />}
 
           <ContentWrapper>
             <H1>Enter authentication code</H1>

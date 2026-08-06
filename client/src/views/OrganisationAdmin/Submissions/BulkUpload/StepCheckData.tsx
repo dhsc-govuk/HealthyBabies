@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useRef, useEffect } from 'react';
 import { GovUKButton } from '../../../../components/GovUKComponents';
 import { ParsedData, CellError } from './types';
 import { BulkUploadValidationResultDto } from '../queries';
-import { isFieldConditionallyRequired, isFieldValueInvalid, shouldValidateField } from './validation';
+import { getRowServiceAnswers, isFieldConditionallyRequired, isFieldValueInvalid, shouldValidateField } from './validation';
 import CellEditor from './CellEditor';
 import './styles.css';
 
@@ -71,33 +71,43 @@ const StepCheckData: React.FC<StepCheckDataProps> = ({
   onStartOver,
   onFullScreen,
 }) => {
+  const activeCellRef = useRef<HTMLTableCellElement | null>(null);
+
+  useEffect(() => {
+    if (editingCell === null) {
+      activeCellRef.current?.focus();
+    }
+  }, [editingCell]);
+
   // Calculate all validation errors including required field errors
   const allErrors = React.useMemo(() => {
     const errors: Array<{ rowIndex: number; cellIndex: number; message: string }> = [...cellErrors];
     
     // Check each cell for required field errors that aren't in cellErrors
     parsedData.rows.forEach((row, rowIdx) => {
+      const serviceAnswers = getRowServiceAnswers(row, parsedData.headers, validationResult?.serviceAnswersByName);
       parsedData.headers.forEach((fieldCode, cellIdx) => {
         const cell = row[cellIdx];
         const fieldMeta = validationResult?.fieldMetadata?.find(
           (f) => f.fieldCode === fieldCode
         );
-        
+
         // Skip if already has an error from cellErrors
         if (cellErrors.some(e => e.rowIndex === rowIdx && e.cellIndex === cellIdx)) {
           return;
         }
-        
+
         // Progressive validation check
         const shouldValidate = shouldValidateField(
           fieldCode,
           row,
           parsedData.headers,
-          validationResult?.fieldMetadata
+          validationResult?.fieldMetadata,
+          serviceAnswers
         );
-        
+
         if (!shouldValidate) return;
-        
+
         // Check backward validation (value exists when it shouldn't)
         const backwardValidation = isFieldValueInvalid(
           fieldCode,
@@ -105,9 +115,10 @@ const StepCheckData: React.FC<StepCheckDataProps> = ({
           row,
           parsedData.headers,
           validationResult?.fieldMetadata,
-          parsedData.labels
+          parsedData.labels,
+          serviceAnswers
         );
-        
+
         if (backwardValidation.isInvalid) {
           errors.push({
             rowIndex: rowIdx,
@@ -116,13 +127,14 @@ const StepCheckData: React.FC<StepCheckDataProps> = ({
           });
           return;
         }
-        
+
         // Check conditionally required fields
         const isConditionallyRequired = isFieldConditionallyRequired(
           fieldCode,
           row,
           parsedData.headers,
-          validationResult?.fieldMetadata
+          validationResult?.fieldMetadata,
+          serviceAnswers
         );
         
         // Check top-level required fields
@@ -211,8 +223,8 @@ const StepCheckData: React.FC<StepCheckDataProps> = ({
           </GovUKButton>
         </div>
 
-        <div className="bulk-upload-table__wrapper">
-          <table className="bulk-upload-table">
+        <div className="bulk-upload-table__wrapper" tabIndex={0}>
+          <table className="bulk-upload-table" role="grid">
             <thead>
               <tr>
                 <th className="bulk-upload-table__row-number">#</th>
@@ -234,7 +246,9 @@ const StepCheckData: React.FC<StepCheckDataProps> = ({
                 : parsedData.rows.map((row, idx) => ({ row, idx }))
               )
                 .slice(0, 15)
-                .map(({ row, idx: rowIdx }) => (
+                .map(({ row, idx: rowIdx }) => {
+                  const rowServiceAnswers = getRowServiceAnswers(row, parsedData.headers, validationResult?.serviceAnswersByName);
+                  return (
                   <tr key={rowIdx}>
                     <td className="bulk-upload-table__row-number">{rowIdx + 1}</td>
                     {row.map((cell, cellIdx) => {
@@ -254,7 +268,8 @@ const StepCheckData: React.FC<StepCheckDataProps> = ({
                         fieldCode,
                         row,
                         parsedData.headers,
-                        validationResult?.fieldMetadata
+                        validationResult?.fieldMetadata,
+                        rowServiceAnswers
                       );
 
                       // Check if this field is conditionally required based on parent field values
@@ -262,7 +277,8 @@ const StepCheckData: React.FC<StepCheckDataProps> = ({
                         fieldCode,
                         row,
                         parsedData.headers,
-                        validationResult?.fieldMetadata
+                        validationResult?.fieldMetadata,
+                        rowServiceAnswers
                       );
 
                       // Check backward validation - field has value when parent condition is NOT met
@@ -273,7 +289,8 @@ const StepCheckData: React.FC<StepCheckDataProps> = ({
                         row,
                         parsedData.headers,
                         validationResult?.fieldMetadata,
-                        parsedData.labels
+                        parsedData.labels,
+                        rowServiceAnswers
                       );
 
                       // Service columns (ServiceName, PPS01) are always prefilled, so don't show required styling
@@ -305,7 +322,7 @@ const StepCheckData: React.FC<StepCheckDataProps> = ({
 
                       if (isEditing) {
                         return (
-                          <td key={cellIdx} className="bulk-upload-table__cell--editing">
+                          <td key={cellIdx} className="bulk-upload-table__cell--editing" role="gridcell">
                             <CellEditor
                               value={cell}
                               error={effectiveError}
@@ -334,16 +351,32 @@ const StepCheckData: React.FC<StepCheckDataProps> = ({
                       return (
                         <td
                           key={cellIdx}
+                          role="gridcell"
+                          tabIndex={0}
                           className={cellClassName}
-                          onClick={() => onStartEditing(rowIdx, cellIdx)}
-                          title={effectiveError || (showAsRequired ? 'This field is required when parent field is selected' : undefined)}
+                          aria-invalid={hasError}
+                          onClick={(e) => {
+                            activeCellRef.current = e.currentTarget;
+                            onStartEditing(rowIdx, cellIdx);
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' || e.key === ' ') {
+                              e.preventDefault();
+                              activeCellRef.current = e.currentTarget;
+                              onStartEditing(rowIdx, cellIdx);
+                            }
+                          }}
                         >
                           {displayValue || ''}
+                          {hasError && effectiveError && (
+                            <span className="govuk-visually-hidden"> Error: {effectiveError}</span>
+                          )}
                         </td>
                       );
                     })}
                   </tr>
-                ))}
+                  );
+                })}
             </tbody>
           </table>
         </div>

@@ -1,0 +1,26 @@
+#@data/values-schema
+---
+app_name: ""
+location: "uksouth"
+managed_environment_id: ""
+managed_identity_resource_id: ""
+acr_login_server: ""
+image: ""
+revision_suffix: ""
+workload_profile_name: "dedicated-d4"
+target_port: 80
+transport: "http"
+external: true
+allow_insecure: false
+min_replicas: 1
+max_replicas: 2
+tags:
+  Compliance: "NHS Official"
+  Environment: "dev"
+  Lifecycle: "Active"
+  Project: "Family Hubs"
+  Team: "Family Hubs"
+resources:
+  cpu: 0.5
+  memory: "1Gi"
+  ephemeral_storage: "1Gi"

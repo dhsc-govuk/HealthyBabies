@@ -1,9 +1,10 @@
 import React, { useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from 'react-query';
+import { AxiosResponse } from 'axios';
 import { LoadingBox, Button } from 'govuk-react';
 import { GeneralLayout } from '../../../../layouts';
-import { getOutcomeScoreRecord, getOutcomeScoresModule, deleteOutcomeScoreRecord } from '../queries';
+import { getOutcomeScoreRecord, getOutcomeScoresModule, deleteOutcomeScoreRecord, OutcomeScoresModuleDetailDto } from '../queries';
 import { WarningPanel, WarningPanelTitle, WarningPanelBody, WarningPanelActions, WarningPanelAnchor } from '../../../../styles/govuk-global';
 
 const OutcomeScoreDelete = (): React.ReactElement => {
@@ -32,7 +33,13 @@ const OutcomeScoreDelete = (): React.ReactElement => {
   const deleteMutation = useMutation({
     mutationFn: () => deleteOutcomeScoreRecord(submissionId!, moduleId!, recordId!),
     onSuccess: () => {
-      queryClient.invalidateQueries(['outcome-scores-module', submissionId, moduleId]);
+      // Remove the deleted record from the cached list locally instead of refetching the whole
+      // module (which recomputes status/requirements across every record) after every deletion.
+      queryClient.setQueryData<AxiosResponse<OutcomeScoresModuleDetailDto> | undefined>(['outcome-scores-module', submissionId, moduleId], (old) => {
+        if (!old) return old;
+        const records = old.data.records.filter((r) => r.recordId !== recordId);
+        return { ...old, data: { ...old.data, records, totalRecords: records.length } };
+      });
       navigate(`/organisation-admin/submissions/${submissionId}/modules/${moduleId}/outcome-scores`);
     },
   });

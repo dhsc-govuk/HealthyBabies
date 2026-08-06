@@ -3,6 +3,7 @@ using Api.Modules;
 using Api.Telemetry;
 using Application;
 using Infrastructure;
+using Microsoft.ApplicationInsights.Channel;
 using Microsoft.ApplicationInsights.Extensibility;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.IdentityModel.Logging;
@@ -15,6 +16,7 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.SetupServices(builder.Configuration);
 builder.Services.AddApplicationServices();
 builder.Services.AddInfrastructureServices(builder.Configuration);
+builder.Services.AddSingleton<ITelemetryChannel, InMemoryChannel>();
 builder.Services.AddApplicationInsightsTelemetry();
 builder.Services.AddApplicationInsightsTelemetryProcessor<PiiTelemetryProcessor>();
 builder.Services.AddSingleton<ITelemetryInitializer, ReleaseTagInitializer>();
@@ -37,7 +39,10 @@ if (app.Environment.IsDevelopment())
 }
 
 await app.InitializeDb();
+await app.SeedData();
+app.UseUnhandledExceptionHandler();
 app.UseValidationExceptionHandler();
+app.UseMiddleware<SecurityHeadersMiddleware>();
 app.UseCors();
 app.UseRouting();
 app.UseAuthentication();

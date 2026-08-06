@@ -1,31 +1,35 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from 'react-query';
 import { GeneralLayout } from '../../../../layouts';
-import { LoadingSpinner, GovUKButton, GovUKInputWithSuffix, SummaryList } from '../../../../components/GovUKComponents';
+import { LoadingSpinner, GovUKButton, SummaryList, FormFieldRenderer } from '../../../../components/GovUKComponents';
 import useErrorSummaryFocus from '../../../../hooks/useErrorSummaryFocus';
 import useFormTelemetry from '../../../../hooks/useFormTelemetry';
-import { getWiderServiceCategoryForm, saveWiderServiceCategoryForm } from '../queries';
-import './styles.css';
 import usePageTitle from '../../../../hooks/usePageTitle';
+import { getWiderServiceCategoryForm, saveWiderServiceCategoryForm, FormModuleFieldDto, ConditionalRule, FieldConfiguration } from '../queries';
+import { encodeNullableForWaf } from '../../../../helpers/stringUtils';
+import { processError } from '../../../../helpers/axiosErrorFallback';
+import './styles.css';
 
 type ViewMode = 'form' | 'summary';
 
 const WiderServiceForm = (): React.ReactElement => {
-  usePageTitle('Provide wider service data');
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { trackStarted, trackReviewReached, trackSubmitAttempted, trackSubmitted, trackAbandoned, trackDraftSaved } = useFormTelemetry('wider_service_submission');
+  const { trackStarted, trackSectionCompleted, trackReviewReached, trackSubmitAttempted, trackSubmitted, trackAbandoned, trackDraftSaved, trackValidationFailed } =
+    useFormTelemetry('wider_service_submission');
   const { submissionId, moduleId, categoryId } = useParams<{
     submissionId: string;
     moduleId: string;
     categoryId: string;
   }>();
 
+  const [currentStep, setCurrentStep] = useState(1);
   const [viewMode, setViewMode] = useState<ViewMode>('form');
-  const [userCount, setUserCount] = useState<string>('');
-  const [userCountError, setUserCountError] = useState<string>('');
+  const [fieldValues, setFieldValues] = useState<Record<string, string | string[] | null>>({});
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [submitAttempts, setSubmitAttempts] = useState(0);
+  const [saveError, setSaveError] = useState<string | undefined>(undefined);
 
   const { data, isLoading } = useQuery({
     queryKey: ['wider-service-category-form', submissionId, moduleId, categoryId],
@@ -33,20 +37,44 @@ const WiderServiceForm = (): React.ReactElement => {
     enabled: !!submissionId && !!moduleId && !!categoryId,
     onSuccess: (response) => {
       trackStarted();
-      if (response.data.userCount !== null && response.data.userCount !== undefined) {
-        setUserCount(response.data.userCount.toString());
-      }
+      const initialValues: Record<string, string | string[] | null> = {};
+      response.data.fields.forEach((field) => {
+        if (field.fieldType.toLowerCase() === 'checkbox') {
+          initialValues[field.code] = field.value ? field.value.split(',') : [];
+        } else {
+          initialValues[field.code] = field.value;
+        }
+      });
+      setFieldValues(initialValues);
     },
   });
 
+  const formData = data?.data;
+
+  usePageTitle('Provide wider service data', Object.keys(fieldErrors).length > 0);
+  useErrorSummaryFocus(submitAttempts, Object.keys(fieldErrors).length > 0);
+
   const saveMutation = useMutation({
-    mutationFn: (markComplete: boolean) =>
-      saveWiderServiceCategoryForm(submissionId!, moduleId!, categoryId!, {
-        userCount: userCount ? parseInt(userCount, 10) : null,
+    mutationFn: (markComplete: boolean) => {
+      const serializedValues: Record<string, string | null> = {};
+      Object.entries(fieldValues).forEach(([key, value]) => {
+        if (Array.isArray(value)) {
+          serializedValues[key] = value.join(',');
+        } else {
+          serializedValues[key] = value;
+        }
+      });
+      const encodedValues = Object.fromEntries(
+        Object.entries(serializedValues).map(([key, value]) => [key, encodeNullableForWaf(value)])
+      );
+      return saveWiderServiceCategoryForm(submissionId!, moduleId!, categoryId!, {
+        fieldValues: encodedValues,
         markComplete,
-      }),
-    onError: () => {
+      });
+    },
+    onError: (error) => {
       setSubmitAttempts((n) => n + 1);
+      processError(error, setSaveError);
     },
     onSuccess: (_data, markComplete) => {
       if (markComplete) {
@@ -69,30 +97,172 @@ const WiderServiceForm = (): React.ReactElement => {
     },
   });
 
-  const formData = data?.data;
+  const sections = useMemo(() => {
+    if (!formData) return [];
+    return [...formData.sections].sort((a, b) => a.sectionNumber - b.sectionNumber);
+  }, [formData]);
 
-  useErrorSummaryFocus(submitAttempts, saveMutation.isError || !!userCountError);
+  const totalSteps = sections.length > 0 ? sections.length + 1 : 2;
 
-  const validate = (): boolean => {
-    if (!userCount && userCount !== '0') {
-      setUserCountError(`Enter a value for '${formData?.label ?? 'number of users'}'`);
-      setSubmitAttempts((n) => n + 1);
-      return false;
+  const currentSection = useMemo(() => {
+    if (currentStep > sections.length) return null;
+    return sections[currentStep - 1];
+  }, [sections, currentStep]);
+
+  const currentFields = useMemo(() => {
+    if (!formData) return [];
+    const fields = [...formData.fields].sort((a, b) => a.displayOrder - b.displayOrder);
+    if (sections.length === 0) return fields;
+    if (!currentSection) return [];
+    return fields.filter((f) => f.stepNumber === currentSection.sectionNumber);
+  }, [formData, sections, currentSection]);
+
+  const parseConditionalRules = (rulesJson: string | null): ConditionalRule | null => {
+    if (!rulesJson) return null;
+    try {
+      return JSON.parse(rulesJson) as ConditionalRule;
+    } catch {
+      return null;
     }
-    setUserCountError('');
-    return true;
+  };
+
+  const parseConfiguration = (configJson: string | null | undefined): FieldConfiguration | null => {
+    if (!configJson) return null;
+    try {
+      return JSON.parse(configJson) as FieldConfiguration;
+    } catch {
+      return null;
+    }
+  };
+
+  const isFieldVisible = useCallback(
+    (field: FormModuleFieldDto): boolean => {
+      const rules = parseConditionalRules(field.conditionalRules);
+      if (!rules?.showWhen) return true;
+
+      const { showWhen } = rules;
+
+      const valueMatches = (parentValue: string | string[] | null, targetValue: string): boolean => {
+        if (Array.isArray(parentValue)) {
+          return parentValue.includes(targetValue);
+        }
+        return parentValue === targetValue;
+      };
+
+      const valueNotMatches = (parentValue: string | string[] | null, targetValue: string): boolean => {
+        if (Array.isArray(parentValue)) {
+          return !parentValue.includes(targetValue);
+        }
+        return parentValue !== targetValue;
+      };
+
+      if (showWhen.allOf) {
+        return showWhen.allOf.every((condition) => {
+          const parentValue = fieldValues[condition.fieldKey!];
+          if (condition.equals !== undefined) return valueMatches(parentValue, condition.equals);
+          if (condition.notEquals !== undefined) return valueNotMatches(parentValue, condition.notEquals);
+          return true;
+        });
+      }
+
+      if (showWhen.fieldKey) {
+        const parentValue = fieldValues[showWhen.fieldKey];
+        if (showWhen.equals !== undefined) return valueMatches(parentValue, showWhen.equals);
+        if (showWhen.notEquals !== undefined) return valueNotMatches(parentValue, showWhen.notEquals);
+        if (showWhen.in !== undefined && Array.isArray(showWhen.in)) {
+          if (Array.isArray(parentValue)) {
+            return showWhen.in.some((v: string) => parentValue.includes(v));
+          }
+          return showWhen.in.includes(parentValue as string);
+        }
+      }
+
+      return true;
+    },
+    [fieldValues]
+  );
+
+  const validateCurrentStep = useCallback((): boolean => {
+    if (!formData) return true;
+    const errors: Record<string, string> = {};
+    const visibleFields = currentFields.filter(isFieldVisible);
+
+    visibleFields.forEach((field) => {
+      const value = fieldValues[field.code];
+      const stringValue = typeof value === 'string' ? value : '';
+      const fieldTypeLower = field.fieldType.toLowerCase();
+      const isCheckboxEmpty = fieldTypeLower === 'checkbox' && Array.isArray(value) && value.length === 0;
+      const isEmpty = fieldTypeLower === 'checkbox' ? isCheckboxEmpty : !stringValue;
+
+      if (field.isRequired && isEmpty) {
+        if (fieldTypeLower === 'radio' || fieldTypeLower === 'select') {
+          errors[field.code] = 'Select an option';
+        } else if (fieldTypeLower === 'checkbox') {
+          errors[field.code] = 'Select at least one option';
+        } else {
+          errors[field.code] = 'Enter a value';
+        }
+        return;
+      }
+
+      if (isEmpty) return;
+
+      if (fieldTypeLower === 'number' && stringValue) {
+        const numValue = parseFloat(stringValue);
+        if (isNaN(numValue)) {
+          errors[field.code] = 'Enter a valid number';
+          return;
+        }
+        if (numValue < 0) {
+          errors[field.code] = 'Enter a number 0 or more';
+          return;
+        }
+
+        const config = parseConfiguration(field.configuration);
+        if (config?.min !== undefined && numValue < config.min) {
+          errors[field.code] = `Enter a number ${config.min} or more`;
+          return;
+        }
+        if (config?.max !== undefined && numValue > config.max) {
+          errors[field.code] = `Enter a number ${config.max} or less`;
+        }
+      }
+    });
+
+    Object.keys(errors).forEach((field) => trackValidationFailed(field, 'invalid'));
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
+  }, [formData, currentFields, fieldValues, isFieldVisible, trackValidationFailed]);
+
+  const handleFieldChange = (code: string, value: string | string[] | null) => {
+    setFieldValues((prev) => ({ ...prev, [code]: value }));
   };
 
   const handleContinue = () => {
-    if (!validate()) return;
-    trackReviewReached();
-    setViewMode('summary');
+    if (!validateCurrentStep()) {
+      setSubmitAttempts((n) => n + 1);
+      return;
+    }
+
+    const lastFormStep = totalSteps - 1;
+    if (currentStep === lastFormStep) {
+      trackReviewReached();
+      setViewMode('summary');
+      return;
+    }
+
+    trackSectionCompleted(String(currentStep));
+    setCurrentStep(currentStep + 1);
     window.scrollTo(0, 0);
   };
 
   const handleBack = () => {
     if (viewMode === 'summary') {
       setViewMode('form');
+      setCurrentStep(sections.length > 0 ? sections.length : 1);
+      window.scrollTo(0, 0);
+    } else if (currentStep > 1) {
+      setCurrentStep(currentStep - 1);
       window.scrollTo(0, 0);
     } else {
       trackAbandoned();
@@ -101,7 +271,10 @@ const WiderServiceForm = (): React.ReactElement => {
   };
 
   const handleSaveAsDraft = () => {
-    if (!validate()) return;
+    if (!validateCurrentStep()) {
+      setSubmitAttempts((n) => n + 1);
+      return;
+    }
     saveMutation.mutate(false);
   };
 
@@ -109,6 +282,37 @@ const WiderServiceForm = (): React.ReactElement => {
     trackSubmitAttempted();
     saveMutation.mutate(true);
   };
+
+  const handleChangeAnswer = (stepNumber: number) => {
+    setCurrentStep(stepNumber);
+    setViewMode('form');
+    window.scrollTo(0, 0);
+  };
+
+  const getFieldDisplayValue = (field: FormModuleFieldDto): string | React.ReactNode => {
+    const value = fieldValues[field.code];
+    if (!value || (Array.isArray(value) && value.length === 0)) return '';
+
+    if (Array.isArray(value)) {
+      return value.map((v) => field.options.find((o) => o.value === v)?.label ?? v).join(', ');
+    }
+
+    const option = field.options.find((o) => o.value === value);
+    return option?.label ?? value;
+  };
+
+  const renderField = (field: FormModuleFieldDto, showQuestionCode = true, isConditionalChild = false) => (
+    <FormFieldRenderer
+      field={field}
+      value={fieldValues[field.code] ?? null}
+      allFields={formData?.fields || []}
+      allValues={fieldValues}
+      allErrors={fieldErrors}
+      showQuestionCode={showQuestionCode}
+      isConditionalChild={isConditionalChild}
+      onChange={handleFieldChange}
+    />
+  );
 
   if (isLoading) {
     return (
@@ -128,14 +332,22 @@ const WiderServiceForm = (): React.ReactElement => {
     );
   }
 
-  const totalSteps = 2;
-  const currentStep = viewMode === 'form' ? 1 : 2;
-
   if (viewMode === 'summary') {
+    const allFields = [...formData.fields].sort((a, b) => a.displayOrder - b.displayOrder);
+
+    const hasFieldValue = (field: FormModuleFieldDto): boolean => {
+      const value = fieldValues[field.code];
+      if (value === null || value === undefined) return false;
+      if (Array.isArray(value)) return value.length > 0;
+      return value !== '';
+    };
+
+    const fieldsWithValues = allFields.filter((field) => hasFieldValue(field) && isFieldVisible(field));
+
     return (
       <GeneralLayout backLink={{ href: '#', onClick: handleBack }}>
         <span className="govuk-caption-l">
-          Step {currentStep} of {totalSteps}
+          Step {totalSteps} of {totalSteps}
         </span>
         <h1 className="govuk-heading-l">Provide data for {formData.categoryName}</h1>
 
@@ -148,17 +360,12 @@ const WiderServiceForm = (): React.ReactElement => {
         <SummaryList
           noOuterBorder
           halfWidthColumns
-          items={[
-            {
-               label: formData.label ?? '',
-              value: userCount ? `${userCount} users` : 'Not provided',
-              onAction: () => {
-                setViewMode('form');
-                window.scrollTo(0, 0);
-              },
-              actionLabel: 'Change',
-            },
-          ]}
+          items={fieldsWithValues.map((field) => ({
+            label: field.label,
+            value: getFieldDisplayValue(field),
+            onAction: () => handleChangeAnswer(field.stepNumber ?? 1),
+            actionLabel: 'Change',
+          }))}
         />
 
         <h2 className="govuk-heading-m">Now save your wider service users data</h2>
@@ -175,7 +382,7 @@ const WiderServiceForm = (): React.ReactElement => {
           <div className="govuk-error-summary" data-module="govuk-error-summary">
             <h2 className="govuk-error-summary__title">There was a problem saving</h2>
             <div className="govuk-error-summary__body">
-              <p>Please try again or contact support if the problem persists.</p>
+              <p>{saveError ?? 'Please try again or contact support if the problem persists.'}</p>
             </div>
           </div>
         )}
@@ -197,30 +404,43 @@ const WiderServiceForm = (): React.ReactElement => {
 
       <hr className="govuk-section-break govuk-section-break--l govuk-section-break--visible" />
 
-      {userCountError && (
+      {Object.keys(fieldErrors).length > 0 && (
         <div className="govuk-error-summary" data-module="govuk-error-summary" role="alert" aria-labelledby="error-summary-title">
-          <h2 className="govuk-error-summary__title" id="error-summary-title">There is a problem</h2>
+          <h2 className="govuk-error-summary__title" id="error-summary-title">
+            There is a problem
+          </h2>
           <div className="govuk-error-summary__body">
             <ul className="govuk-list govuk-error-summary__list">
-              <li><a href="#user-count">{userCountError}</a></li>
+              {Object.entries(fieldErrors).map(([fieldCode, message]) => {
+                const field = formData.fields.find((f) => f.code === fieldCode);
+                const summaryMessage = field ? `${field.label} – ${message}` : message;
+                return (
+                  <li key={fieldCode}>
+                    <a href={`#${fieldCode}`}>{summaryMessage}</a>
+                  </li>
+                );
+              })}
             </ul>
           </div>
         </div>
       )}
 
-      <GovUKInputWithSuffix
-        id="user-count"
-        name="user-count"
-        label={formData.label ?? ''}
-        hint={formData.helpText ?? undefined}
-        suffix="users"
-        value={userCount}
-        type="number"
-        width="5"
-        questionCode="QWSU01"
-        error={userCountError || undefined}
-        onChange={(e: React.ChangeEvent<HTMLInputElement>) => { setUserCount(e.target.value); setUserCountError(''); }}
-      />
+      {currentFields.length > 0 ? (
+        <div>
+          {currentFields.map((field) => {
+            if (!isFieldVisible(field)) return null;
+
+            const rules = parseConditionalRules(field.conditionalRules);
+            const isConditionalChild = !!rules?.displayInline && !!rules?.showWhen;
+
+            return <div key={field.id}>{renderField(field, true, isConditionalChild)}</div>;
+          })}
+        </div>
+      ) : (
+        <div className="govuk-inset-text">
+          <p>No form fields have been configured for this category yet.</p>
+        </div>
+      )}
 
       <hr className="govuk-section-break govuk-section-break--l govuk-section-break--visible" />
 
@@ -235,7 +455,7 @@ const WiderServiceForm = (): React.ReactElement => {
         <div className="govuk-error-summary" data-module="govuk-error-summary">
           <h2 className="govuk-error-summary__title">There was a problem saving</h2>
           <div className="govuk-error-summary__body">
-            <p>Please try again or contact support if the problem persists.</p>
+            <p>{saveError ?? 'Please try again or contact support if the problem persists.'}</p>
           </div>
         </div>
       )}

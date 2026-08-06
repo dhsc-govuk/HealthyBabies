@@ -99,7 +99,7 @@ public class RequestBodyRehydrationTests(OrganisationAdminIntegrationTestWebFact
             $"organisation-admin/submissions/{_submissionId}/modules/{_moduleId}/bulk-upload/staged",
             new ProcessStagedBulkUploadRequestDto(
                 Guid.NewGuid(),
-                new[] { ServiceName },
+                new[] { 0 },
                 Array.Empty<BulkUploadCellEditDto>()));
 
         // The controller returns 400 because the inner stagingId is unknown; the middleware was a no-op.
@@ -119,7 +119,7 @@ public class RequestBodyRehydrationTests(OrganisationAdminIntegrationTestWebFact
         // Build the JSON body the controller would have received if the frontend had POSTed directly.
         var originalRequest = new ProcessStagedBulkUploadRequestDto(
             validation.StagingId,
-            new[] { ServiceName },
+            new[] { 0 },
             Array.Empty<BulkUploadCellEditDto>());
         var originalJson = System.Text.Json.JsonSerializer.Serialize(originalRequest);
 

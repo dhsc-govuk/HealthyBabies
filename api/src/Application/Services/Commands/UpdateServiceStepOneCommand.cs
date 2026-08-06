@@ -4,6 +4,7 @@ using Application.Common.Interfaces.Repositories;
 using Application.Common.Permissions;
 using Application.ServiceForms.Dtos;
 using Application.Services.Exceptions;
+using Application.Services.Helpers;
 using Domain.ServiceForms;
 using Domain.Services;
 using LanguageExt;
@@ -63,6 +64,15 @@ public class UpdateServiceStepOneCommandHandler(
         UpdateServiceStepOneCommand request,
         CancellationToken cancellationToken)
     {
+        // Get step 1 questions
+        var questions = await questionQueries.GetByStep(1, cancellationToken);
+
+        var dateError = ServiceFormDateAnswerValidator.ValidateAnswers(request.Answers, questions);
+        if (dateError != null)
+        {
+            return new ServiceArgumentException(service.Id, dateError);
+        }
+
         try
         {
             // Revert to draft if the service was complete (user is editing a completed service)
@@ -70,9 +80,6 @@ public class UpdateServiceStepOneCommandHandler(
 
             // Update service name
             service.UpdateName(request.Name!);
-
-            // Get step 1 questions
-            var questions = await questionQueries.GetByStep(1, cancellationToken);
 
             // Process each answer
             foreach (var answerInput in request.Answers)

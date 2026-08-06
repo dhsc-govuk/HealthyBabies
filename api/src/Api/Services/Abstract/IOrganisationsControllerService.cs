@@ -13,4 +13,6 @@ public interface IOrganisationsControllerService
         Permission permission,
         Guid organisationId,
         CancellationToken cancellationToken);
+
+    Task<IReadOnlyList<FinancialDataEntryDto>> GetFinancialData(Guid organisationId, CancellationToken cancellationToken);
 }

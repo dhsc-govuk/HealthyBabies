@@ -4,6 +4,7 @@ using Application.Common.Interfaces.Repositories;
 using Application.Common.Permissions;
 using Application.ServiceForms.Dtos;
 using Application.Services.Exceptions;
+using Application.Services.Helpers;
 using Domain.ServiceForms;
 using Domain.Services;
 using LanguageExt;
@@ -46,13 +47,19 @@ public class UpdateServiceStepTwoCommandHandler(
         UpdateServiceStepTwoCommand request,
         CancellationToken cancellationToken)
     {
+        // Get step 2 questions
+        var questions = await questionQueries.GetByStep(2, cancellationToken);
+
+        var ageRangeError = ServiceAgeRangeAnswerValidator.ValidateAnswers(service, request.Answers, questions);
+        if (ageRangeError != null)
+        {
+            return new ServiceArgumentException(service.Id, ageRangeError);
+        }
+
         try
         {
             // Revert to draft if the service was complete (user is editing a completed service)
             service.RevertToDraft();
-
-            // Get step 2 questions
-            var questions = await questionQueries.GetByStep(2, cancellationToken);
 
             // Process each answer
             foreach (var answerInput in request.Answers)

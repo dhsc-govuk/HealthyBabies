@@ -16,7 +16,7 @@ public record ProcessStagedBulkUploadCommand : IRequest<Either<string, BulkUploa
     public Guid SubmissionId { get; init; }
     public Guid ModuleId { get; init; }
     public Guid StagingId { get; init; }
-    public IReadOnlyList<string> SelectedServiceNames { get; init; } = Array.Empty<string>();
+    public IReadOnlyList<int> SelectedRowIndices { get; init; } = Array.Empty<int>();
     public IReadOnlyList<BulkUploadCellEdit> CellEdits { get; init; } = Array.Empty<BulkUploadCellEdit>();
 }
 
@@ -25,9 +25,13 @@ public class ProcessStagedBulkUploadCommandHandler(
     IDataCollectionFormModuleQueries formModuleQueries,
     IServiceQueries serviceQueries,
     IFormSubmissionRepository formSubmissionRepository,
-    IBlobService blobService)
+    IBlobService blobService,
+    IDataCollectionSubmissionQueries dataCollectionSubmissionQueries,
+    IDataCollectionQueries dataCollectionQueries)
     : IRequestHandler<ProcessStagedBulkUploadCommand, Either<string, BulkUploadResultDto>>
 {
+    private const string LockedMessage = "This quarter can no longer be edited - it has either already been submitted or its submission window has closed. Reopen it to make changes.";
+
     public async Task<Either<string, BulkUploadResultDto>> Handle(
         ProcessStagedBulkUploadCommand request,
         CancellationToken cancellationToken)
@@ -50,6 +54,18 @@ public class ProcessStagedBulkUploadCommandHandler(
             () => throw new InvalidOperationException("Organisation ID required"));
         var dcId = new DataCollectionId(request.SubmissionId);
 
+        var dataCollectionOption = await dataCollectionQueries.GetByIdWithLocalAuthoritiesAsync(dcId, cancellationToken);
+        var isClosed = dataCollectionOption.Match(dc => dc.IsClosedFor(orgId), () => false);
+
+        var existingSubmission = await dataCollectionSubmissionQueries.GetByDataCollectionAndOrganisationAsync(
+            dcId, orgId, cancellationToken);
+        var isSubmitted = existingSubmission.Match(s => s.IsLockedForEditing(), () => false);
+
+        if (isClosed || isSubmitted)
+        {
+            return LockedMessage;
+        }
+
         var formModuleOption = await formModuleQueries.GetByIdWithFieldsAsync(modId, cancellationToken);
         if (formModuleOption.IsNone)
         {
@@ -63,7 +79,12 @@ public class ProcessStagedBulkUploadCommandHandler(
             .ToList();
 
         var services = await serviceQueries.GetByOrganisationIdAsync(orgId, cancellationToken);
-        var serviceMap = services.ToDictionary(s => s.Name.ToLowerInvariant(), s => s);
+
+        // Service names aren't unique in the DB, so group rather than ToDictionary (which throws on a
+        // duplicate key) — when two services share a name, resolve the ambiguity deterministically.
+        var serviceMap = services
+            .GroupBy(s => s.Name, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
 
         var streamResult = await blobService.GetReadStream(
             BulkUploadCsvHelper.BulkUploadStagingContainer,
@@ -86,20 +107,23 @@ public class ProcessStagedBulkUploadCommandHandler(
 
                 var headers = rows[0];
                 var dataRows = rows.Skip(1).ToList();
+                var skippedRows = 1;
 
                 if (dataRows.Count > 0 && BulkUploadCsvHelper.IsLabelRow(dataRows[0], fields))
                 {
                     dataRows = dataRows.Skip(1).ToList();
+                    skippedRows++;
                 }
 
                 if (dataRows.Count > 0 && BulkUploadCsvHelper.IsRequiredIndicatorsRow(dataRows[0]))
                 {
                     dataRows = dataRows.Skip(1).ToList();
+                    skippedRows++;
                 }
 
                 ApplyCellEdits(dataRows, request.CellEdits);
 
-                var filtered = FilterBySelectedServices(headers, dataRows, request.SelectedServiceNames);
+                var filtered = FilterBySelectedRows(dataRows, request.SelectedRowIndices);
 
                 var processor = new BulkUploadRowProcessor(formSubmissionRepository);
                 var result = await processor.ProcessAsync(
@@ -111,7 +135,7 @@ public class ProcessStagedBulkUploadCommandHandler(
                     dcId,
                     headers,
                     filtered,
-                    dataStartRowNumber: 2,
+                    dataStartRowNumber: skippedRows + 1,
                     cancellationToken);
 
                 await blobService.RemoveFile(
@@ -148,30 +172,20 @@ public class ProcessStagedBulkUploadCommandHandler(
         }
     }
 
-    private static List<List<string>> FilterBySelectedServices(
-        List<string> headers,
+    private static List<List<string>> FilterBySelectedRows(
         List<List<string>> dataRows,
-        IReadOnlyList<string> selectedServiceNames)
+        IReadOnlyList<int> selectedRowIndices)
     {
-        if (selectedServiceNames.Count == 0)
+        if (selectedRowIndices.Count == 0)
         {
             return dataRows;
         }
 
-        var serviceNameIndex = headers.FindIndex(h => h.Equals("ServiceName", StringComparison.OrdinalIgnoreCase));
-        if (serviceNameIndex < 0)
-        {
-            serviceNameIndex = headers.FindIndex(h => h.Equals("PPS01", StringComparison.OrdinalIgnoreCase));
-        }
-
-        if (serviceNameIndex < 0)
-        {
-            return dataRows;
-        }
-
-        var selected = new System.Collections.Generic.HashSet<string>(selectedServiceNames, StringComparer.OrdinalIgnoreCase);
+        var selected = new System.Collections.Generic.HashSet<int>(selectedRowIndices);
         return dataRows
-            .Where(row => serviceNameIndex < row.Count && selected.Contains(row[serviceNameIndex]))
+            .Select((row, index) => (row, index))
+            .Where(t => selected.Contains(t.index))
+            .Select(t => t.row)
             .ToList();
     }
 }

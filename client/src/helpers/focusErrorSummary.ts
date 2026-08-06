@@ -1,9 +1,12 @@
 const focusErrorSummary = (): void => {
   if (typeof window === 'undefined') return;
 
-  const prefersReducedMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
-
-  window.scrollTo({ top: 0, behavior: prefersReducedMotion ? 'auto' : 'smooth' });
+  const el = document.querySelector<HTMLElement>('.govuk-error-summary');
+  if (el) {
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (el.tabIndex < 0) el.tabIndex = -1;
+    el.focus({ preventScroll: true });
+  }
 };
 
 export default focusErrorSummary;

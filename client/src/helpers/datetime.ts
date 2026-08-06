@@ -24,3 +24,11 @@ export const parseDate = (dateStr: string) => {
 };
 
 export const sortComparator = (left: string, right: string) => (dayjs(left).isBefore(right) ? 1 : 0);
+
+export const getDaysRemainingMessage = (daysRemaining: number, subject: string, isWindowClosed: boolean): string => {
+  if (isWindowClosed) {
+    return `The deadline to send ${subject} has passed.`;
+  }
+
+  return `You have ${daysRemaining} ${daysRemaining === 1 ? 'day' : 'days'} left to send ${subject}.`;
+};

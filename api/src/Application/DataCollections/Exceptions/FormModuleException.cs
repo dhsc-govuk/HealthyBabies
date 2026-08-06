@@ -16,3 +16,6 @@ public class FormSectionNotFoundException(Guid id)
 
 public class FormSectionHasFieldsException(Guid id)
     : FormModuleException($"Cannot delete form section with ID '{id}' because it has fields. Delete or reassign the fields first.");
+
+public class FormModuleInvalidTypeException(string type)
+    : FormModuleException($"'{type}' is not a valid form module type.");

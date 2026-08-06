@@ -23,6 +23,7 @@ export interface DataCollectionResponse {
   endDate: string;
   isSubmittedByAllLocalAuthorities: boolean;
   status: 'Draft' | 'Planned' | 'Open' | 'Closed';
+  type: 'delivery-plan' | 'management-information';
   createdAt: string;
   updatedAt: string | null;
   createdByName: string | null;
@@ -88,6 +89,7 @@ export interface DataCollectionFormModuleResponse {
   description: string | null;
   lastChangedOn: string;
   isActive: boolean;
+  type: 'delivery-plan' | 'management-information';
 }
 
 export const getDataCollectionFormModules = () =>

@@ -10,13 +10,15 @@ import AcceptableUsePolicy from './views/Public/AcceptableUsePolicy';
 
 import { NotAuthorised, NotFound, ProtectedRoleRoute } from './components/GovUKComponents';
 
-import { adminRoles, organisationAdminRoles, useAuthProvider } from './components/AuthProvider';
+import { adminRoles, deliveryPlanLeadRoles, organisationAdminRoles, useAuthProvider } from './components/AuthProvider';
 
 import GeneralLayout from './layouts/General';
 
 import * as Admin from './views/Admin';
 
 import * as OrgAdmin from './views/OrganisationAdmin';
+
+import * as DeliveryPlan from './views/DeliveryPlan';
 
 import * as Mfa from './views/Mfa';
 
@@ -115,6 +117,10 @@ const AppRoutes = () => {
 
 
 
+        <Route path="/admin/organisations/:organisationId/financial-data/add" element={<Admin.AddFinancialData />} />
+
+        <Route path="/admin/organisations/:organisationId/financial-data/check" element={<Admin.CheckFinancialData />} />
+
         <Route path="/admin/organisations/:organisationId/contacts" element={<Admin.ListOrganisationContacts />} />
 
         <Route path="/admin/organisations/:organisationId/contacts/:contactId" element={<Admin.ViewOrganisationContact />} />
@@ -188,6 +194,12 @@ const AppRoutes = () => {
         <Route path="/admin/configuration/data-collection-form-questions/edit/:id" element={<Admin.DataCollectionFormQuestionsEdit />} />
 
         <Route path="/admin/configuration/data-collection-form-modules" element={<Admin.DataCollectionFormModules />} />
+
+        <Route path="/admin/configuration/delivery-plan-form-questions" element={<Admin.DeliveryPlanFormQuestionsList />} />
+
+        <Route path="/admin/configuration/delivery-plan-form-questions/create" element={<Admin.DeliveryPlanFormQuestionsCreate />} />
+
+        <Route path="/admin/configuration/delivery-plan-form-questions/edit/:id" element={<Admin.DeliveryPlanFormQuestionsEdit />} />
 
       </Route>
 
@@ -271,6 +283,10 @@ const AppRoutes = () => {
         <Route path="/organisation-admin/submissions/:submissionId/modules/:moduleId/outcome-scores/:recordId/view" element={<OrgAdmin.OutcomeScoreView />} />
         <Route path="/organisation-admin/submissions/:submissionId/modules/:moduleId/outcome-scores/:recordId/edit" element={<OrgAdmin.OutcomeScoreForm />} />
         <Route path="/organisation-admin/submissions/:submissionId/modules/:moduleId/outcome-scores/:recordId/delete" element={<OrgAdmin.OutcomeScoreDelete />} />
+        <Route path="/organisation-admin/submissions/:submissionId/modules/:moduleId/activities" element={<OrgAdmin.ActivitiesList />} />
+        <Route path="/organisation-admin/submissions/:submissionId/modules/:moduleId/activities/:activityId" element={<OrgAdmin.ActivityFormView />} />
+        <Route path="/organisation-admin/submissions/:submissionId/modules/:moduleId/activities/:activityId/view" element={<OrgAdmin.ActivityFormView />} />
+        <Route path="/organisation-admin/submissions/:submissionId/modules/:moduleId/activities/:activityId/delete" element={<OrgAdmin.ActivityDelete />} />
 
 
 
@@ -287,6 +303,32 @@ const AppRoutes = () => {
         <Route path="/organisation-admin/core-data/wider-service-categories/:serviceCategoryId/edit" element={<OrgAdmin.EditServiceCategory />} />
 
         <Route path="/organisation-admin/core-data/wider-service-categories/:serviceCategoryId/delete" element={<OrgAdmin.DeleteServiceCategory />} />
+
+      </Route>
+
+
+
+      <Route element={<ProtectedRoleRoute fallbackComponent={<NotAuthorised goBack={navigate} />} allowedRoles={deliveryPlanLeadRoles} userRole={userRole} />}>
+
+        <Route path="/delivery-plan/home" element={<DeliveryPlan.Home />} />
+
+        <Route path="/delivery-plan/core-data" element={<DeliveryPlan.CoreData />} />
+
+        <Route path="/delivery-plan/submissions" element={<DeliveryPlan.Submissions />} />
+
+        <Route path="/delivery-plan/submissions/:submissionId" element={<DeliveryPlan.ViewSubmission />} />
+
+        <Route path="/delivery-plan/submissions/:submissionId/modules/:moduleId" element={<DeliveryPlan.ViewModule />} />
+
+        <Route path="/delivery-plan/submissions/:submissionId/modules/:moduleId/activities" element={<DeliveryPlan.ActivitiesList />} />
+
+        <Route path="/delivery-plan/submissions/:submissionId/modules/:moduleId/activities/:activityId" element={<DeliveryPlan.ActivityFormView />} />
+
+        <Route path="/delivery-plan/submissions/:submissionId/modules/:moduleId/activities/:activityId/view" element={<DeliveryPlan.ActivityFormView />} />
+
+        <Route path="/delivery-plan/submissions/:submissionId/modules/:moduleId/activities/:activityId/delete" element={<DeliveryPlan.ActivityDelete />} />
+
+        <Route path="/delivery-plan/help" element={<DeliveryPlan.Help />} />
 
       </Route>
 

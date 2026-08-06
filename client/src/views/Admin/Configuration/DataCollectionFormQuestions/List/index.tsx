@@ -38,10 +38,11 @@ const DataCollectionFormQuestionsList = (): React.ReactElement => {
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
-  const { data: modules = [] } = useQuery({
+  const { data: allModules = [] } = useQuery({
     queryKey: ['dataCollectionFormModules'],
     queryFn: getAllModules,
   });
+  const modules = useMemo(() => allModules.filter((m) => m.type === 'management-information'), [allModules]);
 
   const { data: selectedModule, isLoading: moduleLoading } = useQuery({
     queryKey: ['dataCollectionFormModule', selectedModuleId],

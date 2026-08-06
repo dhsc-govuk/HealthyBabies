@@ -92,6 +92,14 @@ namespace Infrastructure.Migrations
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("start_date");
 
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("type")
+                        .HasDefaultValueSql("'delivery-plan'");
+
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
                         .HasColumnName("updated_at");
@@ -116,6 +124,12 @@ namespace Infrastructure.Migrations
                     b.Property<Guid>("Id")
                         .HasColumnType("uuid")
                         .HasColumnName("id");
+
+                    b.Property<bool>("AllowsMultipleActivities")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("boolean")
+                        .HasDefaultValue(false)
+                        .HasColumnName("allows_multiple_activities");
 
                     b.Property<string>("Code")
                         .IsRequired()
@@ -173,6 +187,14 @@ namespace Infrastructure.Migrations
                         .HasMaxLength(50)
                         .HasColumnType("character varying(50)")
                         .HasColumnName("status");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("type")
+                        .HasDefaultValueSql("'delivery-plan'");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -727,9 +749,17 @@ namespace Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("created_by_id");
 
+                    b.Property<int?>("DisplayOrder")
+                        .HasColumnType("integer")
+                        .HasColumnName("display_order");
+
                     b.Property<string>("DisplayValue")
                         .HasColumnType("text")
                         .HasColumnName("display_value");
+
+                    b.Property<string>("FieldType")
+                        .HasColumnType("varchar(50)")
+                        .HasColumnName("field_type");
 
                     b.Property<string>("FileMimeType")
                         .HasColumnType("varchar(100)")
@@ -758,6 +788,22 @@ namespace Infrastructure.Migrations
                     b.Property<Guid?>("LastModifiedById")
                         .HasColumnType("uuid")
                         .HasColumnName("last_modified_by_id");
+
+                    b.Property<string>("OptionsSnapshot")
+                        .HasColumnType("text")
+                        .HasColumnName("options_snapshot");
+
+                    b.Property<string>("QuestionCode")
+                        .HasColumnType("varchar(100)")
+                        .HasColumnName("question_code");
+
+                    b.Property<string>("QuestionHint")
+                        .HasColumnType("text")
+                        .HasColumnName("question_hint");
+
+                    b.Property<string>("QuestionLabel")
+                        .HasColumnType("text")
+                        .HasColumnName("question_label");
 
                     b.Property<DateTime?>("UpdatedAt")
                         .HasColumnType("timestamp with time zone")
@@ -909,6 +955,10 @@ namespace Infrastructure.Migrations
                     b.Property<Guid?>("LastModifiedById")
                         .HasColumnType("uuid")
                         .HasColumnName("last_modified_by_id");
+
+                    b.Property<string>("Name")
+                        .HasColumnType("varchar(500)")
+                        .HasColumnName("name");
 
                     b.Property<Guid?>("OrganisationId")
                         .HasColumnType("uuid")
@@ -1263,6 +1313,66 @@ namespace Infrastructure.Migrations
                         .HasDatabaseName("ix_organisation_contacts_organisation_id");
 
                     b.ToTable("organisation_contacts", (string)null);
+                });
+
+            modelBuilder.Entity("Domain.Organisations.OrganisationFinancialData", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<decimal>("Amount")
+                        .HasColumnType("decimal(18,2)")
+                        .HasColumnName("amount");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("timezone('utc', now())");
+
+                    b.Property<Guid?>("CreatedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_id");
+
+                    b.Property<Guid?>("LastModifiedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("last_modified_by_id");
+
+                    b.Property<string>("Module")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("module");
+
+                    b.Property<Guid>("OrganisationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("organisation_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("YearRange")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("year_range");
+
+                    b.HasKey("Id")
+                        .HasName("pk_organisation_financial_data");
+
+                    b.HasIndex("CreatedById")
+                        .HasDatabaseName("ix_organisation_financial_data_created_by_id");
+
+                    b.HasIndex("LastModifiedById")
+                        .HasDatabaseName("ix_organisation_financial_data_last_modified_by_id");
+
+                    b.HasIndex("OrganisationId", "Module", "YearRange")
+                        .IsUnique()
+                        .HasDatabaseName("ix_organisation_financial_data_org_module_year");
+
+                    b.ToTable("organisation_financial_data", (string)null);
                 });
 
             modelBuilder.Entity("Domain.ServiceCategories.ServiceCategory", b =>
@@ -1667,6 +1777,10 @@ namespace Infrastructure.Migrations
                         .HasColumnType("varchar(50)")
                         .HasColumnName("conditional_question_code");
 
+                    b.Property<string>("ConditionalRules")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("conditional_rules");
+
                     b.Property<string>("ConditionalValue")
                         .HasColumnType("varchar(255)")
                         .HasColumnName("conditional_value");
@@ -1678,6 +1792,10 @@ namespace Infrastructure.Migrations
                     b.Property<Guid?>("CreatedById")
                         .HasColumnType("uuid")
                         .HasColumnName("created_by_id");
+
+                    b.Property<string>("DateValidationRule")
+                        .HasColumnType("varchar(50)")
+                        .HasColumnName("date_validation_rule");
 
                     b.Property<int>("DisplayOrder")
                         .HasColumnType("integer")
@@ -1966,6 +2084,10 @@ namespace Infrastructure.Migrations
                         .HasColumnType("varchar(50)")
                         .HasColumnName("conditional_question_code");
 
+                    b.Property<string>("ConditionalRules")
+                        .HasColumnType("jsonb")
+                        .HasColumnName("conditional_rules");
+
                     b.Property<string>("ConditionalValue")
                         .HasColumnType("varchar(255)")
                         .HasColumnName("conditional_value");
@@ -1977,6 +2099,10 @@ namespace Infrastructure.Migrations
                     b.Property<Guid?>("CreatedById")
                         .HasColumnType("uuid")
                         .HasColumnName("created_by_id");
+
+                    b.Property<string>("DateValidationRule")
+                        .HasColumnType("varchar(50)")
+                        .HasColumnName("date_validation_rule");
 
                     b.Property<int>("DisplayOrder")
                         .HasColumnType("integer")
@@ -2880,6 +3006,34 @@ namespace Infrastructure.Migrations
                     b.Navigation("CreatedBy");
 
                     b.Navigation("DeletedBy");
+
+                    b.Navigation("LastModifiedBy");
+
+                    b.Navigation("Organisation");
+                });
+
+            modelBuilder.Entity("Domain.Organisations.OrganisationFinancialData", b =>
+                {
+                    b.HasOne("Domain.Users.User", "CreatedBy")
+                        .WithMany()
+                        .HasForeignKey("CreatedById")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_organisation_financial_data_users_created_by_id");
+
+                    b.HasOne("Domain.Users.User", "LastModifiedBy")
+                        .WithMany()
+                        .HasForeignKey("LastModifiedById")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_organisation_financial_data_users_last_modified_by_id");
+
+                    b.HasOne("Domain.Organisations.Organisation", "Organisation")
+                        .WithMany()
+                        .HasForeignKey("OrganisationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_organisation_financial_data_organisations_organisation_id");
+
+                    b.Navigation("CreatedBy");
 
                     b.Navigation("LastModifiedBy");
 

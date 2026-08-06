@@ -16,6 +16,7 @@ public static class FormModuleErrorFactory
                 FormModuleHasFieldsException => StatusCodes.Status400BadRequest,
                 FormSectionNotFoundException => StatusCodes.Status404NotFound,
                 FormSectionHasFieldsException => StatusCodes.Status400BadRequest,
+                FormModuleInvalidTypeException => StatusCodes.Status400BadRequest,
                 _ => throw new NotImplementedException("FormModule exception handler not implemented")
             }
         };

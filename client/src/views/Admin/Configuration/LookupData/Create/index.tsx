@@ -44,11 +44,10 @@ const CreateLookupData = (): React.ReactElement => {
   };
 
   return (
-    <SettingsLayout
-      currentPage="Create lookup data"
-      backLink={{ href: '/admin/configuration/lookup-data', onClick: () => navigate('/admin/configuration/lookup-data') }}>
+    <SettingsLayout>
       <LoadingBox loading={isLoading}>
         <LookupDataSteps
+          title="Create lookup data"
           completeLabel="Create"
           lookupData={lookupData}
           dispatch={dispatchLookupData}

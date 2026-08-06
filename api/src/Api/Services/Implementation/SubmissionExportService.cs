@@ -161,6 +161,12 @@ public class SubmissionExportService(
 
         var dataCollection = dataCollectionOption.Match(dc => dc, () => null!);
 
+        var activeAssignments = dataCollection.FormModuleAssignments
+            .Where(a => a.FormModule != null && a.FormModule.IsActive)
+            .OrderBy(a => a.FormModule?.SectionNumber)
+            .ToList();
+        var formModulesById = await GetFormModulesByIdAsync(activeAssignments, cancellationToken);
+
         using var memoryStream = new MemoryStream();
         using (var archive = new ZipArchive(memoryStream, ZipArchiveMode.Create, true))
         {
@@ -172,22 +178,13 @@ public class SubmissionExportService(
                 var sanitizedOrgName = SanitizeFileName(org.Name);
                 var context = new CsvExportContext(org.Name, org.ONSCode, dataCollection.Name);
 
-                foreach (var assignment in dataCollection.FormModuleAssignments.OrderBy(a => a.FormModule?.SectionNumber))
+                foreach (var assignment in activeAssignments)
                 {
-                    if (assignment.FormModule == null || !assignment.FormModule.IsActive)
+                    if (!formModulesById.TryGetValue(assignment.FormModuleId, out var formModule))
                     {
                         continue;
                     }
 
-                    var formModuleWithFields = await formModuleQueries.GetByIdWithFieldsAsync(
-                        assignment.FormModuleId, cancellationToken);
-
-                    if (formModuleWithFields.IsNone)
-                    {
-                        continue;
-                    }
-
-                    var formModule = formModuleWithFields.Match(fm => fm, () => null!);
                     var csvContent = await GenerateCsvForModuleAsync(
                         formModule, orgId, dcId, dataCollection.StartDate, context, cancellationToken);
 
@@ -229,6 +226,12 @@ public class SubmissionExportService(
 
         var localAuthorities = (List<object>)exportData["localAuthorities"];
 
+        var activeAssignments = dataCollection.FormModuleAssignments
+            .Where(a => a.FormModule != null && a.FormModule.IsActive)
+            .OrderBy(a => a.FormModule?.SectionNumber)
+            .ToList();
+        var formModulesById = await GetFormModulesByIdAsync(activeAssignments, cancellationToken);
+
         var exportOrgs = await GetExportOrganisationsAsync(dataCollection, dcId, cancellationToken);
 
         foreach (var org in exportOrgs)
@@ -244,22 +247,13 @@ public class SubmissionExportService(
 
             var sections = (List<object>)laData["sections"];
 
-            foreach (var assignment in dataCollection.FormModuleAssignments.OrderBy(a => a.FormModule?.SectionNumber))
+            foreach (var assignment in activeAssignments)
             {
-                if (assignment.FormModule == null || !assignment.FormModule.IsActive)
+                if (!formModulesById.TryGetValue(assignment.FormModuleId, out var formModule))
                 {
                     continue;
                 }
 
-                var formModuleWithFields = await formModuleQueries.GetByIdWithFieldsAsync(
-                    assignment.FormModuleId, cancellationToken);
-
-                if (formModuleWithFields.IsNone)
-                {
-                    continue;
-                }
-
-                var formModule = formModuleWithFields.Match(fm => fm, () => null!);
                 var sectionData = await GenerateJsonForModuleAsync(
                     formModule, orgId, dcId, dataCollection.StartDate, cancellationToken);
 
@@ -325,12 +319,14 @@ public class SubmissionExportService(
             formModule.Id, organisationId, dataCollectionId, cancellationToken);
 
         var submission = submissions.FirstOrDefault();
-        var fieldValues = submission?.FieldValues.ToDictionary(fv => fv.FormFieldId, fv => fv.Value)
-            ?? new Dictionary<FormFieldId, string?>();
+        var fieldValues = submission?.FieldValues.ToDictionary(fv => fv.FormFieldId)
+            ?? new Dictionary<FormFieldId, FormFieldValue>();
 
         foreach (var field in fields)
         {
-            var answer = fieldValues.TryGetValue(field.Id, out var val) ? val ?? string.Empty : string.Empty;
+            var answer = fieldValues.TryGetValue(field.Id, out var fv)
+                ? AnswerSnapshotResolver.ResolveDisplayValue(fv, field) ?? string.Empty
+                : string.Empty;
             var row = new List<string>
             {
                 context.LaName,
@@ -375,13 +371,15 @@ public class SubmissionExportService(
         foreach (var service in services)
         {
             var submission = serviceSubmissions.FirstOrDefault(s => s.EntityId == service.Id.Value);
-            var fieldValues = submission?.FieldValues.ToDictionary(fv => fv.FormFieldId, fv => fv.Value)
-                ?? new Dictionary<FormFieldId, string?>();
+            var fieldValues = submission?.FieldValues.ToDictionary(fv => fv.FormFieldId)
+                ?? new Dictionary<FormFieldId, FormFieldValue>();
 
             var row = new List<string> { context.LaName, context.OnsCode, context.CollectionPeriod, service.Id.Value.ToString(), service.Name ?? string.Empty };
             foreach (var field in fields)
             {
-                var answer = fieldValues.TryGetValue(field.Id, out var val) ? val ?? string.Empty : string.Empty;
+                var answer = fieldValues.TryGetValue(field.Id, out var fv)
+                    ? AnswerSnapshotResolver.ResolveDisplayValue(fv, field) ?? string.Empty
+                    : string.Empty;
                 row.Add(answer);
             }
 
@@ -425,13 +423,15 @@ public class SubmissionExportService(
         foreach (var category in filteredCategories)
         {
             var submission = categorySubmissions.FirstOrDefault(s => s.EntityId == category.Id.Value);
-            var fieldValues = submission?.FieldValues.ToDictionary(fv => fv.FormFieldId, fv => fv.Value)
-                ?? new Dictionary<FormFieldId, string?>();
+            var fieldValues = submission?.FieldValues.ToDictionary(fv => fv.FormFieldId)
+                ?? new Dictionary<FormFieldId, FormFieldValue>();
 
             var row = new List<string> { context.LaName, context.OnsCode, context.CollectionPeriod, category.CategoryName ?? string.Empty };
             foreach (var field in fields)
             {
-                var answer = fieldValues.TryGetValue(field.Id, out var val) ? val ?? string.Empty : string.Empty;
+                var answer = fieldValues.TryGetValue(field.Id, out var fv)
+                    ? AnswerSnapshotResolver.ResolveDisplayValue(fv, field) ?? string.Empty
+                    : string.Empty;
                 row.Add(answer);
             }
 
@@ -467,12 +467,14 @@ public class SubmissionExportService(
 
         foreach (var submission in outcomeSubmissions)
         {
-            var fieldValues = submission.FieldValues.ToDictionary(fv => fv.FormFieldId, fv => fv.Value);
+            var fieldValues = submission.FieldValues.ToDictionary(fv => fv.FormFieldId);
 
             var row = new List<string> { context.LaName, context.OnsCode, context.CollectionPeriod, submission.EntityId?.ToString() ?? string.Empty, submission.Id.Value.ToString() };
             foreach (var field in fields)
             {
-                var answer = fieldValues.TryGetValue(field.Id, out var val) ? val ?? string.Empty : string.Empty;
+                var answer = fieldValues.TryGetValue(field.Id, out var fv)
+                    ? AnswerSnapshotResolver.ResolveDisplayValue(fv, field) ?? string.Empty
+                    : string.Empty;
 
                 if (field.FieldKey == "PPS01" && !string.IsNullOrEmpty(answer) && serviceNameLookup.TryGetValue(answer, out var serviceName))
                 {
@@ -536,13 +538,15 @@ public class SubmissionExportService(
             formModule.Id, organisationId, dataCollectionId, cancellationToken);
 
         var submission = submissions.FirstOrDefault();
-        var fieldValues = submission?.FieldValues.ToDictionary(fv => fv.FormFieldId, fv => fv.Value)
-            ?? new Dictionary<FormFieldId, string?>();
+        var fieldValues = submission?.FieldValues.ToDictionary(fv => fv.FormFieldId)
+            ?? new Dictionary<FormFieldId, FormFieldValue>();
 
         var answers = new List<Dictionary<string, object>>();
         foreach (var field in fields)
         {
-            var answer = fieldValues.TryGetValue(field.Id, out var val) ? val ?? string.Empty : string.Empty;
+            var answer = fieldValues.TryGetValue(field.Id, out var fv)
+                ? AnswerSnapshotResolver.ResolveDisplayValue(fv, field) ?? string.Empty
+                : string.Empty;
             answers.Add(new Dictionary<string, object>
             {
                 ["questionCode"] = field.FieldKey,
@@ -573,8 +577,8 @@ public class SubmissionExportService(
         foreach (var service in services)
         {
             var submission = serviceSubmissions.FirstOrDefault(s => s.EntityId == service.Id.Value);
-            var fieldValues = submission?.FieldValues.ToDictionary(fv => fv.FormFieldId, fv => fv.Value)
-                ?? new Dictionary<FormFieldId, string?>();
+            var fieldValues = submission?.FieldValues.ToDictionary(fv => fv.FormFieldId)
+                ?? new Dictionary<FormFieldId, FormFieldValue>();
 
             var record = new Dictionary<string, object>
             {
@@ -584,7 +588,9 @@ public class SubmissionExportService(
                 {
                     ["questionCode"] = f.FieldKey,
                     ["question"] = f.Label,
-                    ["answer"] = fieldValues.TryGetValue(f.Id, out var val) ? val ?? string.Empty : string.Empty
+                    ["answer"] = fieldValues.TryGetValue(f.Id, out var fv)
+                        ? AnswerSnapshotResolver.ResolveDisplayValue(fv, f) ?? string.Empty
+                        : string.Empty
                 }).ToList()
             };
 
@@ -618,8 +624,8 @@ public class SubmissionExportService(
         foreach (var category in filteredCategories)
         {
             var submission = categorySubmissions.FirstOrDefault(s => s.EntityId == category.Id.Value);
-            var fieldValues = submission?.FieldValues.ToDictionary(fv => fv.FormFieldId, fv => fv.Value)
-                ?? new Dictionary<FormFieldId, string?>();
+            var fieldValues = submission?.FieldValues.ToDictionary(fv => fv.FormFieldId)
+                ?? new Dictionary<FormFieldId, FormFieldValue>();
 
             var record = new Dictionary<string, object>
             {
@@ -629,7 +635,9 @@ public class SubmissionExportService(
                 {
                     ["questionCode"] = f.FieldKey,
                     ["question"] = f.Label,
-                    ["answer"] = fieldValues.TryGetValue(f.Id, out var val) ? val ?? string.Empty : string.Empty
+                    ["answer"] = fieldValues.TryGetValue(f.Id, out var fv)
+                        ? AnswerSnapshotResolver.ResolveDisplayValue(fv, f) ?? string.Empty
+                        : string.Empty
                 }).ToList()
             };
 
@@ -655,14 +663,16 @@ public class SubmissionExportService(
         var records = new List<Dictionary<string, object>>();
         foreach (var submission in outcomeSubmissions)
         {
-            var fieldValues = submission.FieldValues.ToDictionary(fv => fv.FormFieldId, fv => fv.Value);
+            var fieldValues = submission.FieldValues.ToDictionary(fv => fv.FormFieldId);
 
             var record = new Dictionary<string, object>
             {
                 ["recordId"] = submission.Id.Value,
                 ["answers"] = fields.Select(f =>
                 {
-                    var answer = fieldValues.TryGetValue(f.Id, out var val) ? val ?? string.Empty : string.Empty;
+                    var answer = fieldValues.TryGetValue(f.Id, out var fv)
+                        ? AnswerSnapshotResolver.ResolveDisplayValue(fv, f) ?? string.Empty
+                        : string.Empty;
 
                     if (f.FieldKey == "PPS01" && !string.IsNullOrEmpty(answer) && serviceNameLookup.TryGetValue(answer, out var serviceName))
                     {
@@ -738,6 +748,27 @@ public class SubmissionExportService(
     }
 
     private record ExportOrganisation(OrganisationId OrgId, string Name, string ONSCode);
+
+    // Modules/fields are identical across every organisation in the export, so fetch each assigned module
+    // once here rather than once per (organisation, module) pair inside the export loop.
+    private async Task<Dictionary<DataCollectionFormModuleId, DataCollectionFormModule>> GetFormModulesByIdAsync(
+        IReadOnlyCollection<DataCollectionFormModuleAssignment> assignments,
+        CancellationToken cancellationToken)
+    {
+        var formModulesById = new Dictionary<DataCollectionFormModuleId, DataCollectionFormModule>();
+
+        foreach (var moduleId in assignments.Select(a => a.FormModuleId).Distinct())
+        {
+            var formModuleOption = await formModuleQueries.GetByIdWithFieldsAsync(moduleId, cancellationToken);
+            var formModule = formModuleOption.Match(fm => fm, () => (DataCollectionFormModule?)null);
+            if (formModule != null)
+            {
+                formModulesById[moduleId] = formModule;
+            }
+        }
+
+        return formModulesById;
+    }
 
     private record CsvExportContext(string LaName, string OnsCode, string CollectionPeriod);
 }

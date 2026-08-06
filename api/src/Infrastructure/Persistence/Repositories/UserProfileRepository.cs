@@ -39,7 +39,7 @@ public class UserProfileRepository(ApplicationDbContext dbContext) : IUserProfil
                 return UserProfile.NewAdminProfile(user);
             }
         }
-        else if (userRole.Equals(UserRole.OrganisationAdmin))
+        else if (userRole.Equals(UserRole.OrganisationAdmin) || userRole.Equals(UserRole.DeliveryPlanLead))
         {
             var user = await dbContext.OrganisationUsers
                 .Include(x => x.Organisation)

@@ -22,6 +22,8 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
 
     public required DbSet<OrganisationContact> OrganisationContacts { get; set; }
 
+    public required DbSet<OrganisationFinancialData> OrganisationFinancialData { get; set; }
+
     public required DbSet<Domain.Locations.Location> Locations { get; set; }
 
     public required DbSet<OrganisationUser> OrganisationUsers { get; set; }

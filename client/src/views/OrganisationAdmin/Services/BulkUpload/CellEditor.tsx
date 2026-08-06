@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useId } from 'react';
 import { ServiceFormQuestionDto, ServiceFormQuestionType } from '../../../../components/Global/Services';
 import { CellError } from './types';
 import { findOptionMatch } from './validation';
@@ -44,6 +44,7 @@ const CellEditor: React.FC<CellEditorProps> = ({
   );
   const inputRef = useRef<HTMLInputElement>(null);
   const selectRef = useRef<HTMLSelectElement>(null);
+  const errorId = useId();
 
   useEffect(() => {
     if (inputRef.current) {
@@ -87,6 +88,8 @@ const CellEditor: React.FC<CellEditorProps> = ({
           onKeyDown={handleKeyDown}
           className="cell-editor__input"
           aria-label="Edit cell value"
+          aria-invalid={!!error}
+          aria-describedby={error ? errorId : undefined}
         />
       );
     }
@@ -102,6 +105,8 @@ const CellEditor: React.FC<CellEditorProps> = ({
             onKeyDown={handleKeyDown}
             className="cell-editor__select"
             aria-label={question.label}
+            aria-invalid={!!error}
+            aria-describedby={error ? errorId : undefined}
           >
             <option value="">-- Select --</option>
             {question.options.map((option) => (
@@ -115,17 +120,6 @@ const CellEditor: React.FC<CellEditorProps> = ({
       case ServiceFormQuestionType.Checkbox:
         return (
           <div className="cell-editor__checkbox-list">
-            <div className="cell-editor__search-box">
-              <input
-                type="text"
-                placeholder="Type to search..."
-                className="cell-editor__search-input"
-                aria-label="Search options"
-                onChange={(e) => {
-                  // Filter is visual only, doesn't affect state
-                }}
-              />
-            </div>
             {question.options.map((option) => (
               <label key={option.value} className="cell-editor__checkbox-item">
                 <input
@@ -151,6 +145,8 @@ const CellEditor: React.FC<CellEditorProps> = ({
               onKeyDown={handleKeyDown}
               className="cell-editor__input"
               aria-label={question.label}
+              aria-invalid={!!error}
+              aria-describedby={error ? errorId : undefined}
             />
             {editValue && (
               <button
@@ -176,6 +172,8 @@ const CellEditor: React.FC<CellEditorProps> = ({
             onKeyDown={handleKeyDown}
             className="cell-editor__input"
             aria-label={question.label}
+            aria-invalid={!!error}
+            aria-describedby={error ? errorId : undefined}
           />
         );
     }
@@ -184,7 +182,7 @@ const CellEditor: React.FC<CellEditorProps> = ({
   return (
     <div className="cell-editor">
       {error && (
-        <div className="cell-editor__error-message">
+        <div id={errorId} role="alert" className="cell-editor__error-message">
           {error.message}
         </div>
       )}
@@ -195,7 +193,7 @@ const CellEditor: React.FC<CellEditorProps> = ({
             type="button"
             className="cell-editor__btn cell-editor__btn--save"
             onClick={handleSave}
-            title="Save"
+            aria-label="Save"
           >
             ✓
           </button>
@@ -203,7 +201,7 @@ const CellEditor: React.FC<CellEditorProps> = ({
             type="button"
             className="cell-editor__btn cell-editor__btn--cancel"
             onClick={onCancel}
-            title="Cancel"
+            aria-label="Cancel edit"
           >
             ✕
           </button>

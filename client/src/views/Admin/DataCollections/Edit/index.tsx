@@ -17,6 +17,7 @@ interface UpdateDataCollectionRequest {
   description: string | null;
   startDate: string;
   endDate: string;
+  type: string;
   isSubmittedByAllLocalAuthorities: boolean;
   localAuthorityIds: string[];
   formModuleIds: string[];
@@ -95,6 +96,7 @@ const EditDataCollection = (): React.ReactElement => {
       description: encodeNullableForWaf(formData.description.trim() || undefined),
       startDate: start.toISOString(),
       endDate: end.toISOString(),
+      type: formData.type,
       isSubmittedByAllLocalAuthorities: formData.isSubmittedByAllLocalAuthorities,
       localAuthorityIds: formData.localAuthorityIds,
       formModuleIds: formData.formModuleIds,
@@ -104,6 +106,7 @@ const EditDataCollection = (): React.ReactElement => {
 
   const initialData = dcData?.data
     ? {
+        type: dcData.data.type,
         name: dcData.data.name,
         description: dcData.data.description || '',
         startDate: formatDateForGovUK(dcData.data.startDate),
@@ -122,13 +125,14 @@ const EditDataCollection = (): React.ReactElement => {
       sectionNumber: fm.sectionNumber,
       name: fm.name,
       lastChangedOn: fm.lastChangedOn,
+      type: fm.type,
     })) ?? [];
 
   const isLoading = dcLoading || loadingOrganisations || loadingFormModules;
   const dataReady = !isLoading && !!dcData?.data;
 
   return (
-    <SettingsLayout backLink={{ href: `/admin/data-collections/${dataCollectionId}` }}>
+    <SettingsLayout>
       {dataReady && (
         <DataCollectionWizard
           initialData={initialData}
@@ -138,6 +142,7 @@ const EditDataCollection = (): React.ReactElement => {
           availableFormModules={availableFormModules}
           onSubmit={(data) => handleSubmit(data, false)}
           onSaveAsDraft={(data) => handleSubmit(data, true)}
+          onCancel={() => navigate(`/admin/data-collections/${dataCollectionId}`)}
           submitLabel="Confirm and save"
           isEdit={true}
         />

@@ -8,4 +8,5 @@ public interface IDataCollectionFormModuleQueries
     Task<IReadOnlyList<DataCollectionFormModule>> GetAllActiveAsync(CancellationToken cancellationToken = default);
     Task<Option<DataCollectionFormModule>> GetByIdWithFieldsAsync(DataCollectionFormModuleId id, CancellationToken cancellationToken = default);
     Task<Option<DataCollectionFormModule>> GetByCodeWithFieldsAsync(string code, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<DataCollectionFormModule>> GetByTypeWithFieldsAsync(string type, CancellationToken cancellationToken = default);
 }

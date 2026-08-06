@@ -140,6 +140,38 @@ public class AdminUsersController(
             error => error.ToObjectResult());
     }
 
+    [HttpPut("organisation-users/edit")]
+    public async Task<ActionResult<OrganisationUserDto>> EditOrganisationUser(
+        [FromBody] OrganisationUserDto userDto,
+        CancellationToken cancellationToken)
+    {
+        var orgUserIdOption = await controllerService.GetOrganisationUserIdByUserId(Guid.Parse(userDto.Id!), cancellationToken);
+        return await orgUserIdOption.MatchAsync(
+            async orgUserId =>
+            {
+                var input = new UpdateOrganisationUserCommand
+                {
+                    Id = orgUserId.Value,
+                    FirstName = userDto.FirstName,
+                    LastName = userDto.LastName,
+                    Email = userDto.Email,
+                    IsActive = userDto.IsActive,
+                    Role = UserRole.From(userDto.Role)
+                };
+                var result = await sender.Send(input, cancellationToken);
+                return result.Match<ActionResult<OrganisationUserDto>>(
+                    u => new OrganisationUserDto(
+                        userDto.Id,
+                        u.User!.Name.FirstName,
+                        u.User.Name.LastName,
+                        u.User.Email,
+                        u.User.IsActive,
+                        u.User.Role),
+                    error => error.ToObjectResult());
+            },
+            async () => (ActionResult<OrganisationUserDto>)NotFound());
+    }
+
     [HttpPost("activate-or-deactivate-user")]
     public async Task<ActionResult<AdminUserDto>> ActivateOrDeactivateUser(
         [FromBody] ActivateOrDeactivateUserDto request,

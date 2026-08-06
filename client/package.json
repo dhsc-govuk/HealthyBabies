@@ -26,6 +26,7 @@
     "chartjs-plugin-datalabels": "^2.2.0",
     "date-fns": "^2.30.0",
     "dayjs": "^1.11.7",
+    "fflate": "^0.8.3",
     "govuk-frontend": "^6.0.0-rc.0",
     "govuk-react": "^0.10.7",
     "konva": "^9.2.3",

@@ -17,9 +17,11 @@ public interface IDataCollectionSubmissionRepository
 
     Task<DataCollectionSubmission> AddAsync(
         DataCollectionSubmission entity,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default,
+        bool saveChanges = true);
 
     Task<DataCollectionSubmission> UpdateAsync(
         DataCollectionSubmission entity,
-        CancellationToken cancellationToken = default);
+        CancellationToken cancellationToken = default,
+        bool saveChanges = true);
 }

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Box, Typography } from '@mui/material';
 import { useQuery } from 'react-query';
+import { evaluateConditionalRules } from '../../../../helpers/conditionalRules';
 import axios from 'axios';
 import { SummaryList } from '../../../../components/GovUKComponents';
 import { ServiceFormQuestionDto } from '../../../../components/Global/Services';
@@ -73,6 +74,9 @@ const isQuestionVisible = (
   question: ServiceFormQuestionDto,
   answers: Record<string, string | undefined>
 ): boolean => {
+  if (question.conditionalRules) {
+    return evaluateConditionalRules(question.conditionalRules, answers);
+  }
   if (!question.conditionalQuestionCode || !question.conditionalValue) {
     return true;
   }

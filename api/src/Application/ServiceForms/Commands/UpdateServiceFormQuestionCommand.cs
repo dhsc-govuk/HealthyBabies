@@ -23,6 +23,8 @@ public record UpdateServiceFormQuestionCommand : IRequest<Either<ServiceFormQues
     public string? HelpText { get; init; }
     public string? ConditionalQuestionCode { get; init; }
     public string? ConditionalValue { get; init; }
+    public string? DateValidationRule { get; init; }
+    public string? ConditionalRules { get; init; }
     public IReadOnlyList<ServiceFormQuestionOptionInputDto> Options { get; init; } = [];
 }
 
@@ -60,7 +62,9 @@ public class UpdateServiceFormQuestionCommandHandler(IServiceFormQuestionReposit
                 request.HelpTextSummary,
                 request.HelpText,
                 request.ConditionalQuestionCode,
-                request.ConditionalValue);
+                request.ConditionalValue,
+                request.DateValidationRule,
+                request.ConditionalRules);
 
             if (request.IsActive)
             {

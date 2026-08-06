@@ -41,8 +41,8 @@ const Home = (): React.ReactElement => {
         <p className="govuk-body">
           <strong>Email</strong>
           <br />
-          <a href="mailto:healthybabies.dataanddigital@dhsc.gov.uk" className="govuk-link">
-            healthybabies.dataanddigital@dhsc.gov.uk
+          <a href="mailto:support@example.gov.uk" className="govuk-link">
+            support@example.gov.uk
           </a>
         </p>
       </div>

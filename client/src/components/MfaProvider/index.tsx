@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
+import { useIsAuthenticated } from '@azure/msal-react';
 import {
   getMfaStatus,
   setupMfa,
@@ -19,6 +20,7 @@ interface MfaProviderProps {
 
 export const MfaProvider = ({ children }: MfaProviderProps): React.ReactElement => {
   const queryClient = useQueryClient();
+  const isAuthenticated = useIsAuthenticated();
   const [setupData, setSetupData] = useState<MfaSetupResponse | null>(null);
   const [recoveryCodes, setRecoveryCodes] = useState<string[]>([]);
   const [requiresVerification, setRequiresVerification] = useState(false);
@@ -32,6 +34,7 @@ export const MfaProvider = ({ children }: MfaProviderProps): React.ReactElement 
     queryFn: getMfaStatus,
     staleTime: defaultStaleTime,
     retry: false,
+    enabled: isAuthenticated,
     onError: () => {
       // Silently handle errors - user might not be authenticated yet
     },

@@ -7,6 +7,7 @@ import { GovUKNotificationBanner, GovUKTaskList, H1, H2, Paragraph } from '../..
 import { getSubmissions } from '../queries';
 import { Box } from '@mui/material';
 import { getSubmissionStatusTagColour } from '../../../../helpers/submissionStatusColour';
+import { getDaysRemainingMessage } from '../../../../helpers/datetime';
 import usePageTitle from '../../../../hooks/usePageTitle';
 
 const formatDate = (dateString: string): string => {
@@ -28,8 +29,8 @@ const ListSubmissions = (): React.ReactElement => {
 
   const submissions = data?.data ?? [];
 
-  const upcomingSubmissions = submissions.filter((s) => new Date(s.endDate) >= new Date());
-  const pastSubmissions = submissions.filter((s) => new Date(s.endDate) < new Date());
+  const upcomingSubmissions = submissions.filter((s) => !s.isWindowClosed);
+  const pastSubmissions = submissions.filter((s) => s.isWindowClosed);
 
   const nearestDeadline = upcomingSubmissions.length > 0 ? Math.min(...upcomingSubmissions.map((s) => s.daysRemaining)) : null;
 
@@ -49,12 +50,12 @@ const ListSubmissions = (): React.ReactElement => {
         {nearestDeadline !== null && nearestDeadline <= 7 && (
           <GovUKNotificationBanner type="important" title="Important">
             <p className="govuk-body">
-              <strong>You have {nearestDeadline} days left to send your next submission.</strong>
+              <strong>{getDaysRemainingMessage(nearestDeadline, 'your next submission', false)}</strong>
             </p>
             <p className="govuk-body">
               Contact{' '}
-              <a href="mailto:healthybabies.dataanddigital@dhsc.gov.uk" className="govuk-link">
-                healthybabies.dataanddigital@dhsc.gov.uk
+              <a href="mailto:support@example.gov.uk" className="govuk-link">
+                support@example.gov.uk
               </a>{' '}
               if you think there&apos;s a problem.
             </p>

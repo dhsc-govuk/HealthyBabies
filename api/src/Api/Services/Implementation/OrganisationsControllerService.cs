@@ -11,7 +11,8 @@ public class OrganisationsControllerService(
     IOrganisationQueries organisationQueries,
     IOrganisationUserQueries organisationUserQueries,
     ILocationQueries locationQueries,
-    IOrganisationContactQueries organisationContactQueries) : IOrganisationsControllerService
+    IOrganisationContactQueries organisationContactQueries,
+    IOrganisationFinancialDataQueries financialDataQueries) : IOrganisationsControllerService
 {
     public async Task<IEnumerable<OrganisationDto>> GetAll(CancellationToken cancellationToken)
     {
@@ -32,6 +33,13 @@ public class OrganisationsControllerService(
                 org.ONSCode,
                 org.IsActive),
             () => Option<OrganisationDto>.None);
+    }
+
+    public async Task<IReadOnlyList<FinancialDataEntryDto>> GetFinancialData(Guid organisationId, CancellationToken cancellationToken)
+    {
+        var entityId = new OrganisationId(organisationId);
+        var entries = await financialDataQueries.GetAllByOrganisationIdAsync(entityId, cancellationToken);
+        return entries.Select(e => new FinancialDataEntryDto(e.Module.Value, e.YearRange, e.Amount)).ToList();
     }
 
     public async Task<Option<OrganisationHomeDto>> Totals(

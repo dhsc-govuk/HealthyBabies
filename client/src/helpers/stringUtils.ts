@@ -7,6 +7,16 @@ export const encodeForWaf = (text: string): string => {
 export const encodeNullableForWaf = (text: string | null | undefined): string | null =>
   text ? encodeForWaf(text) : null;
 
+export const decodeFromWaf = (text: string | null | undefined): string | null => {
+  if (!text) return text ?? null;
+  if (!text.startsWith('b64:')) return text;
+  try {
+    return decodeURIComponent(escape(atob(text.slice(4))));
+  } catch {
+    return text;
+  }
+};
+
 export function capitaliseFirst(str: string): string {
   if (!str) return '';
   return str.charAt(0).toUpperCase() + str.slice(1);

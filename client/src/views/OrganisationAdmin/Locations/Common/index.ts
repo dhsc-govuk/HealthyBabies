@@ -1,6 +1,23 @@
-import { SiteFormQuestionDto, SiteFormQuestionType, SiteAnswerInputRequest } from '../../../../components/Global/SiteForms';
+import { SiteFormQuestionDto, SiteFormQuestionType, SiteAnswerInputRequest, DateValidationRule } from '../../../../components/Global/SiteForms';
 import { ParsedAddress } from './addressLookupQueries';
 import { encodeNullableForWaf } from '../../../../helpers/stringUtils';
+import { evaluateConditionalRules } from '../../../../helpers/conditionalRules';
+import { validateDateParts } from '../../../../helpers/validateDate';
+
+// A question is visible when its rich conditional_rules pass (if set), else the legacy single-parent
+// conditionalQuestionCode/conditionalValue exact-match. No conditions => always visible.
+export const isLocationQuestionVisible = (
+  question: SiteFormQuestionDto,
+  answers: Record<string, string | undefined>
+): boolean => {
+  if (question.conditionalRules) {
+    return evaluateConditionalRules(question.conditionalRules, answers);
+  }
+  if (question.conditionalQuestionCode && question.conditionalValue) {
+    return answers[question.conditionalQuestionCode] === question.conditionalValue;
+  }
+  return true;
+};
 
 // Predefined question codes
 export const PREDEFINED_NAME_CODE = 'FHS01';
@@ -67,22 +84,33 @@ export interface ValidationErrors {
 export const validateLocation = (state: LocationFormState, questions: SiteFormQuestionDto[]): ValidationErrors => {
   const errors: ValidationErrors = {};
 
-  // Validate each required question (including predefined FHS01/02/03)
+  // Validate each active question (including predefined FHS01/02/03)
   for (const question of questions) {
-    if (!question.isRequired || !question.isActive) continue;
+    if (!question.isActive) continue;
 
-    // Check if conditional question should be visible
-    if (question.conditionalQuestionCode && question.conditionalValue) {
-      const parentValue = state.answers[question.conditionalQuestionCode];
-      if (parentValue !== question.conditionalValue) {
-        continue;
-      }
+    // Skip validation for questions hidden by their conditional rules
+    if (!isLocationQuestionVisible(question, state.answers)) {
+      continue;
     }
 
     const value = state.answers[question.code];
+    const isEmpty = value === undefined || value === null || value === '';
 
-    if (value === undefined || value === null || value === '') {
+    if (question.isRequired && isEmpty) {
       errors[question.code] = getErrorMessage(question);
+      continue;
+    }
+
+    if (!isEmpty && question.questionType === SiteFormQuestionType.Date && question.dateValidationRule) {
+      const [day, month, year] = value.split('/');
+      const result = validateDateParts(day, month, year, {
+        allowFuture: question.dateValidationRule !== DateValidationRule.NotInFuture,
+        disallowPast: question.dateValidationRule === DateValidationRule.NotInPast,
+        legendText: question.label,
+      });
+      if (result.error) {
+        errors[question.code] = result.error;
+      }
     }
   }
 
@@ -114,12 +142,10 @@ export const buildAnswersForRequest = (state: LocationFormState, questions: Site
 
     const value = state.answers[question.code];
 
-    // Check if conditional question should be included
-    if (question.conditionalQuestionCode && question.conditionalValue) {
-      const parentValue = state.answers[question.conditionalQuestionCode];
-      if (parentValue !== question.conditionalValue) {
-        continue;
-      }
+    // Clear any previously-saved value for questions hidden by their conditional rules
+    if (!isLocationQuestionVisible(question, state.answers)) {
+      answers.push({ questionCode: question.code, value: undefined });
+      continue;
     }
 
     answers.push({

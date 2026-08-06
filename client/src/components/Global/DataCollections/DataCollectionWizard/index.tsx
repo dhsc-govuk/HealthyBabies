@@ -1,9 +1,11 @@
-import React, { useState, useMemo } from 'react';
-import { LoadingBox, ErrorSummary } from 'govuk-react';
-import { GovUKDateField, GovUKStepper } from '../../../GovUKComponents';
+import React, { useState, useMemo, useEffect } from 'react';
+import { LoadingBox } from 'govuk-react';
+import { GovUKDateField, GovUKStepper, GovUKErrorSummary } from '../../../GovUKComponents';
 import SearchIcon from '../../../Logos/SearchIcon';
 import useErrorSummaryFocus from '../../../../hooks/useErrorSummaryFocus';
 import './styles.css';
+
+export type DataCollectionTypeValue = 'delivery-plan' | 'management-information';
 
 export interface LocalAuthorityOption {
   id: string;
@@ -15,9 +17,11 @@ export interface FormModuleOption {
   sectionNumber: number;
   name: string;
   lastChangedOn: string;
+  type: DataCollectionTypeValue;
 }
 
 export interface DataCollectionWizardData {
+  type: DataCollectionTypeValue;
   name: string;
   description: string;
   startDate: string;
@@ -28,6 +32,7 @@ export interface DataCollectionWizardData {
 }
 
 interface ValidationErrors {
+  type?: string;
   name?: string;
   startDate?: string;
   endDate?: string;
@@ -43,6 +48,7 @@ export interface DataCollectionWizardProps {
   isSaving?: boolean;
   onSubmit: (data: DataCollectionWizardData) => void;
   onSaveAsDraft: (data: DataCollectionWizardData) => void;
+  onCancel?: () => void;
   submitLabel?: string;
   isEdit?: boolean;
 }
@@ -62,6 +68,11 @@ const formatDateForDisplay = (dateStr: string): string => {
   return dateStr;
 };
 
+const typeLabels: Record<DataCollectionTypeValue, string> = {
+  'delivery-plan': 'Delivery plan',
+  'management-information': 'Management information',
+};
+
 const DataCollectionWizard = ({
   initialData,
   availableLocalAuthorities = [],
@@ -70,12 +81,14 @@ const DataCollectionWizard = ({
   isSaving = false,
   onSubmit,
   onSaveAsDraft,
+  onCancel,
   submitLabel = 'Confirm and create',
   isEdit = false,
 }: DataCollectionWizardProps): React.ReactElement => {
   const [step, setStep] = useState(0);
 
   const [formData, setFormData] = useState<DataCollectionWizardData>({
+    type: initialData?.type ?? 'delivery-plan',
     name: initialData?.name ?? '',
     description: initialData?.description ?? '',
     startDate: initialData?.startDate ?? '',
@@ -90,6 +103,21 @@ const DataCollectionWizard = ({
   useErrorSummaryFocus(submitAttempts, Object.values(errors).some(Boolean));
   const [laSearchTerm, setLaSearchTerm] = useState('');
 
+  const modulesForType = useMemo(
+    () => availableFormModules.filter((fm) => fm.type === formData.type).sort((a, b) => a.sectionNumber - b.sectionNumber),
+    [availableFormModules, formData.type]
+  );
+
+  // Pre-select all modules when type changes or when modules first load from the API
+  useEffect(() => {
+    if (modulesForType.length === 0) return;
+    setFormData((prev) => ({
+      ...prev,
+      formModuleIds: modulesForType.map((fm) => fm.id),
+    }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [modulesForType]);
+
   const validateStep = (currentStep: number): boolean => {
     const newErrors: ValidationErrors = {};
 
@@ -97,13 +125,17 @@ const DataCollectionWizard = ({
       if (!formData.name.trim()) {
         newErrors.name = 'Enter a data collection name';
       }
-      if (!formData.startDate) {
+      if (errors.startDate) {
+        newErrors.startDate = errors.startDate;
+      } else if (!formData.startDate) {
         newErrors.startDate = 'Enter a start date';
       }
-      if (!formData.endDate) {
+      if (errors.endDate) {
+        newErrors.endDate = errors.endDate;
+      } else if (!formData.endDate) {
         newErrors.endDate = 'Enter a due date';
       }
-      if (formData.startDate && formData.endDate) {
+      if (formData.startDate && formData.endDate && !errors.startDate && !errors.endDate) {
         const startParts = formData.startDate.split('/');
         const endParts = formData.endDate.split('/');
         if (startParts.length === 3 && endParts.length === 3) {
@@ -148,6 +180,13 @@ const DataCollectionWizard = ({
     }
   };
 
+  const handleTypeChange = (value: DataCollectionTypeValue) => {
+    setFormData((prev) => ({ ...prev, type: value }));
+    if (errors.type) {
+      setErrors((prev) => ({ ...prev, type: undefined }));
+    }
+  };
+
   const handleLaToggle = (laId: string) => {
     setFormData((prev) => ({
       ...prev,
@@ -184,8 +223,8 @@ const DataCollectionWizard = ({
   };
 
   const selectedFormModulesDisplay = useMemo(() => {
-    return availableFormModules.filter((fm) => formData.formModuleIds.includes(fm.id)).sort((a, b) => a.sectionNumber - b.sectionNumber);
-  }, [availableFormModules, formData.formModuleIds]);
+    return modulesForType.filter((fm) => formData.formModuleIds.includes(fm.id));
+  }, [modulesForType, formData.formModuleIds]);
 
   const filteredLocalAuthorities = useMemo(() => {
     if (!laSearchTerm.trim()) return availableLocalAuthorities;
@@ -212,11 +251,54 @@ const DataCollectionWizard = ({
 
   const step1Content = (
     <div className="dc-wizard">
-      {errorList.length > 0 && <ErrorSummary errors={errorList} />}
+      {errorList.length > 0 && <GovUKErrorSummary errors={errorList} />}
+
+      <fieldset className="govuk-fieldset govuk-!-margin-bottom-6">
+        <legend className="govuk-fieldset__legend govuk-fieldset__legend--s">Type</legend>
+        {isEdit ? (
+          <p className="govuk-body" data-testid="dc-type-readonly">
+            {typeLabels[formData.type]}
+          </p>
+        ) : (
+          <>
+            <div className="govuk-hint">This determines which forms you can include in the collection.</div>
+            <div className="govuk-radios" data-module="govuk-radios">
+              <div className="govuk-radios__item">
+                <input
+                  className="govuk-radios__input"
+                  id="type-delivery-plan"
+                  name="type"
+                  type="radio"
+                  value="delivery-plan"
+                  checked={formData.type === 'delivery-plan'}
+                  onChange={() => handleTypeChange('delivery-plan')}
+                />
+                <label className="govuk-label govuk-radios__label" htmlFor="type-delivery-plan">
+                  Delivery plan
+                </label>
+              </div>
+              <div className="govuk-radios__item">
+                <input
+                  className="govuk-radios__input"
+                  id="type-management-information"
+                  name="type"
+                  type="radio"
+                  value="management-information"
+                  checked={formData.type === 'management-information'}
+                  onChange={() => handleTypeChange('management-information')}
+                />
+                <label className="govuk-label govuk-radios__label" htmlFor="type-management-information">
+                  Management information
+                </label>
+              </div>
+            </div>
+          </>
+        )}
+      </fieldset>
 
       <div className="govuk-form-group">
         <label className="govuk-label govuk-label--s" htmlFor="dc-name">
-          Data collection name
+          Name
         </label>
         <div className="govuk-hint">This is how the data collection will be shown to users.</div>
         {errors.name && (
@@ -242,6 +324,8 @@ const DataCollectionWizard = ({
         onChange={(value) => handleChange('startDate', value)}
         error={errors.startDate}
         hint="This is when data collection will open and submissions will be accepted."
+        allowFuture={true}
+        onValidate={(err) => setErrors((prev) => ({ ...prev, startDate: err }))}
       />
 
       <GovUKDateField
@@ -252,17 +336,22 @@ const DataCollectionWizard = ({
         onChange={(value) => handleChange('endDate', value)}
         error={errors.endDate}
         hint="This is when data collection will close. No further submissions will be possible after this date unless an extension is granted."
+        allowFuture={true}
+        onValidate={(err) => setErrors((prev) => ({ ...prev, endDate: err }))}
       />
     </div>
   );
 
   const step2Content = (
     <div className="dc-wizard">
-      {errorList.length > 0 && <ErrorSummary errors={errorList} />}
+      {errorList.length > 0 && <GovUKErrorSummary errors={errorList} />}
 
       <fieldset className="govuk-fieldset" id="form-modules-fieldset">
         <legend className="govuk-fieldset__legend govuk-fieldset__legend--m">Forms</legend>
-        <div className="govuk-hint">Select the forms to include in this data collection.</div>
+        <div className="govuk-hint">
+          Select the forms to include in this data collection. Only forms matching the selected collection type are shown. All are pre-selected — deselect any you do not want to
+          include.
+        </div>
 
         {errors.formModules && (
           <span className="govuk-error-message">
@@ -270,10 +359,11 @@ const DataCollectionWizard = ({
           </span>
         )}
 
-        <div className="govuk-checkboxes">
-          {availableFormModules
-            .sort((a, b) => a.sectionNumber - b.sectionNumber)
-            .map((fm) => (
+        {modulesForType.length === 0 ? (
+          <p className="govuk-body">No forms are available for the selected collection type.</p>
+        ) : (
+          <div className="govuk-checkboxes">
+            {modulesForType.map((fm) => (
               <div className="govuk-checkboxes__item" key={fm.id}>
                 <input
                   className="govuk-checkboxes__input"
@@ -293,14 +383,15 @@ const DataCollectionWizard = ({
                 </label>
               </div>
             ))}
-        </div>
+          </div>
+        )}
       </fieldset>
     </div>
   );
 
   const step3Content = (
     <div className="dc-wizard">
-      {errorList.length > 0 && <ErrorSummary errors={errorList} />}
+      {errorList.length > 0 && <GovUKErrorSummary errors={errorList} />}
 
       <fieldset className="govuk-fieldset" id="la-fieldset">
         <legend className="govuk-fieldset__legend govuk-fieldset__legend--m">Is this data collection submitted by all local authorities?</legend>
@@ -429,6 +520,17 @@ const DataCollectionWizard = ({
         </p>
         <dl className="govuk-summary-list">
           <div className="govuk-summary-list__row">
+            <dt className="govuk-summary-list__key">Type</dt>
+            <dd className="govuk-summary-list__value">{typeLabels[formData.type]}</dd>
+            <dd className="govuk-summary-list__actions">
+              {!isEdit && (
+                <button type="button" className="govuk-link" style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer' }} onClick={() => setStep(0)}>
+                  Change<span className="govuk-visually-hidden"> type</span>
+                </button>
+              )}
+            </dd>
+          </div>
+          <div className="govuk-summary-list__row">
             <dt className="govuk-summary-list__key">Data collection name</dt>
             <dd className="govuk-summary-list__value">{formData.name}</dd>
             <dd className="govuk-summary-list__actions">
@@ -510,6 +612,7 @@ const DataCollectionWizard = ({
       title={stepperSteps[step].label}
       onSaveAsDraft={handleSaveAsDraft}
       showSaveAsDraft={!isEdit}
+      onCancel={onCancel}
     />
   );
 };

@@ -16,6 +16,7 @@ interface CreateDataCollectionRequest {
   description: string | null;
   startDate: string;
   endDate: string;
+  type: string;
   isSubmittedByAllLocalAuthorities: boolean;
   localAuthorityIds: string[];
   formModuleIds: string[];
@@ -81,6 +82,7 @@ const CreateDataCollection = (): React.ReactElement => {
       description: encodeNullableForWaf(formData.description.trim() || undefined),
       startDate: start.toISOString(),
       endDate: end.toISOString(),
+      type: formData.type,
       isSubmittedByAllLocalAuthorities: formData.isSubmittedByAllLocalAuthorities,
       localAuthorityIds: formData.localAuthorityIds,
       formModuleIds: formData.formModuleIds,
@@ -96,10 +98,11 @@ const CreateDataCollection = (): React.ReactElement => {
       sectionNumber: fm.sectionNumber,
       name: fm.name,
       lastChangedOn: fm.lastChangedOn,
+      type: fm.type,
     })) ?? [];
 
   return (
-    <SettingsLayout backLink={{ href: '/admin/data-collections' }}>
+    <SettingsLayout>
       <DataCollectionWizard
         isLoading={loadingOrganisations || loadingFormModules}
         isSaving={saving}
@@ -107,6 +110,7 @@ const CreateDataCollection = (): React.ReactElement => {
         availableFormModules={availableFormModules}
         onSubmit={(data) => handleSubmit(data, false)}
         onSaveAsDraft={(data) => handleSubmit(data, true)}
+        onCancel={() => navigate('/admin/data-collections')}
         submitLabel="Confirm and save"
       />
     </SettingsLayout>

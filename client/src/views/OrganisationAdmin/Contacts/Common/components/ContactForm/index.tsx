@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo } from 'react';
-import { GovUKFieldset, ErrorSummary } from '../../../../../../components/GovUKComponents';
+import { GovUKFieldset, GovUKErrorSummary } from '../../../../../../components/GovUKComponents';
 import { OrganisationContact, ValidationErrors, validationErrors, ContactReducerAction, isValidEmail } from '../..';
 import { GlobalDataDto, getValidationErrorForLookup } from '../../../../../../components/Global/Queries/globalData';
 
@@ -40,7 +40,7 @@ const ContactForm = ({ contact, errors, setErrors, dispatch, roles }: Props): Re
 
   return (
     <>
-      {errorList.length > 0 && <ErrorSummary errors={errorList} />}
+      {errorList.length > 0 && <GovUKErrorSummary errors={errorList} />}
       <GovUKFieldset legend="Contact details" legendSize="m">
         <GovUKFieldset.Input
           id="contact-name"

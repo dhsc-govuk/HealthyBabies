@@ -24,7 +24,7 @@ public class PermissionsService(IIdentityService identityService)
             uId => userRole.Match<Either<Exception, Permission>>(
                 role => role.Equals(UserRole.Admin)
                     ? Permission.AdminPermission(role, uId)
-                    : role.Equals(UserRole.OrganisationAdmin)
+                    : role.Equals(UserRole.OrganisationAdmin) || role.Equals(UserRole.DeliveryPlanLead)
                         ? identityService.GetOrganisationId().Match<Either<Exception, Permission>>(
                             orgId => Permission.OrganisationPermission(role, orgId, uId),
                             () => new ArgumentException("Forbidden"))
@@ -42,7 +42,7 @@ public class PermissionsService(IIdentityService identityService)
             uId => userRole.Match<Either<Exception, Permission>>(
                 role => role.Equals(UserRole.Admin)
                     ? Permission.AdminPermission(role, uId)
-                    : role.Equals(UserRole.OrganisationAdmin)
+                    : role.Equals(UserRole.OrganisationAdmin) || role.Equals(UserRole.DeliveryPlanLead)
                         ? identityService.GetOrganisationId().Match<Either<Exception, Permission>>(
                             orgId => Permission.OrganisationPermission(role, orgId, uId),
                             () => new ArgumentException("Organisation id is missing"))

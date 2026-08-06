@@ -3,6 +3,7 @@ using Application.Common.Interfaces.Queries;
 using Application.Common.Interfaces.Repositories;
 using Application.Common.Permissions;
 using Application.Organisations.Exceptions;
+using Application.Organisations.Helpers;
 using Application.SiteForms.Dtos;
 using Domain.Common;
 using Domain.Locations;
@@ -112,6 +113,14 @@ public class UpdateLocationCommandHandler : IRequestHandler<UpdateLocationComman
       UpdateLocationCommand request,
       CancellationToken cancellationToken)
     {
+        var questions = await _siteFormQuestionQueries.GetAllActive(cancellationToken);
+
+        var dateError = SiteFormDateAnswerValidator.ValidateAnswers(request.Answers, questions);
+        if (dateError != null)
+        {
+            return new LocationInvalidAnswerException(location.Id, dateError);
+        }
+
         try
         {
             location.UpdateName(request.GetName());
@@ -124,7 +133,7 @@ public class UpdateLocationCommandHandler : IRequestHandler<UpdateLocationComman
             location.SetActive(request.IsActive);
 
             // Update answers
-            await UpdateAnswers(location, request.Answers, cancellationToken);
+            UpdateAnswers(location, request.Answers, questions);
 
             return await _locationRepository.UpdateAsync(location, cancellationToken);
         }
@@ -134,13 +143,11 @@ public class UpdateLocationCommandHandler : IRequestHandler<UpdateLocationComman
         }
     }
 
-    private async Task UpdateAnswers(
+    private static void UpdateAnswers(
         Location location,
         IReadOnlyList<SiteAnswerInputDto> answers,
-        CancellationToken cancellationToken)
+        IReadOnlyList<SiteFormQuestion> questions)
     {
-        var questions = await _siteFormQuestionQueries.GetAllActive(cancellationToken);
-
         foreach (var answerInput in answers)
         {
             var question = questions.FirstOrDefault(q => q.Code == answerInput.QuestionCode);

@@ -15,6 +15,10 @@ import {
   DialogContentText,
   DialogActions,
   TextField,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem,
 } from '@mui/material';
 import {
   Edit as EditIcon,
@@ -30,16 +34,23 @@ import {
   createModule,
   updateModule,
   deleteModule,
+  changeModuleType,
   createSection,
   updateSection,
   deleteSection,
   CreateModuleRequest,
   UpdateModuleRequest,
+  ChangeModuleTypeRequest,
   CreateSectionRequest,
   UpdateSectionRequest,
 } from './mutations';
-import { FormModule, FormSection } from '../Common/types';
+import { FormModule, FormModuleType, FormSection, formModuleTypeOptions } from '../Common/types';
 import usePageTitle from '../../../../../hooks/usePageTitle';
+
+const TABS = [
+  { label: 'Management Information', type: 'management-information', href: '#management-information' },
+  { label: 'Delivery Plan', type: 'delivery-plan', href: '#delivery-plan' },
+] as const;
 
 const DataCollectionFormModules = (): React.ReactElement => {
   usePageTitle('Form modules');
@@ -47,6 +58,7 @@ const DataCollectionFormModules = (): React.ReactElement => {
   const queryClient = useQueryClient();
   const { setNotification } = useGovUKNotification();
 
+  const [tabIndex, setTabIndex] = useState(0);
   const [selectedModuleId, setSelectedModuleId] = useState<string | null>(null);
   const [moduleDialogOpen, setModuleDialogOpen] = useState(false);
   const [sectionDialogOpen, setSectionDialogOpen] = useState(false);
@@ -57,7 +69,7 @@ const DataCollectionFormModules = (): React.ReactElement => {
   const [moduleToDelete, setModuleToDelete] = useState<FormModule | null>(null);
   const [sectionToDelete, setSectionToDelete] = useState<FormSection | null>(null);
 
-  const [moduleForm, setModuleForm] = useState<CreateModuleRequest>({ code: '', name: '', description: '' });
+  const [moduleForm, setModuleForm] = useState<CreateModuleRequest>({ code: '', name: '', description: '', type: TABS[0].type });
   const [sectionForm, setSectionForm] = useState<CreateSectionRequest>({ title: '', description: '', helpText: '', helpUrl: '' });
 
   const { data: modules = [] } = useQuery({
@@ -97,6 +109,17 @@ const DataCollectionFormModules = (): React.ReactElement => {
     },
     onError: (error: any) => {
       setNotification({ type: 'important', title: 'Error', message: error.response?.data || 'Failed to update module' });
+    },
+  });
+
+  const changeModuleTypeMutation = useMutation({
+    mutationFn: ({ moduleId, request }: { moduleId: string; request: ChangeModuleTypeRequest }) =>
+      changeModuleType(moduleId, request),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['dataCollectionFormModules'] });
+    },
+    onError: (error: any) => {
+      setNotification({ type: 'important', title: 'Error', message: error.response?.data || 'Failed to change module type' });
     },
   });
 
@@ -159,8 +182,14 @@ const DataCollectionFormModules = (): React.ReactElement => {
     },
   });
 
-  const resetModuleForm = () => setModuleForm({ code: '', name: '', description: '' });
+  const resetModuleForm = (type: FormModuleType = TABS[tabIndex].type) => setModuleForm({ code: '', name: '', description: '', type });
   const resetSectionForm = () => setSectionForm({ title: '', description: '', helpText: '', helpUrl: '' });
+
+  const handleTabClick = (e: React.MouseEvent<HTMLAnchorElement>, index: number) => {
+    e.preventDefault();
+    setTabIndex(index);
+    setSelectedModuleId(null);
+  };
 
   const handleOpenCreateModule = () => {
     setEditingModule(null);
@@ -170,7 +199,7 @@ const DataCollectionFormModules = (): React.ReactElement => {
 
   const handleOpenEditModule = (module: FormModule) => {
     setEditingModule(module);
-    setModuleForm({ code: module.code, name: module.name, description: module.description || '' });
+    setModuleForm({ code: module.code, name: module.name, description: module.description || '', type: module.type });
     setModuleDialogOpen(true);
   };
 
@@ -193,6 +222,9 @@ const DataCollectionFormModules = (): React.ReactElement => {
 
   const handleSaveModule = () => {
     if (editingModule) {
+      if (moduleForm.type !== editingModule.type) {
+        changeModuleTypeMutation.mutate({ moduleId: editingModule.id, request: { type: moduleForm.type } });
+      }
       updateModuleMutation.mutate({
         moduleId: editingModule.id,
         request: {
@@ -206,6 +238,7 @@ const DataCollectionFormModules = (): React.ReactElement => {
         code: moduleForm.code,
         name: moduleForm.name,
         description: moduleForm.description || undefined,
+        type: moduleForm.type,
       });
     }
   };
@@ -241,27 +274,11 @@ const DataCollectionFormModules = (): React.ReactElement => {
     }
   };
 
-  return (
-    <SettingsLayout
-      breadcrumbs={[
-        { label: 'Home', link: '/admin/home' },
-        { label: 'Settings', link: '/admin/settings' },
-        { label: 'Data Collection Form', link: '/admin/configuration/data-collection-form-questions' },
-      ]}>
-      <PageHeaderContainer>
-        <PageTitle>Form Modules</PageTitle>
-        <PageHeaderActions>
-          <Button onClick={handleOpenCreateModule}>Add Module</Button>
-        </PageHeaderActions>
-      </PageHeaderContainer>
-
-      <Box sx={{ mb: 3 }}>
-        <Typography variant="body1" sx={{ mb: 2 }}>
-          Manage form modules and their sections. Click on a module to view and manage its sections.
-        </Typography>
-      </Box>
-
-      {[...modules].sort((a, b) => a.sectionNumber - b.sectionNumber).map((module) => (
+  const renderModuleList = (type: string) =>
+    [...modules]
+      .filter((m) => m.type === type)
+      .sort((a, b) => a.sectionNumber - b.sectionNumber)
+      .map((module) => (
         <Accordion
           key={module.id}
           expanded={selectedModuleId === module.id}
@@ -272,7 +289,7 @@ const DataCollectionFormModules = (): React.ReactElement => {
               <Chip label={module.code} size="small" variant="outlined" />
               {!module.isActive && <Chip label="Inactive" size="small" color="error" />}
             </Box>
-            <Box sx={{ display: 'flex', gap: 1 }} onClick={(e) => e.stopPropagation()}>
+            <Box sx={{ display: 'flex', gap: 1 }} onClick={(e: React.MouseEvent) => e.stopPropagation()}>
               <IconButton size="small" onClick={() => handleOpenEditModule(module)} aria-label={`Edit ${module.name} module`}>
                 <EditIcon fontSize="small" />
               </IconButton>
@@ -351,13 +368,55 @@ const DataCollectionFormModules = (): React.ReactElement => {
             <Box sx={{ mt: 2 }}>
               <Button
                 variant="secondary"
-                onClick={() => navigate(`/admin/configuration/data-collection-form-questions?moduleId=${module.id}`)}>
+                onClick={() => {
+                  const basePath =
+                    module.type === 'delivery-plan'
+                      ? '/admin/configuration/delivery-plan-form-questions'
+                      : '/admin/configuration/data-collection-form-questions';
+                  navigate(`${basePath}?moduleId=${module.id}`);
+                }}>
                 Manage Questions
               </Button>
             </Box>
           </AccordionDetails>
         </Accordion>
-      ))}
+      ));
+
+  return (
+    <SettingsLayout
+      breadcrumbs={[
+        { label: 'Home', link: '/admin/home' },
+        { label: 'Settings', link: '/admin/settings' },
+        { label: 'Data Collection Form', link: '/admin/configuration/data-collection-form-questions' },
+      ]}>
+      <PageHeaderContainer>
+        <PageTitle>Form Modules</PageTitle>
+        <PageHeaderActions>
+          <Button onClick={handleOpenCreateModule}>Add Module</Button>
+        </PageHeaderActions>
+      </PageHeaderContainer>
+
+      <Typography variant="body1" sx={{ mb: 2 }}>
+        Manage form modules and their sections. Click on a module to view and manage its sections.
+      </Typography>
+
+      <div className="govuk-tabs" data-module="govuk-tabs">
+        <h2 className="govuk-tabs__title">Module types</h2>
+        <ul className="govuk-tabs__list">
+          {TABS.map(({ label, href }, index) => (
+            <li key={href} className={`govuk-tabs__list-item${tabIndex === index ? ' govuk-tabs__list-item--selected' : ''}`}>
+              <a className="govuk-tabs__tab" href={href} onClick={(e) => handleTabClick(e, index)}>
+                {label}
+              </a>
+            </li>
+          ))}
+        </ul>
+        {TABS.map(({ type, href }, index) => (
+          <div key={href} className={`govuk-tabs__panel${tabIndex !== index ? ' govuk-tabs__panel--hidden' : ''}`} id={href.slice(1)}>
+            {renderModuleList(type)}
+          </div>
+        ))}
+      </div>
 
       {/* Module Dialog */}
       <Dialog open={moduleDialogOpen} onClose={() => setModuleDialogOpen(false)} maxWidth="sm" fullWidth>
@@ -373,6 +432,20 @@ const DataCollectionFormModules = (): React.ReactElement => {
               helperText="Unique identifier (e.g., 'my-module')"
               sx={{ mb: 2 }}
             />
+            <FormControl fullWidth sx={{ mb: 2 }}>
+              <InputLabel id="module-type-label">Type</InputLabel>
+              <Select
+                labelId="module-type-label"
+                label="Type"
+                value={moduleForm.type}
+                onChange={(e) => setModuleForm({ ...moduleForm, type: e.target.value as FormModuleType })}>
+                {formModuleTypeOptions.map((option) => (
+                  <MenuItem key={option.value} value={option.value}>
+                    {option.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
             <TextField
               fullWidth
               label="Name"
@@ -451,8 +524,7 @@ const DataCollectionFormModules = (): React.ReactElement => {
         <DialogTitle>Delete Module</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            Are you sure you want to delete the module "{moduleToDelete?.name}"? This action cannot be undone.
-            Note: You cannot delete a module that has questions.
+            Are you sure you want to delete the module "{moduleToDelete?.name}"? This action cannot be undone. Note: You cannot delete a module that has questions.
           </DialogContentText>
         </DialogContent>
         <DialogActions>
@@ -470,8 +542,7 @@ const DataCollectionFormModules = (): React.ReactElement => {
         <DialogTitle>Delete Section</DialogTitle>
         <DialogContent>
           <DialogContentText>
-            Are you sure you want to delete the section "{sectionToDelete?.title}"? This action cannot be undone.
-            Note: You cannot delete a section that has questions assigned to it.
+            Are you sure you want to delete the section "{sectionToDelete?.title}"? This action cannot be undone. Note: You cannot delete a section that has questions assigned to it.
           </DialogContentText>
         </DialogContent>
         <DialogActions>

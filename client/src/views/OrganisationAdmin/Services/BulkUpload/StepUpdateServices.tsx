@@ -1,10 +1,11 @@
 import React, { useState, useMemo } from 'react';
-import { ServiceUpdateSelection, BulkUpdateServicesResult } from './types';
+import { ServiceUpdateSelection } from './types';
+import { BulkUploadServicesResultDto } from '../../../../components/Global/Services/mutations';
 import './styles.css';
 
 interface StepUpdateServicesProps {
   selections: ServiceUpdateSelection[];
-  updateResult: BulkUpdateServicesResult | null;
+  updateResult: BulkUploadServicesResultDto | null;
   isLoading: boolean;
   onToggleSelection: (serviceName: string, updateFromFile: boolean) => void;
   onBack: () => void;

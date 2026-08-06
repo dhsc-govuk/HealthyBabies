@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { Details } from 'govuk-react';
 import GovUKButton from '../GovUKButton';
 import GovUKBackLink from '../GovUKBackLink';
@@ -42,9 +42,11 @@ const GovUKStepper = ({
   onCancel,
 }: GovUKStepperProps): React.ReactElement => {
   const isLastStep = step === stepperSteps.length - 1;
+  const stepCaptionRef = useRef<HTMLParagraphElement>(null);
 
   useEffect(() => {
     window.scrollTo(0, 0);
+    stepCaptionRef.current?.focus({ preventScroll: true });
   }, [step]);
 
   const handleNext = () => {
@@ -64,10 +66,14 @@ const GovUKStepper = ({
 
   return (
     <div>
-      {step > 0 && <GovUKBackLink onClick={handleBack}>Back</GovUKBackLink>}
+        {step > 0 ? (
+        <GovUKBackLink onClick={handleBack}>Back</GovUKBackLink>
+      ) : (
+        onCancel && <GovUKBackLink onClick={onCancel}>Back</GovUKBackLink>
+      )}
 
       <div>
-        <p className="govuk-caption-l">
+        <p ref={stepCaptionRef} tabIndex={-1} className="govuk-caption-l" style={{ outline: 'none' }}>
           Step {step + 1} of {stepperSteps.length}
         </p>
         {title && <h1 className="govuk-heading-l">{title}</h1>}
@@ -75,13 +81,9 @@ const GovUKStepper = ({
         {helpSummary && helpContent && <Details summary={helpSummary}>{helpContent}</Details>}
       </div>
 
-      <hr className="govuk-section-break govuk-section-break--l govuk-section-break--visible" />
-
       <div>{stepperSteps[step].component}</div>
 
-      <hr className="govuk-section-break govuk-section-break--l govuk-section-break--visible" />
-
-      <div className="govuk-button-group">
+      <div className="govuk-button-group govuk-!-margin-top-6">
         <GovUKButton className="govuk-button" disabled={isNextDisabled} onClick={handleNext}>
           {isLastStep ? completeLabel : 'Continue'}
         </GovUKButton>

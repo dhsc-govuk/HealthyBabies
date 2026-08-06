@@ -20,9 +20,13 @@ public class ProcessBulkUploadCommandHandler(
     PermissionsService permissionsService,
     IDataCollectionFormModuleQueries formModuleQueries,
     IServiceQueries serviceQueries,
-    IFormSubmissionRepository formSubmissionRepository)
+    IFormSubmissionRepository formSubmissionRepository,
+    IDataCollectionSubmissionQueries dataCollectionSubmissionQueries,
+    IDataCollectionQueries dataCollectionQueries)
     : IRequestHandler<ProcessBulkUploadCommand, Either<string, BulkUploadResultDto>>
 {
+    private const string LockedMessage = "This quarter can no longer be edited - it has either already been submitted or its submission window has closed. Reopen it to make changes.";
+
     public async Task<Either<string, BulkUploadResultDto>> Handle(
         ProcessBulkUploadCommand request,
         CancellationToken cancellationToken)
@@ -45,6 +49,18 @@ public class ProcessBulkUploadCommandHandler(
             () => throw new InvalidOperationException("Organisation ID required"));
         var dcId = new DataCollectionId(request.SubmissionId);
 
+        var dataCollectionOption = await dataCollectionQueries.GetByIdWithLocalAuthoritiesAsync(dcId, cancellationToken);
+        var isClosed = dataCollectionOption.Match(dc => dc.IsClosedFor(orgId), () => false);
+
+        var existingSubmission = await dataCollectionSubmissionQueries.GetByDataCollectionAndOrganisationAsync(
+            dcId, orgId, cancellationToken);
+        var isSubmitted = existingSubmission.Match(s => s.IsLockedForEditing(), () => false);
+
+        if (isClosed || isSubmitted)
+        {
+            return LockedMessage;
+        }
+
         var formModuleOption = await formModuleQueries.GetByIdWithFieldsAsync(modId, cancellationToken);
         if (formModuleOption.IsNone)
         {
@@ -58,7 +74,12 @@ public class ProcessBulkUploadCommandHandler(
             .ToList();
 
         var services = await serviceQueries.GetByOrganisationIdAsync(orgId, cancellationToken);
-        var serviceMap = services.ToDictionary(s => s.Name.ToLowerInvariant(), s => s);
+
+        // Service names aren't unique in the DB, so group rather than ToDictionary (which throws on a
+        // duplicate key) — when two services share a name, resolve the ambiguity deterministically.
+        var serviceMap = services
+            .GroupBy(s => s.Name, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.First(), StringComparer.OrdinalIgnoreCase);
 
         var rows = await BulkUploadCsvHelper.ParseCsvAsync(request.FileStream, cancellationToken);
 

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { Dialog, DialogTitle, DialogContent, DialogActions, IconButton } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import CellEditor from './CellEditor';
@@ -87,6 +87,7 @@ const FullScreenTableModal: React.FC<FullScreenTableModalProps> = ({
   onClose,
 }) => {
   const [editingCell, setEditingCell] = useState<{ rowIndex: number; cellIndex: number } | null>(null);
+  const activeCellRef = useRef<HTMLTableCellElement | null>(null);
 
   // Calculate all validation errors including required field errors
   const allErrors = useMemo(() => {
@@ -166,8 +167,9 @@ const FullScreenTableModal: React.FC<FullScreenTableModalProps> = ({
     return allErrors.find((e) => e.rowIndex === rowIndex && e.cellIndex === cellIndex) as CellError | undefined;
   };
 
-  const handleCellClick = (rowIndex: number, cellIndex: number) => {
+  const handleCellActivate = (rowIndex: number, cellIndex: number, cellEl: HTMLTableCellElement) => {
     if (!editable) return;
+    activeCellRef.current = cellEl;
     setEditingCell({ rowIndex, cellIndex });
   };
 
@@ -175,11 +177,13 @@ const FullScreenTableModal: React.FC<FullScreenTableModalProps> = ({
     if (editingCell && onCellEdit) {
       onCellEdit(editingCell.rowIndex, editingCell.cellIndex, value);
       setEditingCell(null);
+      activeCellRef.current?.focus();
     }
   };
 
   const handleCellCancel = () => {
     setEditingCell(null);
+    activeCellRef.current?.focus();
   };
 
   return (
@@ -200,8 +204,8 @@ const FullScreenTableModal: React.FC<FullScreenTableModalProps> = ({
       </DialogTitle>
 
       <DialogContent sx={{ padding: 0 }}>
-        <div style={{ overflow: 'auto', height: '100%' }}>
-          <table className="bulk-upload-table" style={{ minWidth: '100%' }}>
+        <div style={{ overflow: 'auto', height: '100%' }} tabIndex={0}>
+          <table className="bulk-upload-table" role="grid" style={{ minWidth: '100%' }}>
             <thead>
               <tr>
                 <th className="bulk-upload-table__row-number" style={{ position: 'sticky', left: 0 }}>
@@ -281,7 +285,7 @@ const FullScreenTableModal: React.FC<FullScreenTableModalProps> = ({
 
                     if (isEditing) {
                       return (
-                        <td key={cellIndex} className="bulk-upload-table__cell--editing">
+                        <td key={cellIndex} className="bulk-upload-table__cell--editing" role="gridcell">
                           <CellEditor
                             value={cell}
                             error={effectiveError}
@@ -310,11 +314,22 @@ const FullScreenTableModal: React.FC<FullScreenTableModalProps> = ({
                     return (
                       <td
                         key={cellIndex}
+                        role="gridcell"
+                        tabIndex={editable ? 0 : undefined}
                         className={cellClassName}
-                        onClick={() => handleCellClick(rowIndex, cellIndex)}
-                        title={effectiveError || (showAsRequired ? 'This field is required when parent field is selected' : undefined)}
+                        aria-invalid={hasError}
+                        onClick={(e) => handleCellActivate(rowIndex, cellIndex, e.currentTarget)}
+                        onKeyDown={(e) => {
+                          if (editable && (e.key === 'Enter' || e.key === ' ')) {
+                            e.preventDefault();
+                            handleCellActivate(rowIndex, cellIndex, e.currentTarget);
+                          }
+                        }}
                       >
                         {displayValue || ''}
+                        {hasError && effectiveError && (
+                          <span className="govuk-visually-hidden"> Error: {effectiveError}</span>
+                        )}
                       </td>
                     );
                   })}

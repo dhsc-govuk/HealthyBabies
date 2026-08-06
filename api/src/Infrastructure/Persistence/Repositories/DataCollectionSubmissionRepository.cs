@@ -45,6 +45,8 @@ public class DataCollectionSubmissionRepository(ApplicationDbContext dbContext)
             .Include(x => x.DataCollection)
                 .ThenInclude(dc => dc!.FormModuleAssignments)
                     .ThenInclude(fma => fma.FormModule)
+            .Include(x => x.DataCollection)
+                .ThenInclude(dc => dc!.LocalAuthorities)
             .FirstOrDefaultAsync(
                 x => x.DataCollectionId == dataCollectionId && x.OrganisationId == organisationId,
                 cancellationToken);

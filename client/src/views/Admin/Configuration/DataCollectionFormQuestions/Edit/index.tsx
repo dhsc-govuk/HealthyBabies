@@ -7,8 +7,9 @@ import useErrorSummaryFocus from '../../../../../hooks/useErrorSummaryFocus';
 import { SettingsLayout } from '../../../../../layouts';
 import { PageHeaderContainer, PageTitle } from '../../../../../styles/govuk-global';
 import QuestionForm from '../Common/QuestionForm';
+import { getConditionFieldKeys } from '../Common/ConditionalRulesBuilder';
 import { questionFormReducer, QuestionFormAction } from '../Common/reducer';
-import { initialFormState, requiresOptions, ValidationErrors, FormSection, QuestionFormState, FormField } from '../Common/types';
+import { initialFormState, requiresOptions, validationMessages, ValidationErrors, FormSection, QuestionFormState, FormField } from '../Common/types';
 import { getAllModules } from '../List/queries';
 import { getFormFieldById } from './queries';
 import { updateFormField, UpdateFormFieldRequest } from './mutations';
@@ -16,7 +17,6 @@ import axios from 'axios';
 import usePageTitle from '../../../../../hooks/usePageTitle';
 
 const DataCollectionFormQuestionsEdit = (): React.ReactElement => {
-  usePageTitle('Edit question');
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { setNotification } = useGovUKNotification();
@@ -25,20 +25,23 @@ const DataCollectionFormQuestionsEdit = (): React.ReactElement => {
     fieldKey: false,
     label: false,
     options: false,
+    conditionalRules: false,
   });
   const [submitAttempts, setSubmitAttempts] = useState(0);
   useErrorSummaryFocus(
     submitAttempts,
     (Object.keys(errors) as Array<keyof typeof errors>).some((k) => errors[k])
   );
+  usePageTitle('Edit question', Object.values(errors).some(Boolean));
   const [allSections, setAllSections] = useState<FormSection[]>([]);
   const [availableFields, setAvailableFields] = useState<FormField[]>([]);
   const [initialized, setInitialized] = useState(false);
 
-  const { data: modules = [], isLoading: modulesLoading } = useQuery({
+  const { data: allModules = [], isLoading: modulesLoading } = useQuery({
     queryKey: ['dataCollectionFormModules'],
     queryFn: getAllModules,
   });
+  const modules = allModules.filter((m) => m.type === 'management-information');
 
   const { data: field, isLoading: fieldLoading } = useQuery({
     queryKey: ['formField', id],
@@ -70,6 +73,8 @@ const DataCollectionFormQuestionsEdit = (): React.ReactElement => {
           label: opt.label,
           displayOrder: opt.displayOrder,
           isDefault: opt.isDefault,
+          // Existing options: value is locked and must never change on relabel.
+          isPersisted: true,
         })),
       };
       dispatch({ type: QuestionFormAction.INIT, value: state });
@@ -104,15 +109,27 @@ const DataCollectionFormQuestionsEdit = (): React.ReactElement => {
   });
 
   const validateForm = useCallback((): boolean => {
+    const conditionFieldKeys = getConditionFieldKeys(formState.conditionalRules);
+    const hasDuplicateCondition = new Set(conditionFieldKeys).size !== conditionFieldKeys.length;
+    const forwardReferencedKey = conditionFieldKeys.find((fk) => {
+      const referenced = availableFields.find((f) => f.fieldKey === fk);
+      return referenced && referenced.displayOrder > formState.displayOrder;
+    });
+
     const newErrors: ValidationErrors = {
       fieldKey: false,
       label: !formState.label ? 'Label is required' : false,
       options: requiresOptions(formState.fieldType) && formState.options.length === 0 ? 'At least one option is required' : false,
+      conditionalRules: hasDuplicateCondition
+        ? validationMessages.conditionalRulesDuplicate
+        : forwardReferencedKey
+          ? validationMessages.conditionalRulesForwardRef
+          : false,
     };
     setErrors(newErrors);
     setSubmitAttempts((n) => n + 1);
-    return !newErrors.label && !newErrors.options;
-  }, [formState]);
+    return !newErrors.label && !newErrors.options && !newErrors.conditionalRules;
+  }, [formState, availableFields]);
 
   const handleSubmit = useCallback(() => {
     if (!validateForm()) return;

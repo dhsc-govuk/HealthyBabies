@@ -11,4 +11,5 @@ public interface IDataCollectionQueries
     Task<Option<DataCollection>> GetByIdAsync(DataCollectionId id, CancellationToken cancellationToken = default);
     Task<Option<DataCollection>> GetByIdWithLocalAuthoritiesAsync(DataCollectionId id, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<DataCollection>> GetByOrganisationIdAsync(OrganisationId organisationId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<DataCollection>> GetByOrganisationIdAndTypeAsync(OrganisationId organisationId, DataCollectionType type, CancellationToken cancellationToken = default);
 }

@@ -76,6 +76,7 @@ public class LocationRepository(ApplicationDbContext dbContext)
     public async Task<Option<Location>> FindByNameAsync(string name, OrganisationId organisationId, CancellationToken cancellationToken)
     {
         var entity = await Context.Locations
+            .Include(x => x.Answers)
             .FirstOrDefaultAsync(x => x.Name == name && x.OrganisationId == organisationId, cancellationToken);
         return entity ?? Option<Location>.None;
     }

@@ -20,9 +20,16 @@ export interface SiteFormQuestionDto {
   helpText?: string;
   conditionalQuestionCode?: string;
   conditionalValue?: string;
+  conditionalRules?: string | null;
   isActive: boolean;
+  dateValidationRule?: string | null;
   options: SiteFormQuestionOptionDto[];
 }
+
+export const DateValidationRule = {
+  NotInPast: 'not_in_past',
+  NotInFuture: 'not_in_future',
+} as const;
 
 export enum SiteFormQuestionType {
   Text = 0,

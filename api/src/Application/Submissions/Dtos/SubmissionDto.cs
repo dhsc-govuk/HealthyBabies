@@ -7,7 +7,8 @@ public record SubmissionDto(
     DateTime StartDate,
     DateTime EndDate,
     string Status,
-    int DaysRemaining);
+    int DaysRemaining,
+    bool IsWindowClosed);
 
 public record SubmissionDetailDto(
     Guid Id,
@@ -17,6 +18,7 @@ public record SubmissionDetailDto(
     DateTime EndDate,
     string Status,
     int DaysRemaining,
+    bool IsWindowClosed,
     IReadOnlyList<SubmissionFormModuleDto> FormModules);
 
 public record SubmissionFormModuleDto(
@@ -26,6 +28,7 @@ public record SubmissionFormModuleDto(
     string Name,
     string? Description,
     string Status,
+    bool AllowsMultipleActivities,
     IReadOnlyList<SubmissionSectionDto> Sections);
 
 public record SubmissionSectionDto(
@@ -53,6 +56,7 @@ public record SectionFieldDto(
     bool IsRequired,
     int DisplayOrder,
     string? Value,
+    string? DisplayValue,
     IReadOnlyList<SectionFieldOptionDto> Options);
 
 public record SectionFieldOptionDto(
@@ -77,6 +81,7 @@ public record FormModuleDetailDto(
     DateTime EndDate,
     int CurrentStep,
     int TotalSteps,
+    bool AllowsMultipleActivities,
     IReadOnlyList<FormModuleSectionDto> Sections,
     IReadOnlyList<FormModuleFieldDto> Fields);
 
@@ -98,6 +103,7 @@ public record FormModuleFieldDto(
     int DisplayOrder,
     int? StepNumber,
     string? Value,
+    string? DisplayValue,
     string? ConditionalRules,
     string? Configuration,
     string? Placeholder,
@@ -138,7 +144,8 @@ public record ServiceFormDetailDto(
     Guid FormModuleId,
     string Status,
     IReadOnlyList<FormModuleSectionDto> Sections,
-    IReadOnlyList<FormModuleFieldDto> Fields);
+    IReadOnlyList<FormModuleFieldDto> Fields,
+    IReadOnlyDictionary<string, string> ServiceAnswers);
 
 public record SaveServiceFormRequest(
     Dictionary<string, string?> FieldValues,
@@ -171,12 +178,11 @@ public record WiderServiceCategoryFormDto(
     string Status,
     string StartDate,
     string EndDate,
-    int? UserCount,
-    string Label,
-    string? HelpText);
+    IReadOnlyList<FormModuleSectionDto> Sections,
+    IReadOnlyList<FormModuleFieldDto> Fields);
 
 public record SaveWiderServiceCategoryFormRequest(
-    int? UserCount,
+    Dictionary<string, string?> FieldValues,
     bool MarkComplete);
 
 public record OutcomeScoresModuleDetailDto(
@@ -231,6 +237,44 @@ public record SaveOutcomeScoreFormRequest(
 public record CreateOutcomeScoreRecordRequest(
     Guid? ServiceId);
 
+// Activity Module DTOs
+public record ActivitiesModuleDetailDto(
+    Guid Id,
+    Guid SubmissionId,
+    string SubmissionName,
+    string Code,
+    int SectionNumber,
+    string Name,
+    string? Description,
+    string Status,
+    bool AllowsMultipleActivities,
+    IReadOnlyList<ActivityRecordDto> Activities);
+
+public record ActivityRecordDto(
+    Guid ActivityId,
+    string ActivityName,
+    string Status,
+    DateTime? LastModified);
+
+public record ActivityFormDetailDto(
+    Guid ActivityId,
+    Guid SubmissionId,
+    string SubmissionName,
+    Guid FormModuleId,
+    string ModuleName,
+    string ModuleCode,
+    int SectionNumber,
+    string ActivityName,
+    string Status,
+    IReadOnlyList<FormModuleSectionDto> Sections,
+    IReadOnlyList<FormModuleFieldDto> Fields);
+
+public record CreateActivityRequest;
+
+public record SaveActivityFormRequest(
+    Dictionary<string, string?> FieldValues,
+    bool MarkComplete);
+
 // Bulk Upload DTOs
 public record BulkUploadValidationResultDto(
     bool IsValid,
@@ -239,7 +283,8 @@ public record BulkUploadValidationResultDto(
     int InvalidRows,
     IReadOnlyList<BulkUploadRowValidationDto> RowValidations,
     IReadOnlyList<BulkUploadFieldMetadataDto> FieldMetadata,
-    Guid StagingId);
+    Guid StagingId,
+    string? ModuleError = null);
 
 public record BulkUploadRowValidationDto(
     int RowNumber,
@@ -279,10 +324,37 @@ public record BulkUploadRowResultDto(
 
 public record ProcessStagedBulkUploadRequestDto(
     Guid StagingId,
-    IReadOnlyList<string> SelectedServiceNames,
+    IReadOnlyList<int> SelectedRowIndices,
     IReadOnlyList<BulkUploadCellEditDto> CellEdits);
 
 public record BulkUploadCellEditDto(
     int RowIndex,
     int ColumnIndex,
     string Value);
+
+public record CheckOutcomeScoreDuplicatesRequestDto(IReadOnlyList<OutcomeScoreRowCheckDto> Rows);
+
+public record OutcomeScoreRowCheckDto(
+    int RowIndex,
+    string ServiceName,
+    IReadOnlyList<OutcomeScoreFieldValueCheckDto> FieldValues);
+
+public record OutcomeScoreFieldValueCheckDto(string FieldKey, string Value);
+
+public record OutcomeScoreDuplicateCheckDto(int RowIndex, string ServiceName, bool HasExistingData);
+
+public record CheckServiceUserDuplicatesRequestDto(IReadOnlyList<ServiceUserRowCheckDto> Rows);
+
+public record ServiceUserRowCheckDto(int RowIndex, string ServiceName);
+
+public record ServiceUserDuplicateCheckDto(int RowIndex, string ServiceName, bool HasExistingData);
+
+// Admin data-collection submission integrity DTOs (BLUM-7047)
+public record SubmissionIntegrityDto(
+    bool IsCorrupted,
+    int OrphanedSubmittedRecordCount,
+    IReadOnlyList<Guid> OrphanedFormSubmissionIds);
+
+public record ResetCorruptedSubmissionResultDto(
+    bool WasCorrupted,
+    int RecordsReset);

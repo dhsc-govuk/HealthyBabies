@@ -5,6 +5,7 @@ import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
 import { Button, GovUKFieldset } from '../../../../../components/GovUKComponents';
 import { SiteFormQuestionOption } from './types';
 import { ActionType } from './reducer';
+import { uniqueSlug } from '../../../../../helpers/slug';
 
 interface Props {
   options: SiteFormQuestionOption[];
@@ -19,7 +20,7 @@ const OptionsManager = ({ options, dispatch, error }: Props): React.ReactElement
   const handleAddOption = useCallback(() => {
     dispatch({
       type: ActionType.ADD_OPTION,
-      payload: { value: '', label: '', displayOrder: options.length + 1 },
+      payload: { value: '', label: '', displayOrder: options.length + 1, isPersisted: false },
     });
   }, [dispatch, options.length]);
 
@@ -32,7 +33,22 @@ const OptionsManager = ({ options, dispatch, error }: Props): React.ReactElement
 
   const handleUpdateOption = useCallback(
     (index: number, field: 'value' | 'label', value: string) => {
-      const updatedOption = { ...options[index], [field]: value };
+      const current = options[index];
+      // Value is system-owned and read-only; only label edits are accepted here.
+      if (field !== 'label') {
+        return;
+      }
+      // Persisted options keep their locked value; new options auto-generate it from the label.
+      const updatedOption: SiteFormQuestionOption = current.isPersisted
+        ? { ...current, label: value }
+        : {
+            ...current,
+            label: value,
+            value: uniqueSlug(
+              value,
+              options.filter((_, i) => i !== index).map((o) => o.value)
+            ),
+          };
       dispatch({ type: ActionType.UPDATE_OPTION, payload: { index, option: updatedOption } });
     },
     [dispatch, options]
@@ -115,9 +131,10 @@ const OptionsManager = ({ options, dispatch, error }: Props): React.ReactElement
               <GovUKFieldset.Input
                 id={`option-value-${index}`}
                 name={`option-value-${index}`}
-                label="Value"
+                label="Value (auto-generated)"
+                hint={option.isPersisted ? 'Locked to preserve existing answers' : 'Generated from the label'}
                 value={option.value}
-                onChange={(e) => handleUpdateOption(index, 'value', e.target.value)}
+                disabled
               />
             </Box>
             <Box sx={{ flex: 1, '& .nhsuk-form-group': { mb: 0 } }}>
@@ -125,6 +142,7 @@ const OptionsManager = ({ options, dispatch, error }: Props): React.ReactElement
                 id={`option-label-${index}`}
                 name={`option-label-${index}`}
                 label="Label"
+                hint="Shown to users on the form"
                 value={option.label}
                 onChange={(e) => handleUpdateOption(index, 'label', e.target.value)}
               />

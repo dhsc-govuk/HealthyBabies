@@ -32,6 +32,14 @@ public class DataCollectionsConfiguration : IEntityTypeConfiguration<DataCollect
             .HasDefaultValue(false)
             .IsRequired();
 
+        builder.Property(x => x.Type)
+            .HasConversion(
+                x => x.Value,
+                x => DataCollectionType.From(x))
+            .HasMaxLength(50)
+            .HasDefaultValueSql($"'{DataCollectionTypeConstants.DeliveryPlan}'")
+            .IsRequired();
+
         builder.Property(x => x.CreatedAt)
             .HasConversion(new DateTimeUtcConverter())
             .HasDefaultValueSql("timezone('utc', now())");

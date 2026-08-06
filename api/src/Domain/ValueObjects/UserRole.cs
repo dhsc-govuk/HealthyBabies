@@ -6,6 +6,7 @@ public static class Role
 {
     public const string Admin = "admin";
     public const string OrganisationAdmin = "organisation admin";
+    public const string DeliveryPlanLead = "delivery plan lead";
 }
 
 public class UserRole : ValueObject
@@ -31,6 +32,7 @@ public class UserRole : ValueObject
 
     public static UserRole Admin => new(Role.Admin);
     public static UserRole OrganisationAdmin => new(Role.OrganisationAdmin);
+    public static UserRole DeliveryPlanLead => new(Role.DeliveryPlanLead);
 
     public static implicit operator string(UserRole role)
     {
@@ -58,6 +60,7 @@ public class UserRole : ValueObject
         {
             yield return Admin;
             yield return OrganisationAdmin;
+            yield return DeliveryPlanLead;
         }
     }
 }

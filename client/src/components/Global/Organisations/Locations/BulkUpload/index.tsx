@@ -3,30 +3,15 @@ import { useMutation, useQuery } from 'react-query';
 import { usePapaParse } from 'react-papaparse';
 import { LoadingSpinner, useGovUKNotification } from '../../../../../components/GovUKComponents';
 import useErrorSummaryFocus from '../../../../../hooks/useErrorSummaryFocus';
-import {
-  getSiteFormQuestions,
-  siteFormQuestionsCacheKey,
-} from '../../../SiteForms';
-import {
-  downloadTemplate,
-  matchLocationsByName,
-  bulkUpdateLocations,
-  TemplateFormat,
-  getTemplateFileName,
-  getTemplateMimeType,
-} from './mutations';
+import useStepFocus from '../../../../../hooks/useStepFocus';
+import { getSiteFormQuestions, siteFormQuestionsCacheKey } from '../../../SiteForms';
+import { downloadTemplate, matchLocationsByName, validateBulkUpload, processStagedBulkUpload, TemplateFormat, getTemplateFileName, getTemplateMimeType } from './mutations';
 import { processError } from '../../../../../helpers/axiosErrorFallback';
 
-import {
-  BulkUploadState,
-  Delimiter,
-  RowData,
-  LocationUpdateSelection,
-  initialBulkUploadState,
-} from './types';
-import { BulkUpdateLocationsResult } from './mutations';
+import { BulkUploadState, Delimiter, RowData, LocationUpdateSelection, initialBulkUploadState, dataRowFileOffset } from './types';
+import { BulkUploadLocationsResultDto } from './mutations';
 import { bulkUploadReducer, BulkUploadActionType } from './reducer';
-import { validateAllRows, getValidRows, normalizeRowData } from './validation';
+import { validateAllRows, getValidRows } from './validation';
 import StepUpload from './StepUpload';
 import StepPreview from './StepPreview';
 import StepCheckData from './StepCheckData';
@@ -53,14 +38,12 @@ const BulkUploadComponent = ({ organisationId, handleFinish }: Props): React.Rea
   const { setNotification } = useGovUKNotification();
 
   const [state, dispatch] = useReducer(bulkUploadReducer, initialBulkUploadState);
+  const stepFocusRef = useStepFocus<HTMLDivElement>(state.currentStep);
   const [fullScreenOpen, setFullScreenOpen] = useState(false);
-  const [updateResult, setUpdateResult] = useState<BulkUpdateLocationsResult | null>(null);
+  const [updateResult, setUpdateResult] = useState<BulkUploadLocationsResultDto | null>(null);
   const [submitAttempts, setSubmitAttempts] = useState(0);
 
-  const totalRowErrors = useMemo(
-    () => state.rows.reduce((sum, row) => sum + row.errors.length, 0),
-    [state.rows]
-  );
+  const totalRowErrors = useMemo(() => state.rows.reduce((sum, row) => sum + row.errors.length, 0), [state.rows]);
   const hasCheckErrors = state.currentStep === 'check' && totalRowErrors > 0;
   useErrorSummaryFocus(submitAttempts, hasCheckErrors);
 
@@ -110,11 +93,20 @@ const BulkUploadComponent = ({ organisationId, handleFinish }: Props): React.Rea
     },
   });
 
-  // Bulk update mutation
-  const { mutateAsync: bulkUpdate, isLoading: updatingLocations } = useMutation({
-    mutationKey: ['bulk-update-locations'],
-    mutationFn: (request: { locations: { locationId?: string; name: string; answers: { questionCode: string; value?: string }[] }[] }) =>
-      bulkUpdateLocations(organisationId, request),
+  // Validate (zip-upload) mutation - parses and row-validates the file server-side, stages it for confirm
+  const { mutateAsync: validateUpload, isLoading: validatingUpload } = useMutation({
+    mutationKey: ['validate-locations-bulk-upload'],
+    mutationFn: (file: File) => validateBulkUpload(organisationId, file),
+    onError: (error) => {
+      processError(error, (e) => setNotification({ type: 'important', title: 'Error', message: e }));
+    },
+  });
+
+  // Confirm mutation - sends only the staging id, selected rows and cell edits, not the file
+  const { mutateAsync: confirmUpload, isLoading: updatingLocations } = useMutation({
+    mutationKey: ['process-staged-locations-bulk-upload'],
+    mutationFn: (request: { stagingId: string; selectedRowNumbers: number[]; cellEdits: typeof state.editedCells }) =>
+      processStagedBulkUpload(organisationId, request),
     onSuccess: (response) => {
       const data = response.data;
       if (data.errorCount === 0) {
@@ -246,21 +238,24 @@ const BulkUploadComponent = ({ organisationId, handleFinish }: Props): React.Rea
   }, [state.file, state.delimiter, parseCSV]);
 
   const handlePreviewContinue = useCallback(async () => {
+    if (!state.file) return;
     dispatch({ type: BulkUploadActionType.SET_LOADING, payload: true });
 
     try {
       // Get site names from rows
       const siteNames = state.rows.map((row) => row.data[PREDEFINED_NAME_CODE]).filter(Boolean);
 
-      // Match locations
-      const result = await matchLocations(siteNames);
-      const matchResults = result.data;
+      // Match locations and validate the zip-uploaded file server-side in parallel
+      const [matchResult, validationResult] = await Promise.all([matchLocations(siteNames), validateUpload(state.file)]);
+      const matchResults = matchResult.data;
 
       dispatch({ type: BulkUploadActionType.SET_MATCH_RESULTS, payload: matchResults });
+      dispatch({ type: BulkUploadActionType.SET_STAGING_ID, payload: validationResult.data.stagingId });
 
-      // Validate all rows
+      // Validate all rows client-side, then merge in server-detected errors (e.g. date-range, duplicate-in-file)
       const validatedRows = validateAllRows(state.rows, questions, matchResults);
       dispatch({ type: BulkUploadActionType.SET_ROWS, payload: validatedRows });
+      dispatch({ type: BulkUploadActionType.MERGE_ROW_VALIDATIONS, payload: { rowValidations: validationResult.data.rowValidations, questions } });
 
       goToStep('check');
     } catch (error) {
@@ -268,7 +263,7 @@ const BulkUploadComponent = ({ organisationId, handleFinish }: Props): React.Rea
     } finally {
       dispatch({ type: BulkUploadActionType.SET_LOADING, payload: false });
     }
-  }, [state.rows, questions, matchLocations, setNotification]);
+  }, [state.file, state.rows, questions, matchLocations, validateUpload, setNotification]);
 
   const handleCheckContinue = useCallback(async () => {
     dispatch({ type: BulkUploadActionType.SET_LOADING, payload: true });
@@ -313,31 +308,20 @@ const BulkUploadComponent = ({ organisationId, handleFinish }: Props): React.Rea
   }, [state.rows, questions, matchLocations, setNotification]);
 
   const handleSubmit = useCallback(async () => {
+    if (!state.stagingId) return;
     const locationsToUpdate = state.updateSelections.filter((s) => s.updateFromFile);
 
-    // Build request
-    const request = {
-      locations: locationsToUpdate.map((selection) => {
-        const row = state.rows.find(
-          (r) => r.data[PREDEFINED_NAME_CODE] === selection.siteName
-        );
+    const selectedRowNumbers = locationsToUpdate
+      .map((selection) => state.rows.find((r) => r.data[PREDEFINED_NAME_CODE] === selection.siteName))
+      .filter((row): row is RowData => !!row)
+      .map((row) => row.rowIndex + dataRowFileOffset);
 
-        // Normalize labels to values before submission
-        const normalizedData = row ? normalizeRowData(row.data, questions) : {};
-
-        return {
-          locationId: selection.locationId,
-          name: normalizedData[PREDEFINED_NAME_CODE] || selection.siteName,
-          answers: state.headers.map((code) => ({
-            questionCode: code,
-            value: normalizedData[code] || undefined,
-          })),
-        };
-      }),
-    };
-
-    await bulkUpdate(request);
-  }, [state.updateSelections, state.rows, state.headers, questions, bulkUpdate]);
+    await confirmUpload({
+      stagingId: state.stagingId,
+      selectedRowNumbers,
+      cellEdits: state.editedCells,
+    });
+  }, [state.stagingId, state.updateSelections, state.rows, state.editedCells, confirmUpload]);
 
   const handleFinishClick = useCallback(() => {
     // When finishing from error results page, pass notification about partial success
@@ -345,23 +329,20 @@ const BulkUploadComponent = ({ organisationId, handleFinish }: Props): React.Rea
       handleFinish({
         type: 'important',
         title: 'Delivery location update completed with errors',
-        message: `${updateResult.successCount} site${updateResult.successCount !== 1 ? 's' : ''} updated successfully. ${updateResult.errorCount} site${updateResult.errorCount !== 1 ? 's' : ''} failed to update.`,
+        message: `${updateResult.successCount} site${updateResult.successCount !== 1 ? 's' : ''} updated successfully. ${updateResult.errorCount} site${
+          updateResult.errorCount !== 1 ? 's' : ''
+        } failed to update.`,
       });
     } else {
       handleFinish();
     }
   }, [handleFinish, updateResult]);
 
-  const isLoading =
-    questionsLoading ||
-    downloadingTemplate ||
-    matchingLocations ||
-    updatingLocations ||
-    state.isLoading;
+  const isLoading = questionsLoading || downloadingTemplate || matchingLocations || validatingUpload || updatingLocations || state.isLoading;
 
   return (
     <>
-      <div style={{ maxWidth: '960px', margin: '0 auto', paddingBottom: '40px' }}>
+      <div ref={stepFocusRef} style={{ maxWidth: '960px', margin: '0 auto', paddingBottom: '40px' }}>
         {/* Step content */}
         {state.currentStep === 'upload' && (
           <StepUpload

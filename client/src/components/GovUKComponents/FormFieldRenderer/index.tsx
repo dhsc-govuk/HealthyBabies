@@ -36,6 +36,26 @@ const parseConfiguration = (configJson: string | null | undefined): FieldConfigu
   }
 };
 
+// Evaluates simple arithmetic formulas like "DG09+DG11" or "DG11-(DG13+DG14)"
+// Field codes are substituted with their numeric values from allValues
+export const computeFormula = (formula: string, allValues: Record<string, string | string[] | null>): number | null => {
+  if (!formula) return null;
+  try {
+    // Replace field codes (uppercase letters + digits) with their values
+    const expression = formula.replace(/[A-Z]{1,4}\d+[a-z]*/g, (code) => {
+      const val = parseFloat((allValues[code] as string) || '0');
+      return isNaN(val) ? '0' : String(val);
+    });
+    // Only allow safe arithmetic characters
+    if (!/^[\d\s+\-*/.()]+$/.test(expression)) return null;
+    // eslint-disable-next-line no-new-func
+    const result = Function(`"use strict"; return (${expression})`)() as number;
+    return isNaN(result) ? null : result;
+  } catch {
+    return null;
+  }
+};
+
 const FormFieldRenderer: React.FC<FormFieldRendererProps> = ({
   field,
   value,
@@ -88,6 +108,7 @@ const FormFieldRenderer: React.FC<FormFieldRendererProps> = ({
             suffix={suffix}
             prefix={prefix}
             hint={field.helpText ?? undefined}
+            error={error}
             value={stringValue}
             width={config?.width as '5' | '10' | '20' || '5'}
             questionCode={showQuestionCode ? field.code : undefined}
@@ -102,6 +123,7 @@ const FormFieldRenderer: React.FC<FormFieldRendererProps> = ({
           label={field.label}
           labelSize="s"
           hint={field.helpText ?? undefined}
+          error={error}
           value={stringValue}
           questionCode={showQuestionCode ? field.code : undefined}
           onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleFieldChange(field.code, e.target.value)}
@@ -151,6 +173,7 @@ const FormFieldRenderer: React.FC<FormFieldRendererProps> = ({
           label={field.label}
           labelSize="s"
           hint={field.helpText ?? undefined}
+          error={error}
           value={stringValue}
           questionCode={showQuestionCode ? field.code : undefined}
           onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => handleFieldChange(field.code, e.target.value)}
@@ -214,24 +237,43 @@ const FormFieldRenderer: React.FC<FormFieldRendererProps> = ({
         const firstConfig = parseConfiguration(firstField.configuration);
         const groupLabel = firstConfig?.groupLabel || `Enter values for ${groupName}`;
         const groupHint = firstConfig?.groupHint;
-        
+
+        // Number fields (MI breakdowns e.g. ethnicity/sex/age) use compact table layout
+        if (groupFields.every((f) => f.fieldType.toLowerCase() === 'number')) {
+          return (
+            <GovUKGroupedInputs
+              key={groupName}
+              legend={groupLabel}
+              hint={groupHint}
+              questionCode={showQuestionCode ? groupName : undefined}
+              items={groupFields.map((f) => {
+                const fConfig = parseConfiguration(f.configuration);
+                return {
+                  code: f.code,
+                  label: f.label,
+                  value: (allValues[f.code] as string) ?? '',
+                  suffix: fConfig?.suffix,
+                };
+              })}
+              onChange={(code, val) => onChange(code, val)}
+            />
+          );
+        }
+
+        // All other types (currency, text, select, textarea, etc.) render full-width
         return (
-          <GovUKGroupedInputs
-            key={groupName}
-            legend={groupLabel}
-            hint={groupHint}
-            questionCode={groupName}
-            items={groupFields.map((f) => {
-              const fConfig = parseConfiguration(f.configuration);
-              return {
-                code: f.code,
-                label: f.label,
-                value: (allValues[f.code] as string) ?? '',
-                suffix: fConfig?.suffix,
-              };
-            })}
-            onChange={(code, val) => onChange(code, val)}
-          />
+          <div key={groupName}>
+            <div style={{ marginBottom: '8px' }}>
+              <p className="govuk-label govuk-label--s" style={{ margin: 0 }}>
+                {showQuestionCode && <span className="govuk-visually-hidden">{groupName}: </span>}
+                {groupLabel}
+              </p>
+            </div>
+            {groupHint && <div className="govuk-hint">{groupHint}</div>}
+            {groupFields.map((f) => (
+              <div key={f.id}>{renderInlineField(f)}</div>
+            ))}
+          </div>
         );
       };
 
@@ -242,6 +284,7 @@ const FormFieldRenderer: React.FC<FormFieldRendererProps> = ({
           legend={field.label}
           legendSize="s"
           hint={field.helpText ?? undefined}
+          error={error}
           size={config?.size}
           options={field.options.map((opt) => {
             // Find all inline fields for this option
@@ -355,6 +398,7 @@ const FormFieldRenderer: React.FC<FormFieldRendererProps> = ({
           legend={field.label}
           legendSize="s"
           hint={field.helpText ?? undefined}
+          error={error}
           size={config?.size}
           options={field.options.map((opt) => {
             // Find all inline fields for this option
@@ -404,6 +448,7 @@ const FormFieldRenderer: React.FC<FormFieldRendererProps> = ({
           label={field.label}
           labelSize="s"
           hint={field.helpText ?? undefined}
+          error={error}
           options={[
             { value: '', label: 'Select an option' },
             ...field.options.map((opt) => ({
@@ -416,6 +461,77 @@ const FormFieldRenderer: React.FC<FormFieldRendererProps> = ({
           onChange={(e: React.ChangeEvent<HTMLSelectElement>) => handleFieldChange(field.code, e.target.value)}
         />
       );
+
+    case 'currency':
+      return (
+        <GovUKInputWithSuffix
+          id={field.code}
+          name={field.code}
+          label={field.label}
+          prefix={prefix ?? '£'}
+          hint={field.helpText ?? undefined}
+          error={error}
+          value={stringValue}
+          type="number"
+          width={config?.width as '5' | '10' | '20' || '10'}
+          questionCode={showQuestionCode ? field.code : undefined}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleFieldChange(field.code, e.target.value)}
+        />
+      );
+
+    case 'read_only':
+      return (
+        <div className="govuk-form-group" id={field.code}>
+          <p className="govuk-label govuk-label--s" style={{ marginBottom: '4px' }}>
+            {showQuestionCode && <span className="govuk-visually-hidden">{field.code}: </span>}
+            {field.label}
+          </p>
+          {field.helpText && <div className="govuk-hint">{field.helpText}</div>}
+          <div className="govuk-inset-text" style={{ marginTop: '8px', padding: '10px 15px' }}>
+            <span className="govuk-body">{stringValue || '—'}</span>
+          </div>
+        </div>
+      );
+
+    case 'currency':
+      return (
+        <GovUKInputWithSuffix
+          id={field.code}
+          name={field.code}
+          label={field.label}
+          prefix={prefix ?? '£'}
+          hint={field.helpText ?? undefined}
+          error={error}
+          value={stringValue}
+          type="number"
+          width={config?.width as '5' | '10' | '20' || '10'}
+          questionCode={showQuestionCode ? field.code : undefined}
+          onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleFieldChange(field.code, e.target.value)}
+        />
+      );
+
+    case 'calculation': {
+      const formula = config?.formula ?? '';
+      const computedValue = computeFormula(formula, allValues);
+      const displayValue = computedValue !== null ? `£${computedValue.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '—';
+      return (
+        <div className="govuk-form-group" id={field.code}>
+          <p className="govuk-label govuk-label--s" style={{ marginBottom: '4px' }}>
+            {showQuestionCode && <span className="govuk-visually-hidden">{field.code}: </span>}
+            {field.label}
+            {field.helpText && <span className="govuk-visually-hidden"> ({field.helpText})</span>}
+          </p>
+          <div className="govuk-inset-text" style={{ marginTop: '8px', padding: '10px 15px', background: '#f3f2f1' }}>
+            <span className="govuk-body-l" style={{ fontWeight: 700 }}>
+              {displayValue}
+            </span>
+            <span className="govuk-caption-s" style={{ display: 'block', marginTop: '4px' }}>
+              Calculated automatically
+            </span>
+          </div>
+        </div>
+      );
+    }
 
     case 'file':
       return (

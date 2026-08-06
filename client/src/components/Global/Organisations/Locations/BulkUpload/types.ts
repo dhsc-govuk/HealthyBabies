@@ -1,5 +1,5 @@
 import { SiteFormQuestionDto } from '../../../SiteForms';
-import { LocationMatchResult, BulkUpdateLocationsResult } from './mutations';
+import { LocationMatchResult, BulkUploadLocationsResultDto, BulkUploadLocationCellEdit } from './mutations';
 
 export type Delimiter = ',' | ';' | '|' | '\t';
 
@@ -53,6 +53,8 @@ export interface BulkUploadState {
   updateSelections: LocationUpdateSelection[];
   isLoading: boolean;
   error: string | null;
+  stagingId: string | null;
+  editedCells: BulkUploadLocationCellEdit[];
 }
 
 export const initialBulkUploadState: BulkUploadState = {
@@ -68,6 +70,13 @@ export const initialBulkUploadState: BulkUploadState = {
   updateSelections: [],
   isLoading: false,
   error: null,
+  stagingId: null,
+  editedCells: [],
 };
 
-export type { LocationMatchResult, BulkUpdateLocationsResult };
+// The uploaded file always has 2 preamble rows (question codes, then labels) before real data
+// begins - both the client's own papaparse-based parser and the server's file parser agree on
+// this, so a client-local RowData.rowIndex (0-based) always maps to this fixed file row number.
+export const dataRowFileOffset = 3;
+
+export type { LocationMatchResult, BulkUploadLocationsResultDto, BulkUploadLocationCellEdit };

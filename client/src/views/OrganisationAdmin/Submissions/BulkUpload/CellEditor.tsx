@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useId } from 'react';
 import './styles.css';
 
 interface FieldOption {
@@ -46,7 +46,7 @@ const normaliseInitialValue = (
   }
 
   if (normalized === 'radio' || normalized === 'select') {
-    return resolveOptionValue(raw.trim(), fieldOptions) ?? raw;
+    return resolveOptionValue(raw.trim(), fieldOptions) ?? '';
   }
 
   return raw;
@@ -76,6 +76,7 @@ const CellEditor: React.FC<CellEditorProps> = ({
   );
   const inputRef = useRef<HTMLInputElement>(null);
   const selectRef = useRef<HTMLSelectElement>(null);
+  const errorId = useId();
 
   useEffect(() => {
     if (isDropdownField && selectRef.current) {
@@ -173,6 +174,8 @@ const CellEditor: React.FC<CellEditorProps> = ({
           onKeyDown={handleKeyDown}
           className="cell-editor__select"
           aria-label={fieldLabel || 'Select an option'}
+          aria-invalid={!!error}
+          aria-describedby={error ? errorId : undefined}
         >
           <option value="">-- Select --</option>
           {options?.map((opt) => (
@@ -197,6 +200,8 @@ const CellEditor: React.FC<CellEditorProps> = ({
         onKeyDown={handleKeyDown}
         className={`cell-editor__input${isConditionallyRequired ? ' cell-editor__input--required' : ''}`}
         aria-label={fieldLabel || 'Edit cell value'}
+        aria-invalid={!!error}
+        aria-describedby={error ? errorId : undefined}
       />
     );
   };
@@ -204,7 +209,7 @@ const CellEditor: React.FC<CellEditorProps> = ({
   return (
     <div className={`cell-editor${isConditionallyRequired ? ' cell-editor--required' : ''}`}>
       {error && (
-        <div className="cell-editor__error-message">
+        <div id={errorId} role="alert" className="cell-editor__error-message">
           {error}
         </div>
       )}
@@ -215,7 +220,7 @@ const CellEditor: React.FC<CellEditorProps> = ({
             type="button"
             className="cell-editor__btn cell-editor__btn--save"
             onClick={() => onSave(editValue)}
-            title="Save"
+            aria-label="Save"
           >
             ✓
           </button>
@@ -223,7 +228,7 @@ const CellEditor: React.FC<CellEditorProps> = ({
             type="button"
             className="cell-editor__btn cell-editor__btn--cancel"
             onClick={onCancel}
-            title="Cancel"
+            aria-label="Cancel edit"
           >
             ✕
           </button>

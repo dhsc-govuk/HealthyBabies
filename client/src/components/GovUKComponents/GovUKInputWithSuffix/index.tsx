@@ -46,25 +46,25 @@ const GovUKInputWithSuffix: React.FC<GovUKInputWithSuffixProps> = ({
 
   if (inline) {
     return (
-      <div 
+      <div
         className={`govuk-form-group ${error ? 'govuk-form-group--error' : ''}`}
-        style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
+        style={{
+          display: 'flex',
+          alignItems: 'center',
           gap: '15px',
           marginBottom: '15px',
         }}
       >
-        <span 
-          className="govuk-body" 
-          style={{ 
+        <span
+          className="govuk-body"
+          style={{
             minWidth: '150px',
             display: 'flex',
             alignItems: 'center',
           }}
         >
+          {questionCode && <span className="govuk-visually-hidden">{questionCode}: </span>}
           — {label}
-          {questionCode && <sup style={{ color: '#505a5f', fontSize: '14px', fontWeight: 'normal', marginLeft: '2px' }}>{questionCode}</sup>}
         </span>
         <div style={{ display: 'flex', alignItems: 'stretch' }}>
           <input
@@ -103,21 +103,9 @@ const GovUKInputWithSuffix: React.FC<GovUKInputWithSuffixProps> = ({
   }
 
   return (
-    <div className={`govuk-form-group ${error ? 'govuk-form-group--error' : ''}`} style={{ position: 'relative' }}>
-      {questionCode && (
-        <span style={{ 
-          position: 'absolute', 
-          right: 0, 
-          top: 0, 
-          color: '#505a5f', 
-          fontSize: '16px', 
-          fontWeight: 'normal', 
-          whiteSpace: 'nowrap' 
-        }}>
-          {questionCode}
-        </span>
-      )}
-      <label className="govuk-label govuk-label--s" htmlFor={id} style={{ paddingRight: questionCode ? '100px' : undefined }}>
+    <div className={`govuk-form-group ${error ? 'govuk-form-group--error' : ''}`}>
+      <label className="govuk-label govuk-label--s" htmlFor={id}>
+        {questionCode && <span className="govuk-visually-hidden">{questionCode}: </span>}
         {label}
       </label>
 

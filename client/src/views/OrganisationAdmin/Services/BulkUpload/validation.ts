@@ -1,3 +1,4 @@
+import { evaluateConditionalRules } from '../../../../helpers/conditionalRules';
 import {
   ServiceFormQuestionDto,
   ServiceFormQuestionOptionDto,
@@ -84,6 +85,9 @@ const isConditionalQuestionVisible = (
   question: ServiceFormQuestionDto,
   allAnswers: Record<string, string>
 ): boolean => {
+  if (question.conditionalRules) {
+    return evaluateConditionalRules(question.conditionalRules, allAnswers);
+  }
   if (!question.conditionalQuestionCode || !question.conditionalValue) {
     return true;
   }

@@ -49,6 +49,7 @@ function LocalAuthorityManager({
     value: '',
     error: undefined,
   });
+  const [endDateFormatError, setEndDateFormatError] = useState<string | undefined>();
   const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; laId: string; laName: string }>({
     open: false,
     laId: '',
@@ -156,36 +157,17 @@ function LocalAuthorityManager({
     });
   };
 
-  const validateEndDate = (dateString: string): string | undefined => {
-    if (!dateString) {
-      return 'End date is required';
-    }
-
-    // Parse the date from DD/MM/YYYY format
+  const checkStartDateConstraint = (dateString: string): string | undefined => {
+    if (!dateString) return undefined;
     const parts = dateString.split('/');
-    if (parts.length !== 3) {
-      return 'Enter a valid date';
-    }
-
-    const day = parseInt(parts[0], 10);
-    const month = parseInt(parts[1], 10);
-    const year = parseInt(parts[2], 10);
-
-    if (isNaN(day) || isNaN(month) || isNaN(year)) {
-      return 'Enter a valid date';
-    }
-
-    const selectedDate = new Date(year, month - 1, day);
+    if (parts.length !== 3) return undefined;
+    const selectedDate = new Date(parseInt(parts[2], 10), parseInt(parts[1], 10) - 1, parseInt(parts[0], 10));
     const startDate = new Date(collectionStartDate);
-
-    // Reset time parts for accurate date comparison
     selectedDate.setHours(0, 0, 0, 0);
     startDate.setHours(0, 0, 0, 0);
-
     if (selectedDate < startDate) {
       return `End date must be on or after the collection start date (${formatDate(collectionStartDate)})`;
     }
-
     return undefined;
   };
 
@@ -209,45 +191,27 @@ function LocalAuthorityManager({
   };
 
   const handleDateChange = (dateString: string) => {
-    const error = dateString ? validateEndDate(dateString) : undefined;
-    setEditEndDateModal({
-      ...editEndDateModal,
-      value: dateString,
-      error,
-    });
+    const businessError = dateString ? checkStartDateConstraint(dateString) : undefined;
+    setEditEndDateModal({ ...editEndDateModal, value: dateString, error: businessError });
+    if (businessError) setEndDateFormatError(undefined);
   };
 
   const handleSaveEndDate = async () => {
-    // Validate the date value exists
-    if (!editEndDateModal.value || editEndDateModal.value.trim() === '') {
-      setEditEndDateModal({
-        ...editEndDateModal,
-        error: 'Please enter a valid date',
-      });
+    if (endDateFormatError) {
+      setEditEndDateModal({ ...editEndDateModal, error: endDateFormatError });
+      return;
+    }
+    if (!editEndDateModal.value) {
+      setEditEndDateModal({ ...editEndDateModal, error: 'Enter an end date' });
+      return;
+    }
+    const businessError = checkStartDateConstraint(editEndDateModal.value);
+    if (businessError) {
+      setEditEndDateModal({ ...editEndDateModal, error: businessError });
       return;
     }
 
-    // Validate against collection date range
-    const error = validateEndDate(editEndDateModal.value);
-    if (error) {
-      setEditEndDateModal({
-        ...editEndDateModal,
-        error,
-      });
-      return;
-    }
-
-    // Convert DD/MM/YYYY to ISO format for API
-    // GovUKDateField ensures the format is always DD/MM/YYYY
     const parts = editEndDateModal.value.split('/');
-    if (parts.length !== 3) {
-      setEditEndDateModal({
-        ...editEndDateModal,
-        error: 'Please enter a complete date',
-      });
-      return;
-    }
-
     const isoDate = `${parts[2]}-${parts[1]}-${parts[0]}`;
     
     try {
@@ -458,7 +422,12 @@ function LocalAuthorityManager({
             error={editEndDateModal.error}
             hint={`Must be on or after ${formatDate(collectionStartDate)}`}
             disabled={updatingEndDate}
+            allowFuture={true}
             onChange={handleDateChange}
+            onValidate={(err) => {
+              setEndDateFormatError(err);
+              if (editEndDateModal.error) setEditEndDateModal((prev) => ({ ...prev, error: undefined }));
+            }}
           />
         </DialogContent>
         <DialogActions style={{ padding: '20px' }}>

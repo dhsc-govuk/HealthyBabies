@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Domain.Common;
 using Domain.DataCollections.Forms.ValueObjects;
 using Domain.Organisations;
@@ -85,6 +86,11 @@ public class FormSubmission : SoftDeletableEntity<FormSubmissionId>
     public string? SubmitterUserAgent { get; private set; }
 
     /// <summary>
+    /// Display name for activity-type submissions (EntityType = "Activity").
+    /// </summary>
+    public string? Name { get; private set; }
+
+    /// <summary>
     /// Gets field values in this submission.
     /// </summary>
     public IReadOnlyCollection<FormFieldValue> FieldValues => _fieldValues.AsReadOnly();
@@ -104,7 +110,8 @@ public class FormSubmission : SoftDeletableEntity<FormSubmissionId>
         OrganisationId? organisationId,
         DataCollectionId? dataCollectionId,
         string? entityType,
-        Guid? entityId)
+        Guid? entityId,
+        string? name)
     {
         Id = id;
         FormModuleId = formModuleId;
@@ -112,6 +119,7 @@ public class FormSubmission : SoftDeletableEntity<FormSubmissionId>
         DataCollectionId = dataCollectionId;
         EntityType = entityType;
         EntityId = entityId;
+        Name = name;
         Status = SubmissionStatus.Draft;
         DraftSavedAt = DateTime.UtcNow;
     }
@@ -121,7 +129,8 @@ public class FormSubmission : SoftDeletableEntity<FormSubmissionId>
         OrganisationId? organisationId = null,
         DataCollectionId? dataCollectionId = null,
         string? entityType = null,
-        Guid? entityId = null)
+        Guid? entityId = null,
+        string? name = null)
     {
         return new FormSubmission(
             FormSubmissionId.New(),
@@ -129,7 +138,13 @@ public class FormSubmission : SoftDeletableEntity<FormSubmissionId>
             organisationId,
             dataCollectionId,
             entityType,
-            entityId);
+            entityId,
+            name);
+    }
+
+    public void SetName(string? name)
+    {
+        Name = name;
     }
 
     /// <summary>
@@ -150,6 +165,33 @@ public class FormSubmission : SoftDeletableEntity<FormSubmissionId>
 
         var fieldValue = FormFieldValue.Create(Id, fieldId, value, displayValue);
         _fieldValues.Add(fieldValue);
+        return fieldValue;
+    }
+
+    /// <summary>
+    /// Sets or updates a field value and captures a self-describing snapshot of the field
+    /// (code, label, hint, type, order and options) as it is at the time of saving, so the
+    /// answer still renders correctly if the form definition later changes.
+    /// </summary>
+    public FormFieldValue SetFieldValue(
+        FormField field,
+        string? value,
+        string? displayValue = null)
+    {
+        var fieldValue = SetFieldValue(field.Id, value, displayValue);
+
+        var optionsSnapshot = field.Options.Count > 0
+            ? JsonSerializer.Serialize(field.Options.Select(o => new { o.Value, o.Label }).ToList())
+            : null;
+
+        fieldValue.SetSnapshot(
+            field.FieldKey,
+            field.Label,
+            field.HelpText,
+            field.FieldType.Value,
+            field.DisplayOrder,
+            optionsSnapshot);
+
         return fieldValue;
     }
 
@@ -307,6 +349,31 @@ public class FormSubmission : SoftDeletableEntity<FormSubmissionId>
         SubmittedAt = DateTime.UtcNow;
 
         AddHistoryEntry(previousStatus, "Final submission");
+    }
+
+    /// <summary>
+    /// Reverts a "submitted" record that was orphaned by a final submission that never completed
+    /// (e.g. a request cut off mid-way through, leaving the parent DataCollectionSubmission
+    /// unwritten - see BLUM-7047). Returns the record to "approved", the pre-submission complete
+    /// state, so the organisation can cleanly resubmit.
+    /// </summary>
+    public void RevertOrphanedSubmit(string notes)
+    {
+        // SubmissionStatus doesn't override == /!=, so comparing instances directly (as Submit()/
+        // Approve() do elsewhere in this class) is a reference comparison, not a value comparison -
+        // Status.Value == "submitted" is the pattern already used safely elsewhere (e.g.
+        // SubmissionsControllerService.IsComplete) to avoid that pitfall.
+        if (Status.Value != SubmissionStatusConstants.Submitted)
+        {
+            throw new InvalidOperationException("Can only revert an orphaned submit when in Submitted status.");
+        }
+
+        var previousStatus = Status;
+        Status = SubmissionStatus.Approved;
+        SubmittedAt = null;
+        SubmittedById = null;
+
+        AddHistoryEntry(previousStatus, notes);
     }
 
     /// <summary>

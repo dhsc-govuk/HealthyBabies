@@ -28,12 +28,8 @@ const GovUKGroupedInputs: React.FC<GovUKGroupedInputsProps> = ({
     <div className="govuk-grouped-inputs">
       <fieldset className="govuk-fieldset">
         <legend className="govuk-fieldset__legend govuk-fieldset__legend--s">
-          <div className="govuk-grouped-inputs__header">
-            <span className="govuk-grouped-inputs__legend">{legend}</span>
-            {questionCode && (
-              <span className="govuk-grouped-inputs__code">{questionCode}</span>
-            )}
-          </div>
+          {questionCode && <span className="govuk-visually-hidden">{questionCode}: </span>}
+          {legend}
         </legend>
         {hint && (
           <div className="govuk-hint">{hint}</div>

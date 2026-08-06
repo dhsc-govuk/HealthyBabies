@@ -18,7 +18,12 @@ public class SiteFormQuestion : AuditableEntity<SiteFormQuestionId>
     public string? HelpText { get; private set; }
     public string? ConditionalQuestionCode { get; private set; }
     public string? ConditionalValue { get; private set; }
+
+    // Rich multi-condition visibility rules (showWhen/allOf); takes precedence over the legacy
+    // ConditionalQuestionCode/ConditionalValue pair when set.
+    public string? ConditionalRules { get; private set; }
     public bool IsActive { get; private set; } = true;
+    public string? DateValidationRule { get; private set; }
 
     public IReadOnlyCollection<SiteFormQuestionOption> Options => _options.AsReadOnly();
 
@@ -41,7 +46,9 @@ public class SiteFormQuestion : AuditableEntity<SiteFormQuestionId>
         string? helpTextSummary,
         string? helpText,
         string? conditionalQuestionCode,
-        string? conditionalValue)
+        string? conditionalValue,
+        string? dateValidationRule,
+        string? conditionalRules)
     {
         Guard.NotNullOrEmptyOrWhiteSpace(code, nameof(code));
         Guard.NotNullOrEmptyOrWhiteSpace(label, nameof(label));
@@ -59,6 +66,8 @@ public class SiteFormQuestion : AuditableEntity<SiteFormQuestionId>
         HelpText = helpText;
         ConditionalQuestionCode = conditionalQuestionCode;
         ConditionalValue = conditionalValue;
+        DateValidationRule = dateValidationRule;
+        ConditionalRules = conditionalRules;
     }
 
     public static SiteFormQuestion New(
@@ -74,7 +83,9 @@ public class SiteFormQuestion : AuditableEntity<SiteFormQuestionId>
         string? helpTextSummary = null,
         string? helpText = null,
         string? conditionalQuestionCode = null,
-        string? conditionalValue = null)
+        string? conditionalValue = null,
+        string? dateValidationRule = null,
+        string? conditionalRules = null)
     {
         return new SiteFormQuestion(
             id,
@@ -89,7 +100,9 @@ public class SiteFormQuestion : AuditableEntity<SiteFormQuestionId>
             helpTextSummary,
             helpText,
             conditionalQuestionCode,
-            conditionalValue);
+            conditionalValue,
+            dateValidationRule,
+            conditionalRules);
     }
 
     public void UpdateDetails(
@@ -102,7 +115,9 @@ public class SiteFormQuestion : AuditableEntity<SiteFormQuestionId>
         string? helpTextSummary,
         string? helpText,
         string? conditionalQuestionCode,
-        string? conditionalValue)
+        string? conditionalValue,
+        string? dateValidationRule = null,
+        string? conditionalRules = null)
     {
         Guard.NotNullOrEmptyOrWhiteSpace(label, nameof(label));
 
@@ -116,6 +131,8 @@ public class SiteFormQuestion : AuditableEntity<SiteFormQuestionId>
         HelpText = helpText;
         ConditionalQuestionCode = conditionalQuestionCode;
         ConditionalValue = conditionalValue;
+        DateValidationRule = dateValidationRule;
+        ConditionalRules = conditionalRules;
     }
 
     public SiteFormQuestionOption AddOption(string value, string label, int displayOrder)

@@ -43,6 +43,14 @@ public class DataCollectionFormModulesConfiguration : IEntityTypeConfiguration<D
             .HasDefaultValue(true)
             .IsRequired();
 
+        builder.Property(x => x.Type)
+            .HasConversion(
+                x => x.Value,
+                x => DataCollectionType.From(x))
+            .HasMaxLength(50)
+            .HasDefaultValueSql($"'{DataCollectionTypeConstants.DeliveryPlan}'")
+            .IsRequired();
+
         builder.Property(x => x.CreatedAt)
             .HasConversion(new DateTimeUtcConverter());
 
@@ -92,6 +100,10 @@ public class DataCollectionFormModulesConfiguration : IEntityTypeConfiguration<D
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.Property(x => x.ValidationSchema);
+
+        builder.Property(x => x.AllowsMultipleActivities)
+            .HasDefaultValue(false)
+            .IsRequired();
 
         builder.HasMany(x => x.Sections)
             .WithOne(x => x.FormModule)

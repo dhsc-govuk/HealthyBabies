@@ -7,15 +7,15 @@ import useErrorSummaryFocus from '../../../../../hooks/useErrorSummaryFocus';
 import { SettingsLayout } from '../../../../../layouts';
 import { PageHeaderContainer, PageTitle } from '../../../../../styles/govuk-global';
 import QuestionForm from '../Common/QuestionForm';
+import { getConditionFieldKeys } from '../Common/ConditionalRulesBuilder';
 import { questionFormReducer } from '../Common/reducer';
-import { initialFormState, requiresOptions, ValidationErrors, FormSection, FormField } from '../Common/types';
+import { initialFormState, requiresOptions, validationMessages, ValidationErrors, FormSection, FormField } from '../Common/types';
 import { getAllModules } from '../List/queries';
 import { createFormField, CreateFormFieldRequest } from './mutations';
 import axios from 'axios';
 import usePageTitle from '../../../../../hooks/usePageTitle';
 
 const DataCollectionFormQuestionsCreate = (): React.ReactElement => {
-  usePageTitle('Add question');
   const navigate = useNavigate();
   const { setNotification } = useGovUKNotification();
   const [formState, dispatch] = useReducer(questionFormReducer, initialFormState);
@@ -23,19 +23,22 @@ const DataCollectionFormQuestionsCreate = (): React.ReactElement => {
     fieldKey: false,
     label: false,
     options: false,
+    conditionalRules: false,
   });
   const [submitAttempts, setSubmitAttempts] = useState(0);
   useErrorSummaryFocus(
     submitAttempts,
     (Object.keys(errors) as Array<keyof typeof errors>).some((k) => errors[k])
   );
+  usePageTitle('Add question', Object.values(errors).some(Boolean));
   const [allSections, setAllSections] = useState<FormSection[]>([]);
   const [availableFields, setAvailableFields] = useState<FormField[]>([]);
 
-  const { data: modules = [], isLoading: modulesLoading } = useQuery({
+  const { data: allModules = [], isLoading: modulesLoading } = useQuery({
     queryKey: ['dataCollectionFormModules'],
     queryFn: getAllModules,
   });
+  const modules = allModules.filter((m) => m.type === 'management-information');
 
   useEffect(() => {
     const fetchModuleData = async () => {
@@ -64,14 +67,20 @@ const DataCollectionFormQuestionsCreate = (): React.ReactElement => {
   });
 
   const validateForm = useCallback((): boolean => {
+    // Ordering (forward-ref) isn't checked here: a new question is always appended after every
+    // existing one, so nothing it could reference is ever "later" in the form.
+    const conditionFieldKeys = getConditionFieldKeys(formState.conditionalRules);
+    const hasDuplicateCondition = new Set(conditionFieldKeys).size !== conditionFieldKeys.length;
+
     const newErrors: ValidationErrors = {
       fieldKey: !formState.fieldKey ? 'Field key is required' : false,
       label: !formState.label ? 'Label is required' : false,
       options: requiresOptions(formState.fieldType) && formState.options.length === 0 ? 'At least one option is required' : false,
+      conditionalRules: hasDuplicateCondition ? validationMessages.conditionalRulesDuplicate : false,
     };
     setErrors(newErrors);
     setSubmitAttempts((n) => n + 1);
-    return !newErrors.fieldKey && !newErrors.label && !newErrors.options;
+    return !newErrors.fieldKey && !newErrors.label && !newErrors.options && !newErrors.conditionalRules;
   }, [formState]);
 
   const handleSubmit = useCallback(() => {

@@ -68,6 +68,8 @@ public class SiteFormQuestionsController(
             HelpText = Utility.HtmlDecodeNullableField(dto.HelpText),
             ConditionalQuestionCode = dto.ConditionalQuestionCode,
             ConditionalValue = Utility.HtmlDecodeNullableField(dto.ConditionalValue),
+            DateValidationRule = dto.DateValidationRule,
+            ConditionalRules = dto.ConditionalRules,
             Options = dto.Options.Select(o => new SiteFormQuestionOptionInputDto(
                 Utility.HtmlDecodeField(o.Value),
                 Utility.HtmlDecodeField(o.Label),
@@ -105,6 +107,8 @@ public class SiteFormQuestionsController(
             HelpText = Utility.HtmlDecodeNullableField(dto.HelpText),
             ConditionalQuestionCode = dto.ConditionalQuestionCode,
             ConditionalValue = Utility.HtmlDecodeNullableField(dto.ConditionalValue),
+            DateValidationRule = dto.DateValidationRule,
+            ConditionalRules = dto.ConditionalRules,
             Options = dto.Options.Select(o => new SiteFormQuestionOptionInputDto(
                 Utility.HtmlDecodeField(o.Value),
                 Utility.HtmlDecodeField(o.Label),

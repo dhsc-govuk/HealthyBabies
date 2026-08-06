@@ -22,3 +22,9 @@ public class FormFieldHasValuesException(FormFieldId id)
 
 public class FormFieldUnknownException(FormFieldId id, Exception innerException)
     : FormFieldException(id, $"Unknown exception for form field {id}", innerException);
+
+public class FormFieldBackwardConditionException(FormFieldId id, string triggerFieldKey)
+    : FormFieldException(id, $"Conditional rule references '{triggerFieldKey}', which appears later in the form. A condition can only reference an earlier question.");
+
+public class FormFieldDuplicateConditionException(FormFieldId id, string fieldKey)
+    : FormFieldException(id, $"Conditional rule references '{fieldKey}' more than once. Each AND condition must reference a different question.");

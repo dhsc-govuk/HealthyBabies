@@ -4,6 +4,7 @@ using Application.Common.Interfaces.Queries;
 using Application.Common.Interfaces.Repositories;
 using Application.Mfa.Dtos;
 using Application.Users.Dtos;
+using Domain.OrganisationUsers;
 using Domain.Users;
 using LanguageExt;
 
@@ -86,6 +87,15 @@ public class AdminUsersControllerService(
                 u.Organisation?.Name,
                 u.OrganisationId?.ToString()),
             () => Option<OrganisationUserDto>.None);
+    }
+
+    public async Task<Option<OrganisationUserId>> GetOrganisationUserIdByUserId(Guid userId, CancellationToken cancellationToken)
+    {
+        var entityId = new UserId(userId);
+        var user = await userQueries.GetOrganisationUserById(entityId, cancellationToken);
+        return user.Match<Option<OrganisationUserId>>(
+            u => u.Id,
+            () => Option<OrganisationUserId>.None);
     }
 
     public async Task<MfaStatusDto> GetMfaStatus(Guid userId, CancellationToken cancellationToken)

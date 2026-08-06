@@ -3,6 +3,7 @@ using Application.Common.Interfaces.Queries;
 using Application.Common.Interfaces.Repositories;
 using Application.Common.Permissions;
 using Application.Organisations.Exceptions;
+using Application.Organisations.Helpers;
 using Application.SiteForms.Dtos;
 using Domain.Locations;
 using Domain.Organisations;
@@ -97,6 +98,14 @@ public class CreateLocationCommandHandler(
         OrganisationId organisationId,
         CancellationToken cancellationToken)
     {
+        var questions = await siteFormQuestionQueries.GetAllActive(cancellationToken);
+
+        var dateError = SiteFormDateAnswerValidator.ValidateAnswers(request.Answers, questions);
+        if (dateError != null)
+        {
+            return new LocationInvalidAnswerException(LocationId.Empty(), dateError);
+        }
+
         try
         {
             var referenceNumber = request.GetReferenceNumber();
@@ -118,7 +127,7 @@ public class CreateLocationCommandHandler(
                 request.IsActive);
 
             // Add answers
-            await AddAnswersToLocation(location, request.Answers, cancellationToken);
+            AddAnswersToLocation(location, request.Answers, questions);
 
             return await locationRepository.AddAsync(location, cancellationToken);
         }
@@ -128,13 +137,11 @@ public class CreateLocationCommandHandler(
         }
     }
 
-    private async Task AddAnswersToLocation(
+    private static void AddAnswersToLocation(
         Location location,
         IReadOnlyList<SiteAnswerInputDto> answers,
-        CancellationToken cancellationToken)
+        IReadOnlyList<SiteFormQuestion> questions)
     {
-        var questions = await siteFormQuestionQueries.GetAllActive(cancellationToken);
-
         foreach (var answerInput in answers)
         {
             var question = questions.FirstOrDefault(q => q.Code == answerInput.QuestionCode);

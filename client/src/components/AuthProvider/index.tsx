@@ -73,6 +73,7 @@ export const loginRequest = {
 export enum EnumUserRole {
   ADMIN = 'admin',
   ORGANISATION_ADMIN = 'organisation admin',
+  DELIVERY_PLAN_LEAD = 'delivery plan lead',
 }
 
 export const roleToAreaMap = (role: EnumUserRole) => {
@@ -81,6 +82,8 @@ export const roleToAreaMap = (role: EnumUserRole) => {
       return 'admin';
     case EnumUserRole.ORGANISATION_ADMIN:
       return 'organisation-admin';
+    case EnumUserRole.DELIVERY_PLAN_LEAD:
+      return 'delivery-plan';
     default:
       return 'unknown';
   }
@@ -88,6 +91,7 @@ export const roleToAreaMap = (role: EnumUserRole) => {
 
 export const adminRoles = [EnumUserRole.ADMIN];
 export const organisationAdminRoles = [EnumUserRole.ORGANISATION_ADMIN];
+export const deliveryPlanLeadRoles = [EnumUserRole.DELIVERY_PLAN_LEAD];
 interface AuthContextItems {
   userId: string | null;
   user: User | null;

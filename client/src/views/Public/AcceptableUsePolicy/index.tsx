@@ -88,14 +88,14 @@ const AcceptableUsePolicy = () => {
               <li>Any Data classified as SECRET or TOP SECRET.</li>
               <li>
                 Take responsibility for notifying DHSC when there are changes to job roles resulting in changes needed to access controls via{' '}
-                <a className="govuk-link" href="mailto:healthybabies.dataanddigital@dhsc.gov.uk">
-                  healthybabies.dataanddigital@dhsc.gov.uk
+                <a className="govuk-link" href="mailto:support@example.gov.uk">
+                  support@example.gov.uk
                 </a>
               </li>
               <li>
                 Report any concerns regarding incorrect access controls immediately to{' '}
-                <a className="govuk-link" href="mailto:healthybabies.dataanddigital@dhsc.gov.uk">
-                  healthybabies.dataanddigital@dhsc.gov.uk
+                <a className="govuk-link" href="mailto:support@example.gov.uk">
+                  support@example.gov.uk
                 </a>{' '}
                 and engage promptly with the team if they have raised data protection issues with you.
               </li>

@@ -12,6 +12,7 @@ import QuestionForm from '../Common/QuestionForm';
 import { questionFormReducer } from '../Common/reducer';
 import { encodeForWaf, encodeNullableForWaf } from '../../../../../helpers/stringUtils';
 import { ValidationErrors, validationMessages, initialFormState, requiresOptions } from '../Common/types';
+import { getConditionFieldKeys } from '../../DataCollectionFormQuestions/Common/ConditionalRulesBuilder';
 
 const CreateServiceFormQuestion = (): React.ReactElement => {
   const navigate = useNavigate();
@@ -26,7 +27,10 @@ const CreateServiceFormQuestion = (): React.ReactElement => {
     options: false,
   });
   const [submitAttempts, setSubmitAttempts] = useState(0);
-  useErrorSummaryFocus(submitAttempts, (Object.keys(errors) as Array<keyof typeof errors>).some((k) => errors[k]));
+  useErrorSummaryFocus(
+    submitAttempts,
+    (Object.keys(errors) as Array<keyof typeof errors>).some((k) => errors[k])
+  );
 
   const { data: questionsData } = useQuery({
     queryKey: ['service-form-questions-list'],
@@ -48,19 +52,20 @@ const CreateServiceFormQuestion = (): React.ReactElement => {
 
   const validate = useCallback(() => {
     const needsOptions = requiresOptions(formState.questionType) && formState.isPredefined;
+    // Ordering (forward-ref) isn't checked here: a new question is always appended after every
+    // existing one, so any referenced question is necessarily earlier. Only guard duplicates.
+    const conditionFieldKeys = getConditionFieldKeys(formState.conditionalRules);
+    const hasDuplicateCondition = new Set(conditionFieldKeys).size !== conditionFieldKeys.length;
     const errorItems: ValidationErrors = {
-      code: !formState.code
-        ? validationMessages.code
-        : !/^[A-Za-z0-9]+$/.test(formState.code) || formState.code.length > 10
-          ? validationMessages.codeFormat
-          : false,
+      code: !formState.code ? validationMessages.code : !/^[A-Za-z0-9]+$/.test(formState.code) || formState.code.length > 10 ? validationMessages.codeFormat : false,
       label: !formState.label ? validationMessages.label : false,
       options:
         needsOptions && formState.options.length === 0
           ? validationMessages.options
           : needsOptions && formState.options.some((opt) => !opt.value || !opt.label)
-            ? 'All options must have a value and label'
-            : false,
+          ? 'All options must have a value and label'
+          : false,
+      conditionalRules: hasDuplicateCondition ? validationMessages.conditionalRulesDuplicate : false,
     };
     setErrors(errorItems);
     setSubmitAttempts((n) => n + 1);
@@ -82,9 +87,9 @@ const CreateServiceFormQuestion = (): React.ReactElement => {
       helpText: encodeNullableForWaf(formState.helpText),
       conditionalQuestionCode: formState.conditionalQuestionCode || null,
       conditionalValue: encodeNullableForWaf(formState.conditionalValue),
-      options: formState.isPredefined
-        ? formState.options.map((opt) => ({ ...opt, label: encodeForWaf(opt.label), value: encodeForWaf(opt.value) }))
-        : [],
+      dateValidationRule: formState.dateValidationRule || null,
+      conditionalRules: formState.conditionalRules || null,
+      options: formState.isPredefined ? formState.options.map((opt) => ({ ...opt, label: encodeForWaf(opt.label), value: encodeForWaf(opt.value) })) : [],
     });
   };
 
@@ -101,13 +106,7 @@ const CreateServiceFormQuestion = (): React.ReactElement => {
         ]}
         backLink={{ href: '/admin/configuration/service-form-questions', onClick: handleCancel }}
         currentPage="Create Question">
-        <QuestionForm
-          formState={formState}
-          errors={errors}
-          setErrors={setErrors}
-          dispatch={dispatch}
-          allQuestions={questionsData?.data ?? []}
-        />
+        <QuestionForm formState={formState} errors={errors} setErrors={setErrors} dispatch={dispatch} allQuestions={questionsData?.data ?? []} />
         <Stack direction="row" spacing={2} sx={{ mt: 3 }}>
           <Button onClick={handleSave}>Create</Button>
           <Button variant="secondary" onClick={handleCancel}>

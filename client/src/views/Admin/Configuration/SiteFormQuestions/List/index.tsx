@@ -18,7 +18,7 @@ import { Button, LoadingSpinner, GovUKButton, useGovUKNotification } from '../..
 import { getAllSiteFormQuestions } from './queries';
 import { deleteSiteFormQuestion, reorderSiteFormQuestions } from './mutations';
 import { useMutation, useQuery, useQueryClient } from 'react-query';
-import { GeneralLayout } from '../../../../../layouts';
+import { SettingsLayout } from '../../../../../layouts';
 import { processError } from '../../../../../helpers/axiosErrorFallback';
 import { SiteFormQuestion, questionTypeLabels } from '../Common/types';
 
@@ -199,22 +199,22 @@ const SiteFormQuestionsList = (): React.ReactElement => {
 
   return (
     <>
-      <GeneralLayout
+      <SettingsLayout
         breadcrumbs={[
           { label: 'Admin', link: '/admin/home' },
           { label: 'Configuration', link: '/admin/configuration' },
         ]}
-        currentPage="Site Form Questions"
-        endContent={
+        currentPage="Delivery Location Form Questions">
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Typography variant="h6">
+            Site Form Questions ({sortedQuestions.length})
+          </Typography>
           <Button onClick={handleCreate} variant="secondary">
             Create Question
           </Button>
-        }>
+        </Box>
         <Grid container spacing={4}>
           <Grid item xs={12}>
-            <Typography variant="h6" sx={{ mb: 2 }}>
-              Site Form Questions ({sortedQuestions.length})
-            </Typography>
             {sortedQuestions.length === 0 ? (
               <Typography color="text.secondary">No questions configured</Typography>
             ) : (
@@ -222,7 +222,7 @@ const SiteFormQuestionsList = (): React.ReactElement => {
             )}
           </Grid>
         </Grid>
-      </GeneralLayout>
+      </SettingsLayout>
 
       <Dialog open={deleteDialogOpen} onClose={handleDeleteCancel}>
         <DialogTitle>Confirm Delete</DialogTitle>

@@ -44,7 +44,7 @@ export type BulkUploadAction =
   | { type: BulkUploadActionType.SET_EDITING_CELL; payload: { rowIndex: number; cellIndex: number } | null }
   | { type: BulkUploadActionType.UPDATE_CELL; payload: { rowIndex: number; cellIndex: number; value: string } }
   | { type: BulkUploadActionType.SET_SERVICE_SELECTIONS; payload: ServiceSelection[] }
-  | { type: BulkUploadActionType.TOGGLE_SERVICE_SELECTION; payload: { serviceName: string; updateFromFile: boolean } }
+  | { type: BulkUploadActionType.TOGGLE_SERVICE_SELECTION; payload: { rowIndex: number; updateFromFile: boolean } }
   | { type: BulkUploadActionType.SET_IS_DOWNLOADING; payload: boolean }
   | { type: BulkUploadActionType.SET_FULL_SCREEN_OPEN; payload: boolean }
   | { type: BulkUploadActionType.SET_STAGING_ID; payload: string | null }
@@ -113,9 +113,9 @@ export const bulkUploadReducer = (
       return { ...state, serviceSelections: action.payload };
 
     case BulkUploadActionType.TOGGLE_SERVICE_SELECTION: {
-      const { serviceName, updateFromFile } = action.payload;
+      const { rowIndex, updateFromFile } = action.payload;
       const updatedSelections = state.serviceSelections.map((selection) => {
-        if (selection.serviceName === serviceName) {
+        if (selection.rowIndex === rowIndex) {
           return { ...selection, updateFromFile };
         }
         return selection;

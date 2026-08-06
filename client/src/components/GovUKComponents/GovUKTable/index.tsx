@@ -272,7 +272,22 @@ function GovUKTableComponent<T>({
           </Table.Row>
         ) : (
           filteredAndSortedData.map((item) => (
-            <Table.Row key={keyExtractor(item)} onClick={() => handleRowClick(item)} className={getRowHref || onRowClick ? 'govuk-table-row--clickable' : ''}>
+            <Table.Row
+              key={keyExtractor(item)}
+              onClick={() => handleRowClick(item)}
+              className={getRowHref || onRowClick ? 'govuk-table-row--clickable' : ''}
+              tabIndex={getRowHref || onRowClick ? 0 : undefined}
+              onKeyDown={
+                getRowHref || onRowClick
+                  ? (e: React.KeyboardEvent) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        handleRowClick(item);
+                      }
+                    }
+                  : undefined
+              }
+            >
               {columns.map((column) => (
                 <Table.Cell key={String(column.key)} style={column.align ? { textAlign: column.align } : undefined}>
                   {renderCellValue(item, column)}

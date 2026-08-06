@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { RowData } from './types';
 import { ServiceFormQuestionDto, ServiceFormQuestionType } from '../../../../components/Global/Services';
 import { getTotalErrorCount, getRowsWithErrors, getCellError } from './validation';
@@ -30,6 +30,7 @@ const StepCheckData: React.FC<StepCheckDataProps> = ({
     rowIndex: number;
     header: string;
   } | null>(null);
+  const activeCellRef = useRef<HTMLTableCellElement | null>(null);
 
   const totalErrors = useMemo(() => getTotalErrorCount(rows), [rows]);
   const rowsWithErrors = useMemo(() => getRowsWithErrors(rows), [rows]);
@@ -45,22 +46,21 @@ const StepCheckData: React.FC<StepCheckDataProps> = ({
       return value;
     }
 
-    // For checkbox (multi-select), convert each value to label
     if (question.questionType === ServiceFormQuestionType.Checkbox) {
       const values = value.split(',').map((v) => v.trim());
-      const labels = values.map((v) => {
+      const labelsList = values.map((v) => {
         const option = question.options.find((opt) => opt.value === v);
         return option ? option.label : v;
       });
-      return labels.join(', ');
+      return labelsList.join(', ');
     }
 
-    // For single-select (Radio, Select), find the matching option
     const option = question.options.find((opt) => opt.value === value);
     return option ? option.label : value;
   };
 
-  const handleCellClick = (rowIndex: number, header: string) => {
+  const handleCellActivate = (rowIndex: number, header: string, cellEl: HTMLTableCellElement) => {
+    activeCellRef.current = cellEl;
     setEditingCell({ rowIndex, header });
   };
 
@@ -68,11 +68,13 @@ const StepCheckData: React.FC<StepCheckDataProps> = ({
     if (editingCell) {
       onCellEdit(editingCell.rowIndex, editingCell.header, value);
       setEditingCell(null);
+      activeCellRef.current?.focus();
     }
   };
 
   const handleCellCancel = () => {
     setEditingCell(null);
+    activeCellRef.current?.focus();
   };
 
   const canContinue = totalErrors === 0;
@@ -134,8 +136,8 @@ const StepCheckData: React.FC<StepCheckDataProps> = ({
           </button>
         </div>
 
-        <div className="bulk-upload-table__wrapper">
-          <table className="bulk-upload-table">
+        <div className="bulk-upload-table__wrapper" tabIndex={0}>
+          <table className="bulk-upload-table" role="grid">
             <thead>
               <tr>
                 <th className="bulk-upload-table__row-number">#</th>
@@ -163,6 +165,7 @@ const StepCheckData: React.FC<StepCheckDataProps> = ({
                         <td
                           key={`${row.rowIndex}-${header}`}
                           className="bulk-upload-table__cell--editing"
+                          role="gridcell"
                         >
                           <CellEditor
                             value={cellValue}
@@ -180,11 +183,22 @@ const StepCheckData: React.FC<StepCheckDataProps> = ({
                     return (
                       <td
                         key={`${row.rowIndex}-${header}`}
+                        role="gridcell"
+                        tabIndex={0}
                         className={`bulk-upload-table__cell--editable${cellError ? ' bulk-upload-table__cell--error' : ''}`}
-                        onClick={() => handleCellClick(row.rowIndex, header)}
-                        title={cellError?.message}
+                        aria-invalid={!!cellError}
+                        onClick={(e) => handleCellActivate(row.rowIndex, header, e.currentTarget)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            handleCellActivate(row.rowIndex, header, e.currentTarget);
+                          }
+                        }}
                       >
                         {displayValue || (cellError ? '(empty)' : '')}
+                        {cellError && (
+                          <span className="govuk-visually-hidden"> Error: {cellError.message}</span>
+                        )}
                       </td>
                     );
                   })}

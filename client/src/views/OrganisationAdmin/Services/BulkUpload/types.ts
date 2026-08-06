@@ -1,4 +1,5 @@
 import { ServiceFormQuestionDto } from '../../../../components/Global/Services';
+import { BulkUploadServiceCellEdit } from '../../../../components/Global/Services/mutations';
 
 export type Delimiter = ',' | ';' | '|' | '\t';
 
@@ -62,6 +63,8 @@ export interface BulkUploadState {
   updateSelections: ServiceUpdateSelection[];
   isLoading: boolean;
   error: string | null;
+  stagingId: string | null;
+  editedCells: BulkUploadServiceCellEdit[];
 }
 
 export const initialBulkUploadState: BulkUploadState = {
@@ -77,30 +80,11 @@ export const initialBulkUploadState: BulkUploadState = {
   updateSelections: [],
   isLoading: false,
   error: null,
+  stagingId: null,
+  editedCells: [],
 };
 
-// API types
-export interface BulkUpdateServiceItemRequest {
-  serviceId?: string | null;
-  name: string;
-  answers: { questionCode: string; value?: string }[];
-}
-
-export interface BulkUpdateServicesRequest {
-  services: BulkUpdateServiceItemRequest[];
-}
-
-export interface BulkUpdateServiceResult {
-  serviceId?: string;
-  serviceName: string;
-  isSuccess: boolean;
-  isNew: boolean;
-  errorMessage?: string;
-}
-
-export interface BulkUpdateServicesResult {
-  totalCount: number;
-  successCount: number;
-  errorCount: number;
-  results: BulkUpdateServiceResult[];
-}
+// The uploaded file always has 2 preamble rows (question codes, then labels) before real data
+// begins - both the client's own papaparse-based parser and the server's file parser agree on
+// this, so a client-local RowData.rowIndex (0-based) always maps to this fixed file row number.
+export const dataRowFileOffset = 3;

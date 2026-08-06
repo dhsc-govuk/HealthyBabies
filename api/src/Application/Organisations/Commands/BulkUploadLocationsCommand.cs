@@ -1,11 +1,9 @@
-﻿using System.Text.Json;
-using Application.Common;
 using Application.Common.Interfaces;
 using Application.Common.Interfaces.Queries;
-using Application.Common.Interfaces.Repositories;
 using Application.Common.Permissions;
 using Application.Organisations.Dtos;
 using Application.Organisations.Exceptions;
+using Application.Organisations.Helpers;
 using Domain.Locations;
 using Domain.Organisations;
 using Domain.SiteForms;
@@ -15,39 +13,44 @@ using Microsoft.AspNetCore.Http;
 
 namespace Application.Locations.Commands;
 
-public record ValidateBulkUploadLocationsCommand : IRequest<Either<LocationException, BulkUploadLocationsResult>>
+public record ValidateBulkUploadLocationsCommand : IRequest<Either<LocationException, BulkUploadLocationsValidationResultDto>>
 {
-    public required IFormFile File { get; init; }
+    public required Stream FileStream { get; init; }
+    public required string FileName { get; init; }
+    public required long FileLength { get; init; }
     public required OrganisationId OrganisationId { get; init; }
 }
 
 public class ValidateBulkUploadLocationsCommandHandler(
     PermissionsService permissionsService,
-    ILocationRepository locationRepository,
     ISiteFormQuestionQueries siteFormQuestionQueries,
-    IEnumerable<IBulkUploadFileParser> fileParsers)
-    : IRequestHandler<ValidateBulkUploadLocationsCommand, Either<LocationException, BulkUploadLocationsResult>>
+    IEnumerable<IBulkUploadFileParser> fileParsers,
+    IBlobService blobService)
+    : IRequestHandler<ValidateBulkUploadLocationsCommand, Either<LocationException, BulkUploadLocationsValidationResultDto>>
 {
-    private const string PredefinedNameCode = "FHS01";
-    private const string PredefinedPostCodeCode = "FHS02";
-    private const string PredefinedReferenceNumberCode = "FHS03";
+    public const string StagingContainer = "locations-bulk-upload-staging";
 
-    public async Task<Either<LocationException, BulkUploadLocationsResult>> Handle(
+    public async Task<Either<LocationException, BulkUploadLocationsValidationResultDto>> Handle(
         ValidateBulkUploadLocationsCommand request,
         CancellationToken cancellationToken)
     {
         var permissions = permissionsService.GetLocationPermissions();
         return await permissions.MatchAsync(
             async p => await ProcessUpload(request, cancellationToken),
-            e => Task.FromResult<Either<LocationException, BulkUploadLocationsResult>>(
-                new LocationArgumentException(LocationId.Empty(), e.Message)));
+            e => new LocationArgumentException(LocationId.Empty(), e.Message));
     }
 
-    private async Task<Either<LocationException, BulkUploadLocationsResult>> ProcessUpload(
+    private async Task<Either<LocationException, BulkUploadLocationsValidationResultDto>> ProcessUpload(
         ValidateBulkUploadLocationsCommand request,
         CancellationToken cancellationToken)
     {
-        var parser = fileParsers.FirstOrDefault(p => p.CanParse(request.File));
+        var buffer = new MemoryStream();
+        await request.FileStream.CopyToAsync(buffer, cancellationToken);
+        buffer.Position = 0;
+
+        var formFile = new FormFile(buffer, 0, buffer.Length, "file", request.FileName);
+
+        var parser = fileParsers.FirstOrDefault(p => p.CanParse(formFile));
         if (parser == null)
         {
             return new LocationArgumentException(
@@ -55,7 +58,7 @@ public class ValidateBulkUploadLocationsCommandHandler(
                 "Unsupported file format. Please upload a CSV (.csv) or Excel (.xlsx) file.");
         }
 
-        var parseResult = await parser.ParseAsync(request.File, cancellationToken);
+        var parseResult = await parser.ParseAsync(formFile, cancellationToken);
         if (!parseResult.IsSuccess)
         {
             return new LocationArgumentException(LocationId.Empty(), parseResult.ErrorMessage ?? "Failed to parse file");
@@ -67,209 +70,115 @@ public class ValidateBulkUploadLocationsCommandHandler(
         }
 
         var questions = await siteFormQuestionQueries.GetAllActive(cancellationToken);
-        var results = await ProcessBulkUpload(parseResult.Records, request.OrganisationId, questions, cancellationToken);
+        var (rowValidations, validCount, invalidCount) = BuildRowValidations(parseResult.Records, questions);
+        var fieldMetadata = BuildFieldMetadata(questions);
 
-        return results;
+        buffer.Position = 0;
+        var stageResult = await StageUpload(buffer, request, cancellationToken);
+
+        return stageResult.Match<Either<LocationException, BulkUploadLocationsValidationResultDto>>(
+            stagingId => new BulkUploadLocationsValidationResultDto(
+                invalidCount == 0,
+                parseResult.Records.Count,
+                validCount,
+                invalidCount,
+                rowValidations,
+                fieldMetadata,
+                stagingId),
+            error => new LocationArgumentException(LocationId.Empty(), error));
     }
 
-    private async Task<BulkUploadLocationsResult> ProcessBulkUpload(
+    private static (List<BulkUploadRowValidationDto> RowValidations, int ValidCount, int InvalidCount) BuildRowValidations(
         List<Dictionary<string, string>> records,
-        OrganisationId organisationId,
-        IReadOnlyList<SiteFormQuestion> questions,
-        CancellationToken cancellationToken)
+        IReadOnlyList<SiteFormQuestion> questions)
     {
-        var results = new List<BulkUploadLocationResult>();
-        var successCount = 0;
-        var errorCount = 0;
-        var uploadedNames = new System.Collections.Generic.HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var rowValidations = new List<BulkUploadRowValidationDto>();
+        var validCount = 0;
+        var invalidCount = 0;
+        var seenNames = new System.Collections.Generic.HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var record in records)
         {
             var rowNumber = int.Parse(record.GetValueOrDefault("_RowNumber", "0"));
-            var siteName = record.GetValueOrDefault(PredefinedNameCode, string.Empty);
+            var siteName = record.GetValueOrDefault(LocationBulkUploadRecordHelper.PredefinedNameCode, string.Empty);
 
-            var validationErrors = ValidateRecord(record, questions);
-            if (validationErrors.Count > 0)
-            {
-                var errorMessages = string.Join("; ", validationErrors.Select(e => $"{e.QuestionCode}: {e.Message}"));
-                results.Add(new BulkUploadLocationResult(rowNumber, siteName, false, errorMessages));
-                errorCount++;
-                continue;
-            }
+            var errors = LocationBulkUploadRecordHelper.ValidateRecord(record, questions)
+                .Select(ToFieldError(questions))
+                .ToList();
 
             if (string.IsNullOrWhiteSpace(siteName))
             {
-                results.Add(new BulkUploadLocationResult(rowNumber, siteName, false, $"{PredefinedNameCode}: Site name is required"));
-                errorCount++;
-                continue;
+                errors.Add(new BulkUploadFieldErrorDto(LocationBulkUploadRecordHelper.PredefinedNameCode, "Name of the location", "Site name is required"));
             }
-
-            if (uploadedNames.Contains(siteName))
+            else if (!seenNames.Add(siteName))
             {
-                results.Add(new BulkUploadLocationResult(rowNumber, siteName, false, $"Duplicate site name '{siteName}' found in upload"));
-                errorCount++;
-                continue;
+                errors.Add(new BulkUploadFieldErrorDto(LocationBulkUploadRecordHelper.PredefinedNameCode, "Name of the location", $"Duplicate site name '{siteName}' found in upload"));
             }
 
-            var existingLocation = await locationRepository.FindByNameAsync(siteName, organisationId, cancellationToken);
-            if (existingLocation.IsSome)
+            var isValid = errors.Count == 0;
+            if (isValid)
             {
-                results.Add(new BulkUploadLocationResult(rowNumber, siteName, false, $"Location with name '{siteName}' already exists"));
-                errorCount++;
-                continue;
+                validCount++;
+            }
+            else
+            {
+                invalidCount++;
             }
 
-            // Validation passed - mark as valid (will be saved on confirm)
-            uploadedNames.Add(siteName);
-            results.Add(new BulkUploadLocationResult(rowNumber, siteName, true));
-            successCount++;
+            rowValidations.Add(new BulkUploadRowValidationDto(rowNumber, siteName, isValid, errors));
         }
 
-        return new BulkUploadLocationsResult(records.Count, successCount, errorCount, results);
+        return (rowValidations, validCount, invalidCount);
     }
 
-    private static List<BulkUploadRowValidationError> ValidateRecord(
-        Dictionary<string, string> record,
-        IReadOnlyList<SiteFormQuestion> questions)
+    private static Func<BulkUploadRowValidationError, BulkUploadFieldErrorDto> ToFieldError(
+        IReadOnlyList<SiteFormQuestion> questions) =>
+        error => new BulkUploadFieldErrorDto(
+            error.QuestionCode,
+            questions.FirstOrDefault(q => q.Code == error.QuestionCode)?.Label ?? error.QuestionCode,
+            error.Message);
+
+    private static List<BulkUploadFieldMetadataDto> BuildFieldMetadata(IReadOnlyList<SiteFormQuestion> questions) =>
+        questions.Select(q => new BulkUploadFieldMetadataDto(
+            q.Code,
+            q.QuestionType.ToString(),
+            q.IsRequired,
+            q.Options.OrderBy(o => o.DisplayOrder).Select(o => new BulkUploadFieldOptionDto(o.Value, o.Label)).ToList(),
+            q.ConditionalQuestionCode,
+            q.ConditionalValue)).ToList();
+
+    private async Task<Either<string, Guid>> StageUpload(
+        MemoryStream buffer,
+        ValidateBulkUploadLocationsCommand request,
+        CancellationToken cancellationToken)
     {
-        var errors = new List<BulkUploadRowValidationError>();
+        var stagingId = Guid.NewGuid();
+        var extension = Path.GetExtension(request.FileName);
 
-        foreach (var question in questions)
-        {
-            var value = record.GetValueOrDefault(question.Code, string.Empty);
-
-            if (question.IsRequired && string.IsNullOrWhiteSpace(value))
+        var uploadOptions = new BlobWriteOptions(
+            ContentType: extension.Equals(".csv", StringComparison.OrdinalIgnoreCase) ? "text/csv" : "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+            Metadata: new Dictionary<string, string>
             {
-                errors.Add(new BulkUploadRowValidationError(question.Code, $"{question.Label} is required"));
-                continue;
-            }
+                ["organisationId"] = request.OrganisationId.Value.ToString(),
+                ["uploadedAtUtc"] = DateTime.UtcNow.ToString("O"),
+                ["originalFileName"] = request.FileName,
+            });
 
-            if (string.IsNullOrWhiteSpace(value))
-            {
-                continue;
-            }
+        // Nested under a "{stagingId}/" virtual folder rather than a flat "{stagingId}{extension}" name -
+        // IBlobService.GetNamesByPrefix (used to look this back up without knowing the extension) matches
+        // on "{prefix}/", so a flat name would never be found again at confirm time.
+        var streamResult = await blobService.OpenWriteStream(StagingContainer, $"{stagingId}/upload{extension}", uploadOptions, cancellationToken);
 
-            if (question.QuestionType == SiteFormQuestionType.Date)
+        return await streamResult.MatchAsync<Either<string, Guid>>(
+            async writeStream =>
             {
-                if (!DateTime.TryParse(value, out _))
+                await using (writeStream)
                 {
-                    errors.Add(new BulkUploadRowValidationError(question.Code, $"Invalid date format. Expected: YYYY-MM-DD"));
+                    await buffer.CopyToAsync(writeStream, cancellationToken);
                 }
 
-                continue;
-            }
-
-            if (!question.Options.Any())
-            {
-                continue;
-            }
-
-            var validValues = question.Options.Select(o => o.Value).ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-            if (question.QuestionType == SiteFormQuestionType.Checkbox)
-            {
-                var selectedValues = value.Split(',', StringSplitOptions.RemoveEmptyEntries)
-                    .Select(v => v.Trim())
-                    .ToList();
-
-                foreach (var selectedValue in selectedValues)
-                {
-                    if (!validValues.Contains(selectedValue))
-                    {
-                        var validOptions = string.Join(", ", question.Options.Select(o => o.Value));
-                        errors.Add(new BulkUploadRowValidationError(
-                            question.Code,
-                            $"Invalid option '{selectedValue}'. Valid options: {validOptions}"));
-                    }
-                }
-            }
-            else if (question.QuestionType is SiteFormQuestionType.Radio or SiteFormQuestionType.Select)
-            {
-                if (!validValues.Contains(value))
-                {
-                    var validOptions = string.Join(", ", question.Options.Select(o => o.Value));
-                    errors.Add(new BulkUploadRowValidationError(
-                        question.Code,
-                        $"Invalid option '{value}'. Valid options: {validOptions}"));
-                }
-            }
-        }
-
-        return errors;
-    }
-
-    private static Location CreateLocationFromRecord(
-        Dictionary<string, string> record,
-        OrganisationId organisationId,
-        IReadOnlyList<SiteFormQuestion> questions)
-    {
-        var name = record.GetValueOrDefault(PredefinedNameCode, string.Empty);
-        var postCode = record.GetValueOrDefault(PredefinedPostCodeCode, string.Empty);
-        var referenceNumber = record.GetValueOrDefault(PredefinedReferenceNumberCode, string.Empty);
-
-        if (string.IsNullOrWhiteSpace(referenceNumber))
-        {
-            referenceNumber = DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString();
-        }
-
-        var location = Location.New(
-            LocationId.New(),
-            organisationId,
-            name,
-            postCode,
-            referenceNumber,
-            isActive: true);
-
-        foreach (var question in questions)
-        {
-            var value = record.GetValueOrDefault(question.Code, string.Empty);
-
-            if (string.IsNullOrWhiteSpace(value))
-            {
-                continue;
-            }
-
-            var displayValue = GetDisplayValue(question, value);
-            var optionsSnapshot = question.Options.Any()
-                ? JsonSerializer.Serialize(question.Options.Select(o => new { o.Value, o.Label }).ToList())
-                : null;
-
-            location.AddAnswer(
-                question.Code,
-                question.Label,
-                question.Hint,
-                question.QuestionType,
-                question.DisplayOrder,
-                value,
-                displayValue,
-                optionsSnapshot);
-        }
-
-        return location;
-    }
-
-    private static string? GetDisplayValue(SiteFormQuestion question, string? value)
-    {
-        if (string.IsNullOrEmpty(value))
-        {
-            return null;
-        }
-
-        if (question.QuestionType == SiteFormQuestionType.Checkbox)
-        {
-            var values = value.Split(',', StringSplitOptions.RemoveEmptyEntries).Select(v => v.Trim());
-            var labels = values
-                .Select(v => question.Options.FirstOrDefault(o => o.Value.Equals(v, StringComparison.OrdinalIgnoreCase))?.Label ?? v)
-                .ToList();
-            return string.Join(", ", labels);
-        }
-
-        if (question.Options.Any())
-        {
-            var option = question.Options.FirstOrDefault(o => o.Value.Equals(value, StringComparison.OrdinalIgnoreCase));
-            return option?.Label ?? value;
-        }
-
-        return value;
+                return stagingId;
+            },
+            ex => $"Failed to stage upload: {ex.Message}");
     }
 }

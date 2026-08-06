@@ -14,6 +14,7 @@ public record CreateDataCollectionCommand : IRequest<Either<DataCollectionExcept
     public string? Description { get; init; }
     public DateTime StartDate { get; init; }
     public DateTime EndDate { get; init; }
+    public string Type { get; init; } = DataCollectionTypeConstants.DeliveryPlan;
     public bool IsSubmittedByAllLocalAuthorities { get; init; } = true;
     public bool SaveAsDraft { get; init; } = false;
     public IReadOnlyList<Guid> LocalAuthorityIds { get; init; } = [];
@@ -63,7 +64,8 @@ public class CreateDataCollectionCommandHandler(
                 request.StartDate,
                 request.EndDate,
                 request.IsSubmittedByAllLocalAuthorities,
-                request.SaveAsDraft);
+                request.SaveAsDraft,
+                DataCollectionType.From(request.Type));
 
             if (!request.IsSubmittedByAllLocalAuthorities)
             {

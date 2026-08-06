@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.Json;
 using Infrastructure.Persistence.Seeders;
 using Infrastructure.Persistence.Seeders.Models;
@@ -58,7 +59,7 @@ public class SeederDataController(
         }
 
         var fileName = $"seeder-data-{DateTime.UtcNow:yyyyMMdd-HHmmss}.json";
-        var bytes = System.Text.Encoding.UTF8.GetBytes(jsonContent);
+        var bytes = Encoding.UTF8.GetBytes(jsonContent);
 
         return File(bytes, "application/json", fileName);
     }
@@ -180,6 +181,71 @@ public class SeederDataController(
         }
 
         return Ok(result);
+    }
+
+    [HttpGet("download-decoded")]
+    public async Task<IActionResult> DownloadDecodedSeederData(CancellationToken cancellationToken)
+    {
+        var jsonContent = await seederDataService.GetSeederDataJsonAsync(cancellationToken);
+
+        if (jsonContent == null)
+        {
+            return NotFound("No seeder data file found. Please export first.");
+        }
+
+        var decoded = DecodeBase64JsonValues(jsonContent);
+        var fileName = $"seeder-data-decoded-{DateTime.UtcNow:yyyyMMdd-HHmmss}.json";
+        var bytes = Encoding.UTF8.GetBytes(decoded);
+
+        return File(bytes, "application/json", fileName);
+    }
+
+    private static string DecodeBase64JsonValues(string json)
+    {
+        using var document = JsonDocument.Parse(json);
+        using var stream = new MemoryStream();
+        using var writer = new Utf8JsonWriter(stream, new JsonWriterOptions { Indented = true });
+        WriteDecoded(writer, document.RootElement);
+        writer.Flush();
+        return Encoding.UTF8.GetString(stream.ToArray());
+    }
+
+    private static void WriteDecoded(Utf8JsonWriter writer, JsonElement element)
+    {
+        switch (element.ValueKind)
+        {
+            case JsonValueKind.Object:
+                writer.WriteStartObject();
+                foreach (var prop in element.EnumerateObject())
+                {
+                    writer.WritePropertyName(prop.Name);
+                    WriteDecoded(writer, prop.Value);
+                }
+
+                writer.WriteEndObject();
+                break;
+
+            case JsonValueKind.Array:
+                writer.WriteStartArray();
+                foreach (var item in element.EnumerateArray())
+                {
+                    WriteDecoded(writer, item);
+                }
+
+                writer.WriteEndArray();
+                break;
+
+            case JsonValueKind.String:
+                var str = element.GetString() ?? string.Empty;
+                writer.WriteStringValue(str.StartsWith("b64:", StringComparison.Ordinal)
+                    ? Encoding.UTF8.GetString(Convert.FromBase64String(str[4..]))
+                    : str);
+                break;
+
+            default:
+                element.WriteTo(writer);
+                break;
+        }
     }
 }
 

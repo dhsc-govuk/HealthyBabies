@@ -107,9 +107,10 @@ const OptionsManager = ({ options, dispatch, error }: Props): React.ReactElement
               <GovUKFieldset.Input
                 id={`option-value-${index}`}
                 name={`option-value-${index}`}
-                label="Value"
+                label="Value (auto-generated)"
+                hint={option.isPersisted ? 'Locked to preserve existing answers' : 'Generated from the label'}
                 value={option.value}
-                onChange={(e) => handleUpdateOption(index, 'value', e.target.value)}
+                disabled
               />
             </Box>
             <Box sx={{ flex: 1, '& .nhsuk-form-group': { mb: 0 } }}>
@@ -117,6 +118,7 @@ const OptionsManager = ({ options, dispatch, error }: Props): React.ReactElement
                 id={`option-label-${index}`}
                 name={`option-label-${index}`}
                 label="Label"
+                hint="Shown to users on the form"
                 value={option.label}
                 onChange={(e) => handleUpdateOption(index, 'label', e.target.value)}
               />

@@ -107,10 +107,16 @@ public class DataCollectionSubmission : AuditableEntity<DataCollectionSubmission
     {
         Guard.Ensure(
             Status == DataCollectionSubmissionStatus.RequiresChanges ||
-            Status == DataCollectionSubmissionStatus.Rejected,
-            "Can only reopen data collections that require changes or were rejected");
+            Status == DataCollectionSubmissionStatus.Rejected ||
+            Status == DataCollectionSubmissionStatus.Submitted,
+            "Can only reopen data collections that require changes, were rejected, or were submitted");
 
         Status = DataCollectionSubmissionStatus.InProgress;
         UpdatedAt = DateTime.UtcNow;
     }
+
+    public bool IsLockedForEditing() =>
+        Status == DataCollectionSubmissionStatus.Submitted ||
+        Status == DataCollectionSubmissionStatus.Approved ||
+        Status == DataCollectionSubmissionStatus.Rejected;
 }

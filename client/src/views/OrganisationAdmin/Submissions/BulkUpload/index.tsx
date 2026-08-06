@@ -4,11 +4,22 @@ import { useMutation, useQueryClient } from 'react-query';
 import { GeneralLayout } from '../../../../layouts';
 import { LoadingSpinner } from '../../../../components/GovUKComponents';
 import useErrorSummaryFocus from '../../../../hooks/useErrorSummaryFocus';
+import useStepFocus from '../../../../hooks/useStepFocus';
 import useFormTelemetry from '../../../../hooks/useFormTelemetry';
-import { validateBulkUpload, processStagedBulkUpload, downloadBulkUploadTemplate, getBulkUploadTemplateFileName, type TemplateFormat } from '../queries';
-import { BulkUploadProps, initialBulkUploadState, Delimiter, ServiceSelection } from './types';
+import {
+  validateBulkUpload,
+  processStagedBulkUpload,
+  checkOutcomeScoreDuplicates,
+  checkServiceUserDuplicates,
+  downloadBulkUploadTemplate,
+  getBulkUploadTemplateFileName,
+  type TemplateFormat,
+  type OutcomeScoreRowCheckDto,
+  type ServiceUserRowCheckDto,
+} from '../queries';
+import { BulkUploadProps, initialBulkUploadState, Delimiter, ServiceSelection, CellError } from './types';
 import { bulkUploadReducer, BulkUploadActionType } from './reducer';
-import { parseCSV, validateFile, convertValidationErrorsToCellErrors, updateRequiredFieldsFromMetadata, validateSumGroups } from './validation';
+import { parseCSV, validateFile, convertValidationErrorsToCellErrors, updateRequiredFieldsFromMetadata, validateSumGroups, validateCellValue, isFieldVisible } from './validation';
 import StepUpload from './StepUpload';
 import StepPreview from './StepPreview';
 import StepCheckData from './StepCheckData';
@@ -30,7 +41,6 @@ const downloadFile = (blob: Blob, filename: string) => {
 };
 
 const BulkUpload: React.FC<BulkUploadProps> = ({ moduleType, moduleName, backUrl }) => {
-  usePageTitle('Bulk upload');
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { submissionId, moduleId } = useParams<{
@@ -41,12 +51,14 @@ const BulkUpload: React.FC<BulkUploadProps> = ({ moduleType, moduleName, backUrl
   const { trackStarted, trackSubmitted, trackValidationFailed } = useFormTelemetry('bulk_upload_submission');
 
   const [state, dispatch] = useReducer(bulkUploadReducer, initialBulkUploadState);
+  const stepFocusRef = useStepFocus<HTMLDivElement>(state.currentStep);
   const [submitAttempts, setSubmitAttempts] = useState(0);
+  usePageTitle('Bulk upload', state.currentStep === 'check' && state.cellErrors.length > 0);
   useErrorSummaryFocus(submitAttempts, state.currentStep === 'check' && state.cellErrors.length > 0);
 
   useEffect(() => {
     trackStarted();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -67,6 +79,17 @@ const BulkUpload: React.FC<BulkUploadProps> = ({ moduleType, moduleName, backUrl
   const validateMutation = useMutation({
     mutationFn: (file: File) => validateBulkUpload(submissionId!, moduleId!, file),
     onSuccess: (response) => {
+      // If the backend detected a wrong-module CSV (none of the expected field headers were found),
+      // surface the error immediately and send the user back to the upload step so they can
+      // select the correct file.  Without this guard, all per-row errors reference column codes
+      // that don't exist in the uploaded CSV — the frontend drops them silently and hasErrors
+      // stays false, letting the user proceed with entirely mismatched data.
+      if (response.data.moduleError) {
+        dispatch({ type: BulkUploadActionType.SET_FILE_ERROR, payload: response.data.moduleError });
+        dispatch({ type: BulkUploadActionType.SET_STEP, payload: 'upload' });
+        return;
+      }
+
       dispatch({ type: BulkUploadActionType.SET_VALIDATION_RESULT, payload: response.data });
       dispatch({ type: BulkUploadActionType.SET_STAGING_ID, payload: response.data.stagingId });
 
@@ -92,10 +115,49 @@ const BulkUpload: React.FC<BulkUploadProps> = ({ moduleType, moduleName, backUrl
     },
   });
 
+  // Check outcome score duplicates mutation (outcome-scores only)
+  const checkDuplicatesMutation = useMutation({
+    mutationFn: (rows: OutcomeScoreRowCheckDto[]) => checkOutcomeScoreDuplicates(submissionId!, moduleId!, rows),
+    onSuccess: (response) => {
+      const selections: ServiceSelection[] = response.data.map((d) => ({
+        rowIndex: d.rowIndex,
+        serviceName: d.serviceName,
+        updateFromFile: true,
+        hasExistingData: d.hasExistingData,
+        status: d.hasExistingData ? 'Existing record' : 'New record',
+        lastUpdated: undefined,
+      }));
+      dispatch({ type: BulkUploadActionType.SET_SERVICE_SELECTIONS, payload: selections });
+      dispatch({ type: BulkUploadActionType.SET_STEP, payload: 'select' });
+    },
+    onError: () => {
+      dispatch({ type: BulkUploadActionType.SET_FILE_ERROR, payload: 'Failed to check for existing data. Please try again.' });
+    },
+  });
+
+  // Check service user duplicates mutation (service-users only)
+  const checkServiceUserDuplicatesMutation = useMutation({
+    mutationFn: (rows: ServiceUserRowCheckDto[]) => checkServiceUserDuplicates(submissionId!, moduleId!, rows),
+    onSuccess: (response) => {
+      const selections: ServiceSelection[] = response.data.map((d) => ({
+        rowIndex: d.rowIndex,
+        serviceName: d.serviceName,
+        updateFromFile: true,
+        hasExistingData: d.hasExistingData,
+        status: d.hasExistingData ? 'Existing record' : 'New record',
+        lastUpdated: undefined,
+      }));
+      dispatch({ type: BulkUploadActionType.SET_SERVICE_SELECTIONS, payload: selections });
+      dispatch({ type: BulkUploadActionType.SET_STEP, payload: 'select' });
+    },
+    onError: () => {
+      dispatch({ type: BulkUploadActionType.SET_FILE_ERROR, payload: 'Failed to check for existing data. Please try again.' });
+    },
+  });
+
   // Process mutation
   const processMutation = useMutation({
-    mutationFn: (payload: { stagingId: string; selectedServiceNames: string[]; cellEdits: typeof state.editedCells }) =>
-      processStagedBulkUpload(submissionId!, moduleId!, payload),
+    mutationFn: (payload: { stagingId: string; selectedRowIndices: number[]; cellEdits: typeof state.editedCells }) => processStagedBulkUpload(submissionId!, moduleId!, payload),
     onSuccess: (response) => {
       trackSubmitted();
       dispatch({ type: BulkUploadActionType.SET_PROCESS_RESULT, payload: response.data });
@@ -179,26 +241,40 @@ const BulkUpload: React.FC<BulkUploadProps> = ({ moduleType, moduleName, backUrl
   const handleContinueToSelect = useCallback(() => {
     if (!state.validationResult || !state.parsedData) return;
 
-    // Extract unique service names from validation result
-    const uniqueServices = new Map<string, ServiceSelection>();
-    state.validationResult.rowValidations?.forEach((row) => {
-      if (row.serviceName && !uniqueServices.has(row.serviceName)) {
-        uniqueServices.set(row.serviceName, {
-          serviceName: row.serviceName,
-          updateFromFile: true,
-          status: 'In progress',
-          lastUpdated: undefined,
-        });
+    // Derive service names from the current (possibly cell-edited) parsed rows rather than
+    // the original validation response, so that UI edits to service name cells are reflected.
+    const headers = state.parsedData.headers;
+    const serviceColIndex = headers.findIndex((h) => h.toLowerCase() === 'servicename' || h.toLowerCase() === 'pps01');
+
+    const csvRows: OutcomeScoreRowCheckDto[] = [];
+    const serviceUsersCsvRows: { rowIndex: number; serviceName: string }[] = [];
+    state.parsedData.rows.forEach((row, rowIndex) => {
+      const serviceName = serviceColIndex >= 0 ? row[serviceColIndex]?.trim() : undefined;
+      if (serviceName) {
+        if (moduleType === 'outcome-scores') {
+          const fieldValues = headers.map((header, colIndex) => ({
+            fieldKey: header,
+            value: row[colIndex]?.trim() ?? '',
+          }));
+          csvRows.push({ rowIndex, serviceName, fieldValues });
+        } else {
+          serviceUsersCsvRows.push({ rowIndex, serviceName });
+        }
       }
     });
 
-    dispatch({ type: BulkUploadActionType.SET_SERVICE_SELECTIONS, payload: Array.from(uniqueServices.values()) });
-    dispatch({ type: BulkUploadActionType.SET_STEP, payload: 'select' });
-  }, [state.validationResult, state.parsedData]);
+    if (moduleType === 'outcome-scores') {
+      // Send full row data so the backend can hash-compare each row against existing records.
+      checkDuplicatesMutation.mutate(csvRows);
+    } else {
+      // Check whether each service already has saved data for this data collection period.
+      checkServiceUserDuplicatesMutation.mutate(serviceUsersCsvRows);
+    }
+  }, [state.validationResult, state.parsedData, moduleType, checkDuplicatesMutation, checkServiceUserDuplicatesMutation]);
 
   // Handle toggle service selection
-  const handleToggleService = useCallback((serviceName: string, updateFromFile: boolean) => {
-    dispatch({ type: BulkUploadActionType.TOGGLE_SERVICE_SELECTION, payload: { serviceName, updateFromFile } });
+  const handleToggleService = useCallback((rowIndex: number, updateFromFile: boolean) => {
+    dispatch({ type: BulkUploadActionType.TOGGLE_SERVICE_SELECTION, payload: { rowIndex, updateFromFile } });
   }, []);
 
   // Handle cell edit
@@ -230,16 +306,32 @@ const BulkUpload: React.FC<BulkUploadProps> = ({ moduleType, moduleName, backUrl
 
       // Remove the edited cell's error and any stale sum-group errors for this row
       const withoutStaleErrors = state.cellErrors.filter(
-        (e) =>
-          !(e.rowIndex === rowIndex && e.cellIndex === cellIndex) &&
-          !(e.rowIndex === rowIndex && sumGroupFieldCodes.has(e.fieldCode))
+        (e) => !(e.rowIndex === rowIndex && e.cellIndex === cellIndex) && !(e.rowIndex === rowIndex && sumGroupFieldCodes.has(e.fieldCode))
       );
+
+      // Re-validate the edited cell itself — option allowlist, numeric type, and min — before
+      // accepting it. Previously only validateSumGroups ran here, so an invalid option (e.g. "child"
+      // instead of "children") or free text/negative number in a demographic column was never
+      // rejected until this cell was re-validated on a later re-submit, if at all.
+      const fieldCode = headers[cellIndex];
+      const fieldMeta = fieldMetadata?.find((f) => f.fieldCode === fieldCode);
+      const cellErrorsForThisEdit: CellError[] = [];
+      if (fieldMeta && isFieldVisible(fieldCode, updatedRow, headers, fieldMetadata)) {
+        const allRowValues: Record<string, string> = {};
+        headers.forEach((h, i) => {
+          allRowValues[h] = updatedRow[i] || '';
+        });
+        const cellError = validateCellValue(value, fieldMeta, allRowValues);
+        if (cellError) {
+          cellErrorsForThisEdit.push({ rowIndex, cellIndex, fieldCode, message: cellError });
+        }
+      }
 
       // Re-run sum-group validation against the updated row so sibling fields
       // in the same group are cleared or re-flagged immediately
       const freshSumErrors = validateSumGroups(updatedRow, headers, rowIndex, fieldMetadata);
 
-      dispatch({ type: BulkUploadActionType.SET_CELL_ERRORS, payload: [...withoutStaleErrors, ...freshSumErrors] });
+      dispatch({ type: BulkUploadActionType.SET_CELL_ERRORS, payload: [...withoutStaleErrors, ...cellErrorsForThisEdit, ...freshSumErrors] });
       dispatch({ type: BulkUploadActionType.SET_EDITING_CELL, payload: null });
     },
     [state.cellErrors, state.parsedData, state.validationResult]
@@ -269,14 +361,14 @@ const BulkUpload: React.FC<BulkUploadProps> = ({ moduleType, moduleName, backUrl
   const handleConfirmUpload = useCallback(() => {
     if (!state.stagingId || !state.parsedData) return;
 
-    const selectedServiceNames = state.serviceSelections
-      .filter((s) => s.updateFromFile)
-      .map((s) => s.serviceName);
+    // Rows with no existing data are always processed; rows with existing data
+    // are only processed if the user chose "Update from this file".
+    const selectedRowIndices = state.serviceSelections.filter((s) => !s.hasExistingData || s.updateFromFile).map((s) => s.rowIndex);
 
     dispatch({ type: BulkUploadActionType.SET_STEP, payload: 'processing' });
     processMutation.mutate({
       stagingId: state.stagingId,
-      selectedServiceNames,
+      selectedRowIndices,
       cellEdits: state.editedCells,
     });
   }, [state.stagingId, state.parsedData, state.serviceSelections, state.editedCells, processMutation]);
@@ -313,7 +405,7 @@ const BulkUpload: React.FC<BulkUploadProps> = ({ moduleType, moduleName, backUrl
     dispatch({ type: BulkUploadActionType.SET_EDITING_CELL, payload: { rowIndex, cellIndex } });
   }, []);
 
-  const isLoading = validateMutation.isLoading || processMutation.isLoading || state.isDownloading;
+  const isLoading = validateMutation.isLoading || processMutation.isLoading || checkDuplicatesMutation.isLoading || state.isDownloading;
 
   // Render processing state
   if (state.currentStep === 'processing') {
@@ -336,7 +428,7 @@ const BulkUpload: React.FC<BulkUploadProps> = ({ moduleType, moduleName, backUrl
 
   return (
     <GeneralLayout backLink={{ href: backUrl }}>
-      <div className="bulk-upload-container">
+      <div ref={stepFocusRef} className="bulk-upload-container">
         {state.currentStep === 'upload' && (
           <StepUpload
             file={state.file}
@@ -380,7 +472,13 @@ const BulkUpload: React.FC<BulkUploadProps> = ({ moduleType, moduleName, backUrl
         )}
 
         {state.currentStep === 'select' && (
-          <StepSelect serviceSelections={state.serviceSelections} isLoading={isLoading} onToggleService={handleToggleService} onConfirm={handleConfirmUpload} />
+          <StepSelect
+            serviceSelections={state.serviceSelections}
+            moduleType={moduleType}
+            isLoading={isLoading}
+            onToggleService={handleToggleService}
+            onConfirm={handleConfirmUpload}
+          />
         )}
 
         {state.currentStep === 'complete' && state.processResult && (
@@ -409,4 +507,3 @@ const BulkUpload: React.FC<BulkUploadProps> = ({ moduleType, moduleName, backUrl
 };
 
 export default BulkUpload;
-

@@ -71,3 +71,15 @@ public record OrganisationAdminHomeDto(
     int Locations,
 
     int Contacts);
+
+public record FinancialDataEntryDto(
+
+    string Module,
+
+    string YearRange,
+
+    decimal Amount);
+
+public record UpsertOrganisationFinancialDataDto(
+
+    IReadOnlyList<FinancialDataEntryDto> Entries);

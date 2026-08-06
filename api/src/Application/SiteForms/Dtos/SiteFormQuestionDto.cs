@@ -16,7 +16,9 @@ public record SiteFormQuestionDto(
     string? HelpText,
     string? ConditionalQuestionCode,
     string? ConditionalValue,
+    string? ConditionalRules,
     bool IsActive,
+    string? DateValidationRule,
     IReadOnlyList<SiteFormQuestionOptionDto> Options)
 {
     public static SiteFormQuestionDto FromDomainModel(SiteFormQuestion question) =>
@@ -34,7 +36,9 @@ public record SiteFormQuestionDto(
             question.HelpText,
             question.ConditionalQuestionCode,
             question.ConditionalValue,
+            question.ConditionalRules,
             question.IsActive,
+            question.DateValidationRule,
             question.Options.Select(SiteFormQuestionOptionDto.FromDomainModel).ToList());
 }
 

@@ -17,12 +17,18 @@ public interface IFormSubmissionRepository
     Task<IReadOnlyList<FormSubmission>> GetByFormModuleOrganisationDataCollectionAndEntityTypeAsync(DataCollectionFormModuleId formModuleId, OrganisationId organisationId, DataCollectionId dataCollectionId, string entityType, CancellationToken cancellationToken = default);
     Task<Option<FormSubmission>> GetByFormModuleAndServiceAsync(DataCollectionFormModuleId formModuleId, Guid serviceId, CancellationToken cancellationToken = default);
     Task<Option<FormSubmission>> GetByFormModuleDataCollectionAndServiceAsync(DataCollectionFormModuleId formModuleId, DataCollectionId dataCollectionId, Guid serviceId, CancellationToken cancellationToken = default);
+    Task<Option<FormSubmission>> GetByFormModuleDataCollectionAndOutcomeScoreAsync(DataCollectionFormModuleId formModuleId, DataCollectionId dataCollectionId, Guid serviceId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<FormSubmission>> GetAllOutcomeScoresByServiceAsync(DataCollectionFormModuleId formModuleId, DataCollectionId dataCollectionId, Guid serviceId, CancellationToken cancellationToken = default);
+    Task<System.Collections.Generic.HashSet<Guid>> GetServiceIdsWithExistingOutcomeScoresAsync(DataCollectionFormModuleId formModuleId, DataCollectionId dataCollectionId, IReadOnlyList<Guid> serviceIds, CancellationToken cancellationToken = default);
+    Task DeleteOutcomeScoresByServiceAsync(DataCollectionFormModuleId formModuleId, DataCollectionId dataCollectionId, Guid serviceId, CancellationToken cancellationToken = default);
     Task<Option<FormSubmission>> GetByFormModuleAndServiceCategoryAsync(DataCollectionFormModuleId formModuleId, Guid serviceCategoryId, CancellationToken cancellationToken = default);
     Task<Option<FormSubmission>> GetByFormModuleDataCollectionAndServiceCategoryAsync(DataCollectionFormModuleId formModuleId, DataCollectionId dataCollectionId, Guid serviceCategoryId, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<FormSubmission>> GetByOrganisationIdAsync(OrganisationId organisationId, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<FormSubmission>> GetActivitiesByOrganisationAndModulesAsync(OrganisationId organisationId, IReadOnlyCollection<DataCollectionFormModuleId> formModuleIds, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<FormSubmission>> GetAllAsync(CancellationToken cancellationToken = default);
     Task<int> DeleteAllAsync(CancellationToken cancellationToken = default);
     Task DeleteAsync(FormSubmissionId id, CancellationToken cancellationToken = default);
-    Task<FormSubmission> AddAsync(FormSubmission entity, CancellationToken cancellationToken = default);
-    Task<FormSubmission> UpdateAsync(FormSubmission entity, CancellationToken cancellationToken = default);
+    Task<FormSubmission> AddAsync(FormSubmission entity, CancellationToken cancellationToken = default, bool saveChanges = true);
+    Task<FormSubmission> UpdateAsync(FormSubmission entity, CancellationToken cancellationToken = default, bool saveChanges = true);
+    Task<int> SaveChangesAsync(CancellationToken cancellationToken = default);
 }

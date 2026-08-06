@@ -11,6 +11,7 @@ public record CreateFormModuleCommand : IRequest<Either<FormModuleException, Dat
     public string Code { get; init; } = string.Empty;
     public string Name { get; init; } = string.Empty;
     public string? Description { get; init; }
+    public string Type { get; init; } = string.Empty;
 }
 
 public class CreateFormModuleCommandHandler(
@@ -21,6 +22,12 @@ public class CreateFormModuleCommandHandler(
         CreateFormModuleCommand request,
         CancellationToken cancellationToken)
     {
+        if (request.Type != DataCollectionTypeConstants.DeliveryPlan
+            && request.Type != DataCollectionTypeConstants.ManagementInformation)
+        {
+            return new FormModuleInvalidTypeException(request.Type);
+        }
+
         var codeExists = await moduleRepository.ExistsByCode(request.Code, cancellationToken);
         if (codeExists)
         {
@@ -34,7 +41,8 @@ public class CreateFormModuleCommandHandler(
             request.Code,
             sectionNumber,
             request.Name,
-            request.Description);
+            request.Description,
+            type: DataCollectionType.From(request.Type));
 
         await moduleRepository.AddAsync(module, cancellationToken);
 

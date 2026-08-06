@@ -17,6 +17,9 @@ public static class FieldTypeConstants
     public const string Address = "address";
     public const string PostCode = "post_code";
     public const string Textarea = "textarea";
+    public const string Currency = "currency";
+    public const string Calculation = "calculation";
+    public const string ReadOnly = "read_only";
 }
 
 /// <summary>
@@ -56,6 +59,9 @@ public class FieldType : ValueObject
     public static FieldType Address => new(FieldTypeConstants.Address);
     public static FieldType PostCode => new(FieldTypeConstants.PostCode);
     public static FieldType Textarea => new(FieldTypeConstants.Textarea);
+    public static FieldType Currency => new(FieldTypeConstants.Currency);
+    public static FieldType Calculation => new(FieldTypeConstants.Calculation);
+    public static FieldType ReadOnly => new(FieldTypeConstants.ReadOnly);
 
     public static implicit operator string(FieldType fieldType)
     {
@@ -94,6 +100,9 @@ public class FieldType : ValueObject
             yield return Address;
             yield return PostCode;
             yield return Textarea;
+            yield return Currency;
+            yield return Calculation;
+            yield return ReadOnly;
         }
     }
 }

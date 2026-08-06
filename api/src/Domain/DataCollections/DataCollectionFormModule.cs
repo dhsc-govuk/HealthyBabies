@@ -16,12 +16,14 @@ public class DataCollectionFormModule : AuditableEntity<DataCollectionFormModule
     public string? Description { get; private set; }
     public DateTime LastChangedOn { get; private set; }
     public bool IsActive { get; private set; }
+    public DataCollectionType Type { get; private set; }
 
     public FormStatus Status { get; private set; }
     public DateTime? PublishedAt { get; private set; }
     public UserId? PublishedById { get; private set; }
     public User? PublishedBy { get; private set; }
     public string? ValidationSchema { get; private set; }
+    public bool AllowsMultipleActivities { get; private set; }
 
     public IReadOnlyCollection<FormSection> Sections => _sections.AsReadOnly();
     public IReadOnlyCollection<FormField> Fields => _fields.AsReadOnly();
@@ -31,6 +33,7 @@ public class DataCollectionFormModule : AuditableEntity<DataCollectionFormModule
         Code = string.Empty;
         Name = string.Empty;
         Status = FormStatus.Draft;
+        Type = DataCollectionType.DeliveryPlan;
     }
 
     private DataCollectionFormModule(
@@ -40,7 +43,9 @@ public class DataCollectionFormModule : AuditableEntity<DataCollectionFormModule
         string name,
         string? description,
         DateTime lastChangedOn,
-        bool isActive)
+        bool isActive,
+        DataCollectionType type,
+        bool allowsMultipleActivities)
     {
         Guard.NotNullOrEmptyOrWhiteSpace(code, nameof(code));
         Guard.NotNullOrEmptyOrWhiteSpace(name, nameof(name));
@@ -53,6 +58,8 @@ public class DataCollectionFormModule : AuditableEntity<DataCollectionFormModule
         Description = description;
         LastChangedOn = lastChangedOn;
         IsActive = isActive;
+        Type = type;
+        AllowsMultipleActivities = allowsMultipleActivities;
         Status = FormStatus.Draft;
         CreatedAt = DateTime.UtcNow;
     }
@@ -64,7 +71,9 @@ public class DataCollectionFormModule : AuditableEntity<DataCollectionFormModule
         string name,
         string? description = null,
         DateTime? lastChangedOn = null,
-        bool isActive = true)
+        bool isActive = true,
+        DataCollectionType? type = null,
+        bool allowsMultipleActivities = false)
     {
         return new DataCollectionFormModule(
             id,
@@ -73,7 +82,15 @@ public class DataCollectionFormModule : AuditableEntity<DataCollectionFormModule
             name,
             description,
             lastChangedOn ?? DateTime.UtcNow,
-            isActive);
+            isActive,
+            type ?? DataCollectionType.DeliveryPlan,
+            allowsMultipleActivities);
+    }
+
+    public void SetAllowsMultipleActivities(bool value)
+    {
+        AllowsMultipleActivities = value;
+        UpdatedAt = DateTime.UtcNow;
     }
 
     public void UpdateLastChangedOn(DateTime lastChangedOn)
@@ -87,6 +104,12 @@ public class DataCollectionFormModule : AuditableEntity<DataCollectionFormModule
         Guard.NotNullOrEmptyOrWhiteSpace(name, nameof(name));
         Name = name;
         Description = description;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
+    public void UpdateType(DataCollectionType type)
+    {
+        Type = type;
         UpdatedAt = DateTime.UtcNow;
     }
 
@@ -236,4 +259,24 @@ public static class DataCollectionFormModuleCodes
     public const string WiderServiceUsers = "wider-service-users";
     public const string OutcomeScores = "outcome-scores";
     public const string BreastfeedingRates = "breastfeeding-rates";
+    public const string Section1 = "section-1";
+    public const string Section2 = "section-2";
+    public const string Section3 = "section-3";
+    public const string Section4 = "section-4";
+    public const string Section5 = "section-5";
+    public const string WorkforceTraining = "workforce-training";
+    public const string FundedTotalWorkforce = "funded-total-workforce";
+    public const string Section8 = "section-8";
+    public const string Section9 = "section-9";
+
+    // Delivery Plan modules (Focus onwards, sections 1–9)
+    public const string Focus = "focus-2026-2027";
+    public const string DeliveryGrant = "delivery-grant";
+    public const string Parenting = "parenting";
+    public const string Hle = "hle";
+    public const string Send = "send";
+    public const string PnmhAndPir = "pnmh-and-pir";
+    public const string InfantFeeding = "infant-feeding";
+    public const string HealthyBabiesOffer = "healthy-babies-offer";
+    public const string RolloverSpend = "rollover-spend";
 }

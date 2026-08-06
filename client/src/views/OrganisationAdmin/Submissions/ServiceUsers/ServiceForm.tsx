@@ -8,6 +8,8 @@ import useFormTelemetry from '../../../../hooks/useFormTelemetry';
 import { getServiceForm, saveServiceForm, FormModuleFieldDto, FieldConfiguration } from '../queries';
 import { ValidationError } from '../validationUtils';
 import { encodeNullableForWaf } from '../../../../helpers/stringUtils';
+import { evaluateNumericOperators } from '../../../../helpers/conditionalOperators';
+import { processError } from '../../../../helpers/axiosErrorFallback';
 import './styles.css';
 import usePageTitle from '../../../../hooks/usePageTitle';
 
@@ -19,20 +21,34 @@ interface ServiceConditionalRule {
   parentOption?: string;
   showWhen?: {
     fieldKey?: string;
+    serviceFieldKey?: string;
     equals?: string;
     notEquals?: string;
     in?: string[];
     greaterThan?: number;
+    gt?: string;
+    gte?: string;
+    lt?: string;
+    lte?: string;
+    eq?: string;
+    neq?: string;
     allOf?: Array<{
-      fieldKey: string;
+      fieldKey?: string;
+      serviceFieldKey?: string;
       equals?: string;
+      in?: string[];
       greaterThan?: number;
+      gt?: string;
+      gte?: string;
+      lt?: string;
+      lte?: string;
+      eq?: string;
+      neq?: string;
     }>;
   };
 }
 
 const ServiceForm = (): React.ReactElement => {
-  usePageTitle('Provide service user data');
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { submissionId, moduleId, serviceId } = useParams<{
@@ -50,6 +66,8 @@ const ServiceForm = (): React.ReactElement => {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [groupErrors, setGroupErrors] = useState<ValidationError[]>([]);
   const [submitAttempts, setSubmitAttempts] = useState(0);
+  const [saveError, setSaveError] = useState<string | undefined>(undefined);
+  usePageTitle('Provide service user data', Object.keys(fieldErrors).length > 0 || groupErrors.length > 0);
   useErrorSummaryFocus(submitAttempts, Object.keys(fieldErrors).length > 0 || groupErrors.length > 0);
 
   const { data: formData, isLoading } = useQuery({
@@ -80,9 +98,7 @@ const ServiceForm = (): React.ReactElement => {
           serializedValues[key] = value;
         }
       });
-      const encodedValues = Object.fromEntries(
-        Object.entries(serializedValues).map(([key, value]) => [key, encodeNullableForWaf(value)])
-      );
+      const encodedValues = Object.fromEntries(Object.entries(serializedValues).map(([key, value]) => [key, encodeNullableForWaf(value)]));
       return saveServiceForm(submissionId!, moduleId!, serviceId!, {
         fieldValues: encodedValues,
         markComplete,
@@ -100,6 +116,9 @@ const ServiceForm = (): React.ReactElement => {
       navigate(`/organisation-admin/submissions/${submissionId}/modules/${moduleId}/services`, {
         state: { savedServiceName: serviceForm?.serviceName },
       });
+    },
+    onError: (error) => {
+      processError(error, setSaveError);
     },
   });
 
@@ -135,6 +154,85 @@ const ServiceForm = (): React.ReactElement => {
     }
   };
 
+  const isFieldVisible = useCallback(
+    (field: FormModuleFieldDto): boolean => {
+      const rules = parseConditionalRules(field.conditionalRules);
+      if (!rules?.showWhen) return true;
+
+      const { showWhen } = rules;
+
+      // Helper to check if a value matches (handles both string and array parent values)
+      const valueMatches = (parentValue: string | string[] | null, targetValue: string): boolean => {
+        if (Array.isArray(parentValue)) {
+          return parentValue.includes(targetValue);
+        }
+        return parentValue === targetValue;
+      };
+
+      const valueNotMatches = (parentValue: string | string[] | null, targetValue: string): boolean => {
+        if (Array.isArray(parentValue)) {
+          return !parentValue.includes(targetValue);
+        }
+        return parentValue !== targetValue;
+      };
+
+      // Service-level (SMD) answers can carry inconsistent casing — e.g. legacy/bulk-uploaded data
+      // stored as "Funded" where the current option value is "funded" — so serviceFieldKey conditions
+      // compare case-insensitively. In-form (fieldKey) answers always come from the same option list
+      // the condition was authored against, so those stay case-sensitive.
+      const serviceValueMatches = (serviceValue: string | null, targetValue: string): boolean => (serviceValue ?? '').toLowerCase() === targetValue.toLowerCase();
+
+      if (showWhen.allOf) {
+        return showWhen.allOf.every((condition) => {
+          if (condition.serviceFieldKey) {
+            const serviceValue = serviceForm?.serviceAnswers?.[condition.serviceFieldKey] ?? null;
+            const numeric = evaluateNumericOperators(serviceValue, condition);
+            if (numeric !== null) return numeric;
+            if (condition.equals !== undefined) return serviceValueMatches(serviceValue, condition.equals);
+            if (condition.in !== undefined && Array.isArray(condition.in)) return condition.in.some((v) => serviceValueMatches(serviceValue, v));
+            return true;
+          }
+          const parentValue = fieldValues[condition.fieldKey!];
+          const numeric = evaluateNumericOperators(parentValue, condition);
+          if (numeric !== null) return numeric;
+          if (condition.equals !== undefined) return valueMatches(parentValue, condition.equals);
+          return true;
+        });
+      }
+
+      if (showWhen.serviceFieldKey) {
+        const serviceValue = serviceForm?.serviceAnswers?.[showWhen.serviceFieldKey] ?? null;
+        const numeric = evaluateNumericOperators(serviceValue, showWhen);
+        if (numeric !== null) return numeric;
+        if (showWhen.equals !== undefined) return serviceValueMatches(serviceValue, showWhen.equals);
+        if (showWhen.in !== undefined && Array.isArray(showWhen.in)) return showWhen.in.some((v) => serviceValueMatches(serviceValue, v));
+        return true;
+      }
+
+      if (showWhen.fieldKey) {
+        const parentValue = fieldValues[showWhen.fieldKey];
+
+        const numeric = evaluateNumericOperators(parentValue, showWhen);
+        if (numeric !== null) return numeric;
+        if (showWhen.equals !== undefined) {
+          return valueMatches(parentValue, showWhen.equals);
+        }
+        if (showWhen.notEquals !== undefined) {
+          return valueNotMatches(parentValue, showWhen.notEquals);
+        }
+        if (showWhen.in !== undefined && Array.isArray(showWhen.in)) {
+          if (Array.isArray(parentValue)) {
+            return showWhen.in.some((v: string) => parentValue.includes(v));
+          }
+          return showWhen.in.includes(parentValue as string);
+        }
+      }
+
+      return true;
+    },
+    [fieldValues, serviceForm]
+  );
+
   // Validate breakdown fields don't exceed total - uses config from database.
   // Handles two cases:
   //   1. Grouped fields (sumGroup): sum of all fields in the group must not exceed maxSumField
@@ -143,8 +241,11 @@ const ServiceForm = (): React.ReactElement => {
     if (!serviceForm) return [];
     const errors: ValidationError[] = [];
     const processedGroups = new Set<string>();
+    // Only currently-visible fields count. Otherwise a group hidden by flipping its gate question
+    // back to "No" still gets summed from the stale values it held while it was visible.
+    const visibleFields = serviceForm.fields.filter(isFieldVisible);
 
-    serviceForm.fields.forEach((field) => {
+    visibleFields.forEach((field) => {
       const config = parseConfiguration(field.configuration);
       if (!config?.maxSumField) return;
 
@@ -155,7 +256,7 @@ const ServiceForm = (): React.ReactElement => {
         if (processedGroups.has(config.sumGroup)) return;
         processedGroups.add(config.sumGroup);
 
-        const groupFields = serviceForm.fields.filter((f) => {
+        const groupFields = visibleFields.filter((f) => {
           const fConfig = parseConfiguration(f.configuration);
           return fConfig?.sumGroup === config.sumGroup;
         });
@@ -186,69 +287,7 @@ const ServiceForm = (): React.ReactElement => {
     });
 
     return errors;
-  }, [serviceForm, fieldValues]);
-
-  const isFieldVisible = useCallback(
-    (field: FormModuleFieldDto): boolean => {
-      const rules = parseConditionalRules(field.conditionalRules);
-      if (!rules?.showWhen) return true;
-
-      const { showWhen } = rules;
-
-      // Helper to check if a value matches (handles both string and array parent values)
-      const valueMatches = (parentValue: string | string[] | null, targetValue: string): boolean => {
-        if (Array.isArray(parentValue)) {
-          return parentValue.includes(targetValue);
-        }
-        return parentValue === targetValue;
-      };
-
-      const valueNotMatches = (parentValue: string | string[] | null, targetValue: string): boolean => {
-        if (Array.isArray(parentValue)) {
-          return !parentValue.includes(targetValue);
-        }
-        return parentValue !== targetValue;
-      };
-
-      if (showWhen.allOf) {
-        return showWhen.allOf.every((condition: { fieldKey: string; equals?: string; greaterThan?: number }) => {
-          const parentValue = fieldValues[condition.fieldKey];
-          if (condition.equals !== undefined) {
-            return valueMatches(parentValue, condition.equals);
-          }
-          if (condition.greaterThan !== undefined) {
-            const numValue = parseFloat(parentValue as string);
-            return !isNaN(numValue) && numValue > condition.greaterThan;
-          }
-          return true;
-        });
-      }
-
-      if (showWhen.fieldKey) {
-        const parentValue = fieldValues[showWhen.fieldKey];
-
-        if (showWhen.equals !== undefined) {
-          return valueMatches(parentValue, showWhen.equals);
-        }
-        if (showWhen.notEquals !== undefined) {
-          return valueNotMatches(parentValue, showWhen.notEquals);
-        }
-        if (showWhen.in !== undefined && Array.isArray(showWhen.in)) {
-          if (Array.isArray(parentValue)) {
-            return showWhen.in.some((v: string) => parentValue.includes(v));
-          }
-          return showWhen.in.includes(parentValue as string);
-        }
-        if (showWhen.greaterThan !== undefined) {
-          const numValue = parseFloat(parentValue as string);
-          return !isNaN(numValue) && numValue > showWhen.greaterThan;
-        }
-      }
-
-      return true;
-    },
-    [fieldValues]
-  );
+  }, [serviceForm, fieldValues, isFieldVisible]);
 
   const isServiceNotDelivered = fieldValues['QSU01'] === 'no';
   const hasUserData = fieldValues['QSU01'] === 'yes' && fieldValues['QSU02'] === 'yes';
@@ -568,7 +607,7 @@ const ServiceForm = (): React.ReactElement => {
           <div className="govuk-error-summary" data-module="govuk-error-summary">
             <h2 className="govuk-error-summary__title">There was a problem saving</h2>
             <div className="govuk-error-summary__body">
-              <p>Please try again or contact support if the problem persists.</p>
+              <p>{saveError ?? 'Please try again or contact support if the problem persists.'}</p>
             </div>
           </div>
         )}
@@ -614,7 +653,7 @@ const ServiceForm = (): React.ReactElement => {
           </div>
         )}
 
-        {currentFields.length > 0 ? (
+        {currentFields.length > 0 && currentFields.some(isFieldVisible) ? (
           <div>
             {currentFields.map((field) => {
               if (!isFieldVisible(field)) return null;
@@ -658,7 +697,11 @@ const ServiceForm = (): React.ReactElement => {
           </div>
         ) : (
           <div className="govuk-inset-text">
-            <p>No form fields have been configured for this section yet.</p>
+            <p>
+              {currentFields.length === 0
+                ? 'No form fields have been configured for this section yet.'
+                : "There are no questions to answer in this section for this service, based on your earlier answers. Select 'Continue' to move on to the next section."}
+            </p>
           </div>
         )}
       </div>
@@ -677,7 +720,7 @@ const ServiceForm = (): React.ReactElement => {
           <div className="govuk-error-summary" data-module="govuk-error-summary">
             <h2 className="govuk-error-summary__title">There was a problem saving</h2>
             <div className="govuk-error-summary__body">
-              <p>Please try again or contact support if the problem persists.</p>
+              <p>{saveError ?? 'Please try again or contact support if the problem persists.'}</p>
             </div>
           </div>
         )}

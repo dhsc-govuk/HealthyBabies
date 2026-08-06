@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import useStepFocus from '../../../hooks/useStepFocus';
 import { useNavigate } from 'react-router-dom';
 import { CircularProgress } from '@mui/material';
 import { QRCodeSVG } from 'qrcode.react';
@@ -6,14 +7,13 @@ import { useIsAuthenticated, useMsal } from '@azure/msal-react';
 import { InteractionStatus } from '@azure/msal-browser';
 import {
   Button,
-  ErrorSummary,
   InputField,
   Panel,
   WarningText,
   Details,
   LoadingBox,
 } from 'govuk-react';
-import { GovUKButton, GovUKSkipLink } from '../../../components/GovUKComponents';
+import { GovUKButton, GovUKSkipLink, GovUKErrorSummary } from '../../../components/GovUKComponents';
 import usePageTitle from '../../../hooks/usePageTitle';
 import { useMfa } from '../../../components/MfaProvider';
 import { useAuthProvider, roleToAreaMap } from '../../../components/AuthProvider';
@@ -24,7 +24,6 @@ import GovUKBackLink from '../../../components/GovUKComponents/GovUKBackLink';
 import '../styles.css';
 
 const MfaSetup = (): React.ReactElement => {
-  usePageTitle('Set up two-factor authentication');
   const navigate = useNavigate();
   const { inProgress, accounts } = useMsal();
   const isAuthenticated = useIsAuthenticated();
@@ -34,8 +33,10 @@ const MfaSetup = (): React.ReactElement => {
   const isMsalLoading = inProgress !== InteractionStatus.None || (isAuthenticated && accounts.length === 0);
 
   const [activeStep, setActiveStep] = useState(0);
+  const stepFocusRef = useStepFocus<HTMLDivElement>(activeStep);
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
+  usePageTitle('Set up two-factor authentication', !!error);
   const [isVerifying, setIsVerifying] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
   const hasSubmittedRef = useRef(false);
@@ -222,13 +223,13 @@ const MfaSetup = (): React.ReactElement => {
       <main className="mfa-page__main" id="main-content" role="main">
         <div className="govuk-width-container">
           <GovUKPhaseBanner phase="beta" />
-          <div className="govuk-main-wrapper">
+          <div ref={stepFocusRef} className="govuk-main-wrapper">
             {activeStep > 0 && activeStep < 2 && (
               <GovUKBackLink onClick={() => setActiveStep(activeStep - 1)}>Back</GovUKBackLink>
             )}
 
             {error && (
-              <ErrorSummary
+              <GovUKErrorSummary
                 heading="There is a problem"
                 errors={[{ targetName: 'code-input', text: error }]}
               />

@@ -190,6 +190,7 @@ internal static class SetupModule
         services.AddScoped<ILocationsControllerService, LocationsControllerService>();
         services.AddScoped<IOrganisationManagerHomeControllerService, OrganisationManagerHomeControllerService>();
         services.AddScoped<IOrganisationsControllerService, OrganisationsControllerService>();
+        services.AddScoped<IOrganisationAnalyticsControllerService, OrganisationAnalyticsControllerService>();
         services.AddScoped<IOrganisationContactsControllerService, OrganisationContactsControllerService>();
         services.AddScoped<IOrganisationUsersControllerService, OrganisationUsersControllerService>();
         services.AddScoped<IProfileControllerService, ProfileControllerService>();

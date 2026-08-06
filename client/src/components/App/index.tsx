@@ -81,6 +81,9 @@ const queryClient = new QueryClient({
   }
 })();
 
+// Required for govuk-frontend CSS to apply enhanced (desktop) styles — tabs, etc.
+document.documentElement.classList.add('govuk-frontend-supported');
+
 const API_URL = appConfig.api_url;
 
 axios.defaults.baseURL = API_URL;

@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo } from 'react';
-import { GovUKFieldset, ErrorSummary } from '../../../../../../components/GovUKComponents';
+import { GovUKFieldset, GovUKErrorSummary } from '../../../../../../components/GovUKComponents';
 import { organisationUserRoleOptions, User, UserReducerAction, validationErrors, ValidationErrors } from '..';
 import { validateEmailAddress } from '../../../../../../helpers/validators';
 
@@ -40,7 +40,7 @@ const StepDetails = ({ user, errors, setErrors, dispatch, showRoleSelect = true,
 
   return (
     <>
-      {errorList.length > 0 && <ErrorSummary errors={errorList} />}
+      {errorList.length > 0 && <GovUKErrorSummary errors={errorList} />}
       <GovUKFieldset legend="User details" legendSize="m">
       <GovUKFieldset.Input
         id="first-name"

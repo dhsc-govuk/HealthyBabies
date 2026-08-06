@@ -195,6 +195,10 @@ public class FormField : AuditableEntity<FormFieldId>
         DefaultValue = defaultValue;
     }
 
+    public void UpdateFieldKey(string fieldKey) => FieldKey = fieldKey;
+
+    public void UpdateHelpText(string? helpText) => HelpText = helpText;
+
     public void SetValidationRules(string? rules) => ValidationRules = rules;
 
     public void SetConditionalRules(string? rules) => ConditionalRules = rules;

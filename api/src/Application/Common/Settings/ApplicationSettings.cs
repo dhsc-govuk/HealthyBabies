@@ -13,6 +13,7 @@ public class ApplicationSettings
     public OsPlacesSettings OsPlaces { get; set; } = new();
     public CorsSettings Cors { get; set; } = new();
     public SeederSettings Seeder { get; set; } = new();
+    public DatabaseSettings Database { get; set; } = new();
 }
 
 public class AzureAdSettings
@@ -30,6 +31,7 @@ public class GraphSettings
     public string ApplicationObjectId { get; set; } = string.Empty;
     public string EnterpriseApplicationObjectId { get; set; } = string.Empty;
     public string DefaultUserPassword { get; set; } = string.Empty;
+    public bool UseDefaultPassword { get; set; } = false;
 }
 
 public class DefaultAdminUserSettings
@@ -82,4 +84,13 @@ public class SeederSettings
 {
     public bool UseExportedData { get; set; } = false;
     public bool FlushExistingData { get; set; } = false;
+}
+
+public class DatabaseSettings
+{
+    /// <summary>
+    /// Client ID of the user-assigned Managed Identity used to authenticate to Postgres via
+    /// Entra ID. When empty, the app falls back to the plain DefaultConnection connection string.
+    /// </summary>
+    public string? ManagedIdentityClientId { get; set; }
 }

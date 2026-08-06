@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef } from 'react';
 import { RowData } from './types';
 import { SiteFormQuestionDto } from '../../../SiteForms/types';
 import { getTotalErrorCount, getRowsWithErrors, getCellError } from './validation';
@@ -30,6 +30,7 @@ const StepCheckData: React.FC<StepCheckDataProps> = ({
     rowIndex: number;
     header: string;
   } | null>(null);
+  const activeCellRef = useRef<HTMLTableCellElement | null>(null);
 
   const totalErrors = useMemo(() => getTotalErrorCount(rows), [rows]);
   const rowsWithErrors = useMemo(() => getRowsWithErrors(rows), [rows]);
@@ -40,7 +41,8 @@ const StepCheckData: React.FC<StepCheckDataProps> = ({
     return questions.find((q) => q.code === code);
   };
 
-  const handleCellClick = (rowIndex: number, header: string) => {
+  const handleCellActivate = (rowIndex: number, header: string, cellEl: HTMLTableCellElement) => {
+    activeCellRef.current = cellEl;
     setEditingCell({ rowIndex, header });
   };
 
@@ -48,11 +50,13 @@ const StepCheckData: React.FC<StepCheckDataProps> = ({
     if (editingCell) {
       onCellEdit(editingCell.rowIndex, editingCell.header, value);
       setEditingCell(null);
+      activeCellRef.current?.focus();
     }
   };
 
   const handleCellCancel = () => {
     setEditingCell(null);
+    activeCellRef.current?.focus();
   };
 
   const canContinue = totalErrors === 0;
@@ -114,8 +118,8 @@ const StepCheckData: React.FC<StepCheckDataProps> = ({
           </button>
         </div>
 
-        <div className="bulk-upload-table__wrapper">
-          <table className="bulk-upload-table">
+        <div className="bulk-upload-table__wrapper" tabIndex={0}>
+          <table className="bulk-upload-table" role="grid">
             <thead>
               <tr>
                 <th className="bulk-upload-table__row-number">#</th>
@@ -143,6 +147,7 @@ const StepCheckData: React.FC<StepCheckDataProps> = ({
                         <td
                           key={`${row.rowIndex}-${header}`}
                           className="bulk-upload-table__cell--editing"
+                          role="gridcell"
                         >
                           <CellEditor
                             value={cellValue}
@@ -158,11 +163,22 @@ const StepCheckData: React.FC<StepCheckDataProps> = ({
                     return (
                       <td
                         key={`${row.rowIndex}-${header}`}
+                        role="gridcell"
+                        tabIndex={0}
                         className={`bulk-upload-table__cell--editable${cellError ? ' bulk-upload-table__cell--error' : ''}`}
-                        onClick={() => handleCellClick(row.rowIndex, header)}
-                        title={cellError?.message}
+                        aria-invalid={!!cellError}
+                        onClick={(e) => handleCellActivate(row.rowIndex, header, e.currentTarget)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            handleCellActivate(row.rowIndex, header, e.currentTarget);
+                          }
+                        }}
                       >
                         {cellValue || (cellError ? '(empty)' : '')}
+                        {cellError && (
+                          <span className="govuk-visually-hidden"> Error: {cellError.message}</span>
+                        )}
                       </td>
                     );
                   })}

@@ -1,8 +1,32 @@
+export interface ShowWhenCondition {
+  fieldKey?: string;
+  equals?: string;
+  gt?: string;
+  gte?: string;
+  lt?: string;
+  lte?: string;
+  eq?: string;
+  neq?: string;
+  in?: string[];
+  allOf?: ShowWhenCondition[];
+  anyOf?: ShowWhenCondition[];
+}
+
+export interface ConditionalRule {
+  showWhen?: ShowWhenCondition;
+  displayInline?: boolean;
+  parentOption?: string;
+}
+
 export interface FormFieldOption {
   value: string;
   label: string;
   displayOrder: number;
   isDefault: boolean;
+  // True for options loaded from the server. Their value is system-owned and locked:
+  // retained as-is and never regenerated when the label is edited. Newly added options
+  // (isPersisted falsy) auto-generate their value from the label.
+  isPersisted?: boolean;
 }
 
 export interface FormField {
@@ -35,6 +59,13 @@ export interface FormSection {
   isActive: boolean;
 }
 
+export type FormModuleType = 'management-information' | 'delivery-plan';
+
+export const formModuleTypeOptions: { value: FormModuleType; label: string }[] = [
+  { value: 'management-information', label: 'Management Information' },
+  { value: 'delivery-plan', label: 'Delivery Plan' },
+];
+
 export interface FormModule {
   id: string;
   code: string;
@@ -43,6 +74,7 @@ export interface FormModule {
   description: string | null;
   lastChangedOn: string;
   isActive: boolean;
+  type: FormModuleType;
 }
 
 export interface FormModuleWithFields extends FormModule {
@@ -72,6 +104,7 @@ export interface ValidationErrors {
   fieldKey: string | boolean;
   label: string | boolean;
   options: string | boolean;
+  conditionalRules: string | boolean;
 }
 
 export const validationMessages = {
@@ -80,6 +113,8 @@ export const validationMessages = {
   label: 'Label is required',
   options: 'Options are required for this field type',
   optionsInvalidChars: 'Option labels and values must not contain < or > characters',
+  conditionalRulesDuplicate: 'The same question cannot be used in more than one AND condition',
+  conditionalRulesForwardRef: 'A condition can only reference a question that appears earlier in the form',
 };
 
 export const containsWafBlockedChars = (text: string): boolean => /[<>]/.test(text);
@@ -97,6 +132,9 @@ export const fieldTypeLabels: Record<string, string> = {
   file: 'File',
   address: 'Address',
   post_code: 'Post Code',
+  currency: 'Currency',
+  calculation: 'Calculation',
+  read_only: 'Read Only',
 };
 
 export const fieldTypeOptions = [
@@ -110,6 +148,9 @@ export const fieldTypeOptions = [
   { value: 'select', label: 'Select' },
   { value: 'multi_select', label: 'Multi Select' },
   { value: 'file', label: 'File' },
+  { value: 'currency', label: 'Currency' },
+  { value: 'calculation', label: 'Calculation' },
+  { value: 'read_only', label: 'Read Only' },
 ];
 
 export const initialFormState: QuestionFormState = {

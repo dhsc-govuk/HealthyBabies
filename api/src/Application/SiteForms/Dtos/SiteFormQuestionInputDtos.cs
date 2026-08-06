@@ -11,6 +11,8 @@ public record CreateSiteFormQuestionDto(
     string? HelpText,
     string? ConditionalQuestionCode,
     string? ConditionalValue,
+    string? DateValidationRule,
+    string? ConditionalRules,
     IReadOnlyList<SiteFormQuestionOptionInputDto> Options);
 
 public record UpdateSiteFormQuestionDto(
@@ -25,6 +27,8 @@ public record UpdateSiteFormQuestionDto(
     string? HelpText,
     string? ConditionalQuestionCode,
     string? ConditionalValue,
+    string? DateValidationRule,
+    string? ConditionalRules,
     IReadOnlyList<SiteFormQuestionOptionInputDto> Options);
 
 public record SiteFormQuestionOptionInputDto(

@@ -84,6 +84,8 @@ public class ServiceFormQuestionsController(
             HelpText = Utility.HtmlDecodeNullableField(dto.HelpText),
             ConditionalQuestionCode = dto.ConditionalQuestionCode,
             ConditionalValue = Utility.HtmlDecodeNullableField(dto.ConditionalValue),
+            DateValidationRule = dto.DateValidationRule,
+            ConditionalRules = dto.ConditionalRules,
             Options = dto.Options.Select(o => new ServiceFormQuestionOptionInputDto(
                 Utility.HtmlDecodeField(o.Value),
                 Utility.HtmlDecodeField(o.Label),
@@ -122,6 +124,8 @@ public class ServiceFormQuestionsController(
             HelpText = Utility.HtmlDecodeNullableField(dto.HelpText),
             ConditionalQuestionCode = dto.ConditionalQuestionCode,
             ConditionalValue = Utility.HtmlDecodeNullableField(dto.ConditionalValue),
+            DateValidationRule = dto.DateValidationRule,
+            ConditionalRules = dto.ConditionalRules,
             Options = dto.Options.Select(o => new ServiceFormQuestionOptionInputDto(
                 Utility.HtmlDecodeField(o.Value),
                 Utility.HtmlDecodeField(o.Label),

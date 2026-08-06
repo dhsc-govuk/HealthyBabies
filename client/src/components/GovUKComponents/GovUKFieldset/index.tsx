@@ -154,24 +154,8 @@ function GovUKFieldsetInput({
 
   return (
     <div className={`govuk-form-group ${error ? 'govuk-form-group--error' : ''}`} style={{ position: 'relative' }}>
-      {questionCode && (
-        <span style={{ 
-          position: 'absolute', 
-          right: 0, 
-          top: 0, 
-          color: '#505a5f', 
-          fontSize: '16px', 
-          fontWeight: 'normal', 
-          whiteSpace: 'nowrap' 
-        }}>
-          {questionCode}
-        </span>
-      )}
-      <label
-        className={`govuk-label govuk-label--${labelSize}`}
-        htmlFor={id}
-        style={{ paddingRight: questionCode ? '100px' : undefined }}
-      >
+      <label className={`govuk-label govuk-label--${labelSize}`} htmlFor={id}>
+        {questionCode && <span className="govuk-visually-hidden">{questionCode}: </span>}
         {label}
       </label>
 
@@ -252,24 +236,8 @@ function GovUKFieldsetSelect({
 
   return (
     <div className={`govuk-form-group ${error ? 'govuk-form-group--error' : ''}`} style={{ position: 'relative' }}>
-      {questionCode && (
-        <span style={{ 
-          position: 'absolute', 
-          right: 0, 
-          top: 0, 
-          color: '#505a5f', 
-          fontSize: '16px', 
-          fontWeight: 'normal', 
-          whiteSpace: 'nowrap' 
-        }}>
-          {questionCode}
-        </span>
-      )}
-      <label
-        className={`govuk-label govuk-label--${labelSize}`}
-        htmlFor={id}
-        style={{ paddingRight: questionCode ? '100px' : undefined }}
-      >
+      <label className={`govuk-label govuk-label--${labelSize}`} htmlFor={id}>
+        {questionCode && <span className="govuk-visually-hidden">{questionCode}: </span>}
         {label}
       </label>
 
@@ -294,8 +262,7 @@ function GovUKFieldsetSelect({
         required={required}
         aria-describedby={[hint && `${id}-hint`, error && `${id}-error`].filter(Boolean).join(' ') || undefined}
         onChange={onChange}
-        style={isFullWidth ? { width: '100%' } : undefined}
-      >
+        style={isFullWidth ? { width: '100%' } : undefined}>
         {options.map((option) => (
           <option key={option.value} value={option.value}>
             {option.label}
@@ -325,21 +292,9 @@ function GovUKFieldsetRadioGroup({
 
   return (
     <div className={`govuk-form-group ${error ? 'govuk-form-group--error' : ''}`} style={{ position: 'relative' }}>
-      {questionCode && (
-        <span style={{ 
-          position: 'absolute', 
-          right: 0, 
-          top: 0, 
-          color: '#505a5f', 
-          fontSize: '16px', 
-          fontWeight: 'normal', 
-          whiteSpace: 'nowrap' 
-        }}>
-          {questionCode}
-        </span>
-      )}
       <fieldset className="govuk-fieldset" aria-describedby={[hint ? `${fieldsetId}-hint` : '', error ? `${fieldsetId}-error` : ''].filter(Boolean).join(' ') || undefined}>
-        <legend className={`govuk-fieldset__legend govuk-fieldset__legend--${legendSize}`} style={{ paddingRight: questionCode ? '100px' : undefined }}>
+        <legend className={`govuk-fieldset__legend govuk-fieldset__legend--${legendSize}`}>
+          {questionCode && <span className="govuk-visually-hidden">Question ID: {questionCode}: </span>}
           {legend}
           {required && <span className="govuk-visually-hidden"> (required)</span>}
         </legend>
@@ -377,10 +332,7 @@ function GovUKFieldsetRadioGroup({
                 {option.hint && <div className="govuk-hint govuk-radios__hint">{option.hint}</div>}
               </div>
               {option.conditionalContent && (
-                <div 
-                  className={`govuk-radios__conditional ${value !== option.value ? 'govuk-radios__conditional--hidden' : ''}`}
-                  id={`conditional-${name}-${option.value}`}
-                >
+                <div className={`govuk-radios__conditional ${value !== option.value ? 'govuk-radios__conditional--hidden' : ''}`} id={`conditional-${name}-${option.value}`}>
                   {option.conditionalContent}
                 </div>
               )}
@@ -415,8 +367,8 @@ function GovUKFieldsetCheckboxGroup({
     <div className={`govuk-form-group ${error ? 'govuk-form-group--error' : ''}`}>
       <fieldset className="govuk-fieldset">
         <legend className={`govuk-fieldset__legend govuk-fieldset__legend--${legendSize}`}>
+          {questionCode && <span className="govuk-visually-hidden">Question ID: {questionCode}: </span>}
           {legend}
-          {questionCode && <sup style={{ color: '#505a5f', fontSize: '14px', fontWeight: 'normal', marginLeft: '2px' }}>{questionCode}</sup>}
         </legend>
 
         {hint && <div className="govuk-hint">{hint}</div>}
@@ -466,20 +418,8 @@ function GovUKFieldsetTextarea({
 }: GovUKFieldsetTextareaProps): React.ReactElement {
   return (
     <div className={`govuk-form-group ${error ? 'govuk-form-group--error' : ''}`} style={{ position: 'relative' }}>
-      {questionCode && (
-        <span style={{ 
-          position: 'absolute', 
-          right: 0, 
-          top: 0, 
-          color: '#505a5f', 
-          fontSize: '16px', 
-          fontWeight: 'normal', 
-          whiteSpace: 'nowrap' 
-        }}>
-          {questionCode}
-        </span>
-      )}
-      <label className={`govuk-label govuk-label--${labelSize}`} htmlFor={id} style={{ paddingRight: questionCode ? '100px' : undefined }}>
+      <label className={`govuk-label govuk-label--${labelSize}`} htmlFor={id}>
+        {questionCode && <span className="govuk-visually-hidden">{questionCode}: </span>}
         {label}
         {required && <span className="govuk-visually-hidden"> (required)</span>}
       </label>
@@ -504,6 +444,7 @@ function GovUKFieldsetTextarea({
         value={value}
         disabled={disabled}
         required={required}
+        aria-describedby={[hint && `${id}-hint`, error && `${id}-error`].filter(Boolean).join(' ') || undefined}
         onChange={onChange}
         onBlur={onBlur}
       />

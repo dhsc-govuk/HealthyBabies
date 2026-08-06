@@ -32,6 +32,7 @@ const adminNavigation: NavItem[] = [
   { label: 'Service Form', href: '/admin/configuration/service-form-questions' },
   { label: 'Delivery Location Form', href: '/admin/configuration/site-form-questions' },
   { label: 'Data Collection Form', href: '/admin/configuration/data-collection-form-questions' },
+  { label: 'Delivery Plan Form', href: '/admin/configuration/delivery-plan-form-questions' },
   { label: 'Form Modules', href: '/admin/configuration/data-collection-form-modules' },
   { label: 'Lookup Data', href: '/admin/configuration/lookup-data' },
   { label: 'Guidance', href: '/admin/guidance' },

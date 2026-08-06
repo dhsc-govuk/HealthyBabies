@@ -51,7 +51,7 @@ public class ApplicationDbContextInitialiser(
             logger.LogInformation("Using code-based seeders");
             await ServiceFormQuestionSeeder.SeedAsync(dbContextFactory);
             await SiteFormQuestionSeeder.SeedAsync(dbContextFactory);
-            await DataCollectionFormModuleSeeder.SeedAsync(dbContextFactory);
+            await DeliveryPlanFormModuleSeeder.SeedAsync(dbContextFactory);
             await WiderServiceCategorySeeder.SeedAsync(dbContextFactory);
             await ServiceCategoryFormQuestionSeeder.SeedAsync(dbContextFactory);
         }

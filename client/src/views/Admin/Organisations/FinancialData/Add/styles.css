@@ -1,0 +1,41 @@
+.financial-data-section {
+  margin-bottom: 30px;
+}
+
+.financial-data-section h2 {
+  margin-bottom: 5px;
+}
+
+.financial-data-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-bottom: 1px solid #b1b4b6;
+}
+
+.financial-data-row:first-of-type {
+  border-top: 1px solid #b1b4b6;
+}
+
+.financial-data-row .govuk-label {
+  margin-bottom: 0;
+  flex: 1;
+}
+
+.financial-data-row .govuk-input__wrapper {
+  flex-shrink: 0;
+}
+
+.financial-summary-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 10px 0;
+  border-bottom: 1px solid #b1b4b6;
+  font-weight: bold;
+}
+
+.financial-summary-row:first-child {
+  border-top: 1px solid #b1b4b6;
+}
