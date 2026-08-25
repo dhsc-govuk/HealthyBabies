@@ -14,6 +14,7 @@ import { PageHeaderContainer, PageHeaderActions } from '../../../../styles/govuk
 import LocalAuthorityManager from './LocalAuthorityManager';
 import './styles.css';
 import usePageTitle from '../../../../hooks/usePageTitle';
+import { ROUTES } from '../../../../constants/routes';
 
 const formatDate = (dateString: string): string => {
   const date = new Date(dateString);
@@ -57,7 +58,7 @@ const ViewDataCollection = (): React.ReactElement => {
     onSuccess: (response) => {
       setNotification({ type: 'success', title: 'Success', message: 'Data collection duplicated successfully' });
       queryClient.invalidateQueries(['data-collections-list']);
-      navigate(`/admin/data-collections/${response.data.id}`);
+      navigate(ROUTES.admin.dataCollections.view(response.data.id));
     },
     onError: (error) => {
       processError(error, (e) => setNotification({ type: 'important', title: 'Error', message: e }));
@@ -72,11 +73,11 @@ const ViewDataCollection = (): React.ReactElement => {
   const actionMenuItems: ActionMenuItem[] = [
     {
       label: 'View submissions',
-      href: `/admin/submissions/${dataCollectionId}`,
+      href: ROUTES.admin.submissions.view(dataCollectionId),
     },
     {
       label: 'Revert to a draft',
-      href: `/admin/data-collections/${dataCollectionId}/revert-to-draft`,
+      href: ROUTES.admin.dataCollections.revertToDraft(dataCollectionId),
       dividerBefore: true,
     },
     {
@@ -85,11 +86,11 @@ const ViewDataCollection = (): React.ReactElement => {
     },
     {
       label: 'Close data collection',
-      href: `/admin/data-collections/${dataCollectionId}/close`,
+      href: ROUTES.admin.dataCollections.close(dataCollectionId),
     },
     {
       label: 'Delete data collection',
-      href: `/admin/data-collections/${dataCollectionId}/delete`,
+      href: ROUTES.admin.dataCollections.delete(dataCollectionId),
       dividerBefore: true,
     },
   ];
@@ -98,14 +99,14 @@ const ViewDataCollection = (): React.ReactElement => {
     return (
       <SettingsLayout
         breadcrumbs={[
-          { label: 'Home', link: '/admin/home' },
-          { label: 'Settings', link: '/admin/settings' },
-          { label: 'Data collections', link: '/admin/data-collections' },
+          { label: 'Home', link: ROUTES.admin.home },
+          { label: 'Settings', link: ROUTES.admin.settings },
+          { label: 'Data collections', link: ROUTES.admin.dataCollections.list },
         ]}
       >
         <h1 className="govuk-heading-l">Error</h1>
         <p className="govuk-body">Unable to load data collection.</p>
-        <GovUKButton onClick={() => navigate('/admin/data-collections')}>
+        <GovUKButton onClick={() => navigate(ROUTES.admin.dataCollections.list)}>
           Back to list
         </GovUKButton>
       </SettingsLayout>
@@ -115,9 +116,9 @@ const ViewDataCollection = (): React.ReactElement => {
   return (
     <SettingsLayout
       breadcrumbs={[
-        { label: 'Home', link: '/admin/home' },
-        { label: 'Settings', link: '/admin/settings' },
-        { label: 'Data collections', link: '/admin/data-collections' },
+        { label: 'Home', link: ROUTES.admin.home },
+        { label: 'Settings', link: ROUTES.admin.settings },
+        { label: 'Data collections', link: ROUTES.admin.dataCollections.list },
       ]}
     >
       <LoadingBox loading={isLoading}>
@@ -126,7 +127,7 @@ const ViewDataCollection = (): React.ReactElement => {
             <PageHeaderContainer>
               <h1 className="govuk-heading-l">{dataCollection.name}</h1>
               <PageHeaderActions>
-                <Button onClick={() => navigate(`/admin/data-collections/${dataCollectionId}/edit`)}>
+                <Button onClick={() => navigate(ROUTES.admin.dataCollections.edit(dataCollectionId))}>
                   Change
                 </Button>
                 <GovUKActionMenu items={actionMenuItems} />

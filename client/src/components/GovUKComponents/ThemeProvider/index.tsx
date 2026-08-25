@@ -48,6 +48,13 @@ const CustomThemeProvider = ({ children, modes }: CustomThemeProviderProps): Rea
       secondary: modes.secondary,
       background: modes.light.background,
       text: modes.light.text,
+      // MUI's stock info (#0288d1) and warning (#ed6c02) give 3.86:1 and 3.11:1 against
+      // white, so any filled Chip or Alert using them fails WCAG 1.4.3. These are the
+      // GOV.UK palette equivalents, all at or above 4.5:1 with white text.
+      info: { main: '#1d70b8', contrastText: '#ffffff' },
+      warning: { main: '#a8480a', contrastText: '#ffffff' },
+      error: { main: '#d4351c', contrastText: '#ffffff' },
+      success: { main: '#00703c', contrastText: '#ffffff' },
     },
     typography: {
       fontFamily: '"GDS Transport", arial, sans-serif',

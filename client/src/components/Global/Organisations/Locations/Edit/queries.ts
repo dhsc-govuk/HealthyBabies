@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { API_ROUTES } from '../../../../../constants/apiRoutes';
 
 export interface SiteAnswerDto {
   id: string;
@@ -22,6 +23,6 @@ export interface GetLocationDto {
 }
 
 export const getLocation = (organisationId: string, locationId: string, apiBasePath?: string) => {
-  const url = apiBasePath ? `${apiBasePath}/${locationId}` : `/organisations/${organisationId}/locations/${locationId}`;
+  const url = apiBasePath ? `${apiBasePath}/${locationId}` : API_ROUTES.organisations.locations.byId(organisationId, locationId);
   return axios.get<GetLocationDto>(url);
 };

@@ -1,6 +1,7 @@
 using System.Text;
 using Api.Services.Abstract;
 using Application.Common.Interfaces.Queries;
+using Domain.Organisations;
 
 namespace Api.Services.Implementation;
 
@@ -71,6 +72,76 @@ public class CoreDataExportService(
             var row = new List<string>
             {
                 service.Organisation?.Name ?? string.Empty,
+                service.Name,
+                service.Id.Value.ToString(),
+                service.Status.ToString(),
+            };
+            row.AddRange(questions.Select(q => answerLookup.TryGetValue(q.Code, out var val) ? val : string.Empty));
+            sb.AppendLine(string.Join(",", row.Select(EscapeCsvField)));
+        }
+
+        return Encoding.UTF8.GetBytes(sb.ToString());
+    }
+
+    // BLUM-7251: LA self-serve equivalents of the two methods above - same header/label/row logic,
+    // scoped to one organisation via GetForExportByOrganisationIdAsync, and without the LAName
+    // column since every row is already that one LA.
+    public async Task<byte[]> ExportSitesAsCsvAsync(OrganisationId organisationId, CancellationToken cancellationToken = default)
+    {
+        var questions = await siteFormQuestionQueries.GetAllActive(cancellationToken);
+        var locations = await locationQueries.GetForExportByOrganisationIdAsync(organisationId, cancellationToken);
+
+        var sb = new StringBuilder();
+
+        var headers = new List<string> { "SiteName", "ReferenceNumber", "PostCode", "AddressLine1", "AddressLine2", "TownOrCity", "County", "IsActive" };
+        headers.AddRange(questions.Select(q => q.Code));
+        sb.AppendLine(string.Join(",", headers.Select(EscapeCsvField)));
+
+        var labels = new List<string> { "Site Name", "Reference Number", "Post Code", "Address Line 1", "Address Line 2", "Town or City", "County", "Is Active" };
+        labels.AddRange(questions.Select(q => q.Label));
+        sb.AppendLine(string.Join(",", labels.Select(EscapeCsvField)));
+
+        foreach (var location in locations)
+        {
+            var answerLookup = location.Answers.ToDictionary(a => a.QuestionCode, a => a.DisplayValue ?? a.Value ?? string.Empty);
+            var row = new List<string>
+            {
+                location.Name,
+                location.ReferenceNumber,
+                location.PostCode,
+                location.AddressLine1,
+                location.AddressLine2,
+                location.TownOrCity,
+                location.County,
+                location.IsActive ? "Yes" : "No",
+            };
+            row.AddRange(questions.Select(q => answerLookup.TryGetValue(q.Code, out var val) ? val : string.Empty));
+            sb.AppendLine(string.Join(",", row.Select(EscapeCsvField)));
+        }
+
+        return Encoding.UTF8.GetBytes(sb.ToString());
+    }
+
+    public async Task<byte[]> ExportServicesAsCsvAsync(OrganisationId organisationId, CancellationToken cancellationToken = default)
+    {
+        var questions = await serviceFormQuestionQueries.GetAllActive(cancellationToken);
+        var services = await serviceQueries.GetForExportByOrganisationIdAsync(organisationId, cancellationToken);
+
+        var sb = new StringBuilder();
+
+        var headers = new List<string> { "ServiceName", "UniqueReference", "Status" };
+        headers.AddRange(questions.Select(q => q.Code));
+        sb.AppendLine(string.Join(",", headers.Select(EscapeCsvField)));
+
+        var labels = new List<string> { "Service Name", "Unique Reference", "Status" };
+        labels.AddRange(questions.Select(q => q.Label));
+        sb.AppendLine(string.Join(",", labels.Select(EscapeCsvField)));
+
+        foreach (var service in services)
+        {
+            var answerLookup = service.Answers.ToDictionary(a => a.QuestionCode, a => a.DisplayValue ?? a.Value ?? string.Empty);
+            var row = new List<string>
+            {
                 service.Name,
                 service.Id.Value.ToString(),
                 service.Status.ToString(),

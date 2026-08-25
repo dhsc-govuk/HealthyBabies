@@ -44,7 +44,8 @@ const ListOrganisationContactsComponent = ({ organisationId, handleView, handleE
     },
     {
       key: 'actions',
-      header: '',
+      header: 'Actions',
+      headerVisuallyHidden: true,
       align: 'right',
       render: (contact) => (
         <div className="govuk-table__actions">
@@ -77,6 +78,7 @@ const ListOrganisationContactsComponent = ({ organisationId, handleView, handleE
   return (
     <LoadingSpinner loading={contactsLoading} label="Loading">
       <GovUKTable<OrganisationContactDto>
+        caption="Organisation contacts"
         data={contactsData?.data ?? []}
         columns={columns}
         keyExtractor={(contact) => contact.id}

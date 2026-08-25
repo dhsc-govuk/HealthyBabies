@@ -53,7 +53,7 @@ const EditOrganisationUsersComponent = ({ organisationId, userId, handleFinish, 
 
   return (
     <LoadingSpinner loading={userLoading || saving} label={userLoading ? 'Loading' : 'Saving Changes'}>
-      <UserSteps completeLabel="Save" user={organisationAdmin} dispatch={dispatchOrganisationAdmin} handleSave={handleSave} showRoleSelect={true} isEdit={true} onCancel={onCancel} />
+      <UserSteps completeLabel="Save" user={organisationAdmin} dispatch={dispatchOrganisationAdmin} handleSave={handleSave} showRoleSelect={true} isEdit={true} onCancel={onCancel} pageTitle="Edit organisation admin user" />
     </LoadingSpinner>
   );
 };

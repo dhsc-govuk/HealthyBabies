@@ -9,6 +9,7 @@ import { getGlobalDataById } from './queries';
 import { updateGlobalData } from './mutations';
 import { lookupDataReducer, LookupDataReducerAction } from '../Common';
 import LookupDataSteps from '../Common/components/Steps';
+import { ROUTES } from '../../../../../constants/routes';
 
 type UrlParams = {
   lookupId: string;
@@ -53,7 +54,7 @@ const EditLookupData = (): React.ReactElement => {
       queryClient.invalidateQueries(['global-data-list']);
       queryClient.invalidateQueries(['global-data', variables.entity]);
       queryClient.invalidateQueries(['global-data-edit', lookupId]);
-      navigate('/admin/configuration/lookup-data');
+      navigate(ROUTES.admin.configuration.lookupData.list);
     },
     onError(error, _variables, _context) {
       processError(error, (e) => setNotification({ type: 'important', title: 'Error', message: e }));
@@ -82,7 +83,7 @@ const EditLookupData = (): React.ReactElement => {
             dispatch={dispatchLookupData}
             handleSave={handleSave}
             isEdit
-            onCancel={() => navigate('/admin/configuration/lookup-data')}
+            onCancel={() => navigate(ROUTES.admin.configuration.lookupData.list)}
           />
         )}
       </LoadingBox>

@@ -221,7 +221,7 @@ const QuestionRenderer = ({ question, value, error, onChange, allQuestions, stat
             value={value || ''}
             error={error}
             hint={question.hint}
-            allowFuture={question.dateValidationRule === DateValidationRule.NotInFuture ? false : undefined}
+            allowFuture={question.dateValidationRule === DateValidationRule.NotInPast}
             disallowPast={question.dateValidationRule === DateValidationRule.NotInPast ? true : undefined}
             onChange={onChange}
           />

@@ -1,9 +1,17 @@
 export { default as Home } from './Home';
+export { default as Summary } from './Summary';
 export { default as CoreData } from './CoreData';
 export { default as Submissions } from './Submissions';
 export { default as ViewSubmission } from './Submissions/View';
 export { default as ViewModule } from './Submissions/Module';
 export { default as ActivitiesList } from './Submissions/Module/Activities';
+export { default as ActivityBulkUpload } from './Submissions/BulkUpload/ActivityBulkUpload';
 export { default as ActivityFormView } from './Submissions/Module/ActivityForm';
 export { default as ActivityDelete } from './Submissions/Module/Activities/DeleteActivity';
+export { default as PreviousSubmissions } from './Submissions/PreviousSubmissions';
+export { default as VersionDetail } from './Submissions/PreviousSubmissions/VersionDetail';
+export { default as VersionSection } from './Submissions/PreviousSubmissions/VersionSection';
+export { default as VersionActivity } from './Submissions/PreviousSubmissions/VersionActivity';
+export { default as ReviewSection } from './Submissions/ReviewSection';
+export { default as ReviewActivity } from './Submissions/ReviewSection/ReviewActivity';
 export { default as Help } from './Help';

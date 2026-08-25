@@ -26,19 +26,19 @@ public record DeliveryPlanStrandFields(
     public const string Year2829 = "2028-29";
     public const string RolloverYear = "2025-26";
 
-    public static readonly DeliveryPlanStrandFields DeliveryGrant = Allocation(DataCollectionFormModuleCodes.DeliveryGrant, "Delivery Grant", FinancialDataModuleConstants.DeliveryGrant, "DG", 2, 4, 5, 7, 12, 13, 9, 10, 11);
+    public static readonly DeliveryPlanStrandFields DeliveryGrant = Allocation(DataCollectionFormModuleCodes.DeliveryGrant, "Delivery Grant", FinancialDataModuleConstants.DeliveryGrant, "DG", 4, 6, 7, 11, 16, 17, 13, 14, 15);
 
-    public static readonly DeliveryPlanStrandFields Parenting = Allocation(DataCollectionFormModuleCodes.Parenting, "Parenting Support", FinancialDataModuleConstants.Parenting, "P", 2, 5, 6, 8, 13, 14, 10, 11, 12);
+    public static readonly DeliveryPlanStrandFields Parenting = Allocation(DataCollectionFormModuleCodes.Parenting, "Parenting Support", FinancialDataModuleConstants.Parenting, "P", 4, 7, 8, 12, 17, 18, 14, 15, 16);
 
-    public static readonly DeliveryPlanStrandFields Hle = Allocation(DataCollectionFormModuleCodes.Hle, "Home Learning Environment (HLE)", FinancialDataModuleConstants.Hle, "H", 2, 5, 6, 8, 13, 14, 10, 11, 12);
+    public static readonly DeliveryPlanStrandFields Hle = Allocation(DataCollectionFormModuleCodes.Hle, "Home Learning Environment (HLE)", FinancialDataModuleConstants.Hle, "H", 4, 7, 8, 12, 17, 18, 14, 15, 16);
 
-    public static readonly DeliveryPlanStrandFields Send = Allocation(DataCollectionFormModuleCodes.Send, "Special Educational Needs and Disability (SEND)", FinancialDataModuleConstants.Send, "SEND", 2, 5, 6, 8, 13, 14, 10, 11, 12);
+    public static readonly DeliveryPlanStrandFields Send = Allocation(DataCollectionFormModuleCodes.Send, "Special Educational Needs and Disability (SEND)", FinancialDataModuleConstants.Send, "SEND", 4, 7, 8, 12, 17, 18, 14, 15, 16);
 
-    public static readonly DeliveryPlanStrandFields PnmhAndPir = Allocation(DataCollectionFormModuleCodes.PnmhAndPir, "Perinatal Mental Health and Parent-Infant Relationships", FinancialDataModuleConstants.PnmhAndPir, "PN", 1, 9, 10, 12, 17, 18, 14, 15, 16);
+    public static readonly DeliveryPlanStrandFields PnmhAndPir = Allocation(DataCollectionFormModuleCodes.PnmhAndPir, "Perinatal Mental Health and Parent-Infant Relationships", FinancialDataModuleConstants.PnmhAndPir, "PN", 2, 10, 11, 15, 20, 21, 17, 18, 19);
 
-    public static readonly DeliveryPlanStrandFields InfantFeeding = Allocation(DataCollectionFormModuleCodes.InfantFeeding, "Infant Feeding", FinancialDataModuleConstants.InfantFeeding, "IF", 1, 9, 10, 12, 17, 18, 14, 15, 16);
+    public static readonly DeliveryPlanStrandFields InfantFeeding = Allocation(DataCollectionFormModuleCodes.InfantFeeding, "Infant Feeding", FinancialDataModuleConstants.InfantFeeding, "IF", 2, 10, 11, 15, 20, 21, 17, 18, 19);
 
-    public static readonly DeliveryPlanStrandFields HealthyBabiesOffer = Allocation(DataCollectionFormModuleCodes.HealthyBabiesOffer, "Healthy Babies Offer", FinancialDataModuleConstants.HealthyBabiesOffer, "HBO", 1, 9, 10, 12, 17, 18, 14, 15, 16);
+    public static readonly DeliveryPlanStrandFields HealthyBabiesOffer = Allocation(DataCollectionFormModuleCodes.HealthyBabiesOffer, "Healthy Babies Offer", FinancialDataModuleConstants.HealthyBabiesOffer, "HBO", 2, 10, 11, 15, 20, 21, 17, 18, 19);
 
     /// <summary>
     /// Rollover spend only relates to the 2025-26 year and uses a single status field.
@@ -66,6 +66,16 @@ public record DeliveryPlanStrandFields(
     [
         DeliveryGrant, Parenting, Hle, Send, PnmhAndPir, InfantFeeding, HealthyBabiesOffer, RolloverSpend,
     ];
+
+    /// <summary>
+    /// The field key that holds an activity's display name/description for this strand, if the
+    /// module code matches one of these strands — most strands have a dedicated name field
+    /// (e.g. H_NAME) that isn't necessarily the first user-editable field by position, which is
+    /// what callers would otherwise fall back to guessing (e.g. Rollover Spend's first editable
+    /// field, RO01, is a strand-selector dropdown, not the activity's name).
+    /// </summary>
+    public static string? ResolveActivityNameFieldKey(string moduleCode) =>
+        All.FirstOrDefault(s => s.ModuleCode == moduleCode)?.ActivityNameField;
 
     private static DeliveryPlanStrandFields Allocation(
         string moduleCode,

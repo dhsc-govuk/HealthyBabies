@@ -9,6 +9,7 @@ import { useQuery } from 'react-query';
 import { SettingsLayout } from '../../../../layouts';
 import { PageHeaderContainer, PageHeaderActions, PageTitle } from '../../../../styles/govuk-global';
 import usePageTitle from '../../../../hooks/usePageTitle';
+import { ROUTES } from '../../../../constants/routes';
 
 
 type DataCollectionStatus = 'draft' | 'planned' | 'open' | 'closed';
@@ -69,10 +70,10 @@ const DataCollectionsList = (): React.ReactElement => {
       header: 'Name',
       render: (collection) => (
         <Link
-          href={`/admin/data-collections/${collection.id}`}
+          href={ROUTES.admin.dataCollections.view(collection.id)}
           onClick={(e: React.MouseEvent) => {
             e.preventDefault();
-            navigate(`/admin/data-collections/${collection.id}`);
+            navigate(ROUTES.admin.dataCollections.view(collection.id));
           }}
         >
           {collection.name}<span className="govuk-visually-hidden"> - view data collection</span>
@@ -86,7 +87,8 @@ const DataCollectionsList = (): React.ReactElement => {
     },
     {
       key: 'status',
-      header: '',
+      header: 'Status',
+      headerVisuallyHidden: true,
       align: 'right',
       render: (collection) => {
         const status = collection.status.toLowerCase() as DataCollectionStatus;
@@ -115,8 +117,8 @@ const DataCollectionsList = (): React.ReactElement => {
   return (
     <SettingsLayout
       breadcrumbs={[
-        { label: 'Home', link: '/admin/home' },
-        { label: 'Settings', link: '/admin/settings' },
+        { label: 'Home', link: ROUTES.admin.home },
+        { label: 'Settings', link: ROUTES.admin.settings },
       ]}
     >
       {state?.successMessage && (
@@ -132,7 +134,7 @@ const DataCollectionsList = (): React.ReactElement => {
       <PageHeaderContainer>
         <PageTitle>Data collections</PageTitle>
         <PageHeaderActions>
-          <Button onClick={() => navigate('/admin/data-collections/create')}>
+          <Button onClick={() => navigate(ROUTES.admin.dataCollections.create)}>
             Add data collection
           </Button>
         </PageHeaderActions>
@@ -140,6 +142,7 @@ const DataCollectionsList = (): React.ReactElement => {
 
       <LoadingBox loading={isLoading}>
         <GovUKTable<DataCollectionResponse>
+          caption="Data collections"
           data={collections}
           columns={columns}
           searchPlaceholder="Search by name"
@@ -151,7 +154,7 @@ const DataCollectionsList = (): React.ReactElement => {
           filterPlaceholder="Select status..."
           filterField="status"
           keyExtractor={(collection) => collection.id}
-          getRowHref={(collection) => `/admin/data-collections/${collection.id}`}
+          getRowHref={(collection) => ROUTES.admin.dataCollections.view(collection.id)}
           emptyMessage="No data collections found"
         />
       </LoadingBox>

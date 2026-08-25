@@ -3,6 +3,7 @@ using Application.Common;
 using Application.Common.FileValidation;
 using Application.Common.Interfaces.Repositories;
 using Application.Common.Permissions;
+using Application.DataCollections.Dtos;
 using Application.Submissions.Commands;
 using Application.Submissions.Dtos;
 using Domain.ValueObjects;
@@ -20,6 +21,8 @@ public class SubmissionsController(
     PermissionsService permissionsService,
     ISubmissionsControllerService controllerService,
     ISubmissionsBulkUploadService bulkUploadService,
+    ISubmissionExportService submissionExportService,
+    IDeliveryPlanReviewService reviewService,
     IDataCollectionSubmissionRepository dataCollectionSubmissionRepository,
     IMediator mediator,
     IFileValidationService fileValidationService)
@@ -325,6 +328,31 @@ public class SubmissionsController(
                     error => BadRequest(error));
             },
             e => Task.FromResult<ActionResult<ServiceFormDetailDto>>(Unauthorized(e.Message)));
+    }
+
+    [HttpDelete("{submissionId:guid}/modules/{moduleId:guid}/services/{serviceId:guid}")]
+    public async Task<ActionResult> DeleteServiceForm(
+        [FromRoute] Guid submissionId,
+        [FromRoute] Guid moduleId,
+        [FromRoute] Guid serviceId,
+        CancellationToken cancellationToken)
+    {
+        var permissions = permissionsService.GetOrganisationPermissions();
+        return await permissions.MatchAsync<ActionResult>(
+            async p =>
+            {
+                var organisationId = p.OrganisationId.Match(orgId => orgId.Value, () => Guid.Empty);
+                if (organisationId == Guid.Empty)
+                {
+                    return Unauthorized("Organisation ID is required");
+                }
+
+                var result = await controllerService.DeleteServiceForm(organisationId, submissionId, moduleId, serviceId, cancellationToken);
+                return result.Match<ActionResult>(
+                    _ => NoContent(),
+                    error => BadRequest(error));
+            },
+            e => Unauthorized(e.Message));
     }
 
     [HttpGet("{submissionId:guid}/modules/{moduleId:guid}/wider-services")]
@@ -773,6 +801,194 @@ public class SubmissionsController(
             e => Unauthorized(e.Message));
     }
 
+    [HttpGet("{submissionId:guid}/versions")]
+    public async Task<ActionResult<IReadOnlyList<SubmissionVersionSummaryDto>>> GetSubmissionVersions(
+        [FromRoute] Guid submissionId,
+        CancellationToken cancellationToken)
+    {
+        var permissions = permissionsService.GetOrganisationPermissions();
+        return await permissions.MatchAsync<ActionResult<IReadOnlyList<SubmissionVersionSummaryDto>>>(
+            async p =>
+            {
+                var organisationId = p.OrganisationId.Match(orgId => orgId.Value, () => Guid.Empty);
+                if (organisationId == Guid.Empty)
+                {
+                    return Unauthorized("Organisation ID is required");
+                }
+
+                var result = await controllerService.GetSubmissionVersions(organisationId, submissionId, cancellationToken);
+                return result.ToList();
+            },
+            e => Unauthorized(e.Message));
+    }
+
+    [HttpGet("{submissionId:guid}/versions/{versionNumber:int}")]
+    public async Task<ActionResult<SubmissionVersionDetailDto>> GetSubmissionVersionDetail(
+        [FromRoute] Guid submissionId,
+        [FromRoute] int versionNumber,
+        CancellationToken cancellationToken)
+    {
+        var permissions = permissionsService.GetOrganisationPermissions();
+        return await permissions.MatchAsync<ActionResult<SubmissionVersionDetailDto>>(
+            async p =>
+            {
+                var organisationId = p.OrganisationId.Match(orgId => orgId.Value, () => Guid.Empty);
+                if (organisationId == Guid.Empty)
+                {
+                    return Unauthorized("Organisation ID is required");
+                }
+
+                var result = await controllerService.GetSubmissionVersionDetail(organisationId, submissionId, versionNumber, cancellationToken);
+                return result.Match<ActionResult<SubmissionVersionDetailDto>>(r => r, NotFound());
+            },
+            e => Unauthorized(e.Message));
+    }
+
+    [HttpGet("{submissionId:guid}/versions/{versionNumber:int}/sections/{formModuleId:guid}")]
+    public async Task<ActionResult<SubmissionVersionSectionDetailDto>> GetSubmissionVersionSection(
+        [FromRoute] Guid submissionId,
+        [FromRoute] int versionNumber,
+        [FromRoute] Guid formModuleId,
+        CancellationToken cancellationToken)
+    {
+        var permissions = permissionsService.GetOrganisationPermissions();
+        return await permissions.MatchAsync<ActionResult<SubmissionVersionSectionDetailDto>>(
+            async p =>
+            {
+                var organisationId = p.OrganisationId.Match(orgId => orgId.Value, () => Guid.Empty);
+                if (organisationId == Guid.Empty)
+                {
+                    return Unauthorized("Organisation ID is required");
+                }
+
+                var result = await controllerService.GetSubmissionVersionSection(organisationId, submissionId, versionNumber, formModuleId, cancellationToken);
+                return result.Match<ActionResult<SubmissionVersionSectionDetailDto>>(r => r, NotFound());
+            },
+            e => Unauthorized(e.Message));
+    }
+
+    [HttpGet("{submissionId:guid}/versions/{versionNumber:int}/sections/{formModuleId:guid}/activities/{activityId:guid}")]
+    public async Task<ActionResult<SubmissionVersionActivityDetailDto>> GetSubmissionVersionActivity(
+        [FromRoute] Guid submissionId,
+        [FromRoute] int versionNumber,
+        [FromRoute] Guid formModuleId,
+        [FromRoute] Guid activityId,
+        CancellationToken cancellationToken)
+    {
+        var permissions = permissionsService.GetOrganisationPermissions();
+        return await permissions.MatchAsync<ActionResult<SubmissionVersionActivityDetailDto>>(
+            async p =>
+            {
+                var organisationId = p.OrganisationId.Match(orgId => orgId.Value, () => Guid.Empty);
+                if (organisationId == Guid.Empty)
+                {
+                    return Unauthorized("Organisation ID is required");
+                }
+
+                var result = await controllerService.GetSubmissionVersionActivity(organisationId, submissionId, versionNumber, formModuleId, activityId, cancellationToken);
+                return result.Match<ActionResult<SubmissionVersionActivityDetailDto>>(r => r, NotFound());
+            },
+            e => Unauthorized(e.Message));
+    }
+
+    [HttpGet("{submissionId:guid}/versions/{versionNumber:int}/download")]
+    public async Task<ActionResult> DownloadSubmissionVersion(
+        [FromRoute] Guid submissionId,
+        [FromRoute] int versionNumber,
+        CancellationToken cancellationToken)
+    {
+        var permissions = permissionsService.GetOrganisationPermissions();
+        return await permissions.MatchAsync<ActionResult>(
+            async p =>
+            {
+                var organisationId = p.OrganisationId.Match(orgId => orgId.Value, () => Guid.Empty);
+                if (organisationId == Guid.Empty)
+                {
+                    return Unauthorized("Organisation ID is required");
+                }
+
+                var zipResult = await controllerService.GetSubmissionVersionZip(organisationId, submissionId, versionNumber, cancellationToken);
+                return zipResult.Match<ActionResult>(
+                    bytes => File(bytes, "application/zip", $"submission-version-{versionNumber}.zip"),
+                    NotFound());
+            },
+            e => Task.FromResult<ActionResult>(Unauthorized(e.Message)));
+    }
+
+    // Read-only view of the caller's own submitted Delivery Plan, once accepted - the same
+    // AnswerGroups/Activities shape DeliveryPlanReviewController gives admins, scoped to the
+    // caller's own organisation rather than an admin-supplied local authority id.
+    [HttpGet("{submissionId:guid}/review/sections/{formModuleId:guid}")]
+    public async Task<ActionResult<ReviewSectionDetailDto>> GetReviewSection(
+        [FromRoute] Guid submissionId,
+        [FromRoute] Guid formModuleId,
+        CancellationToken cancellationToken)
+    {
+        var permissions = permissionsService.GetOrganisationPermissions();
+        return await permissions.MatchAsync<ActionResult<ReviewSectionDetailDto>>(
+            async p =>
+            {
+                var organisationId = p.OrganisationId.Match(orgId => orgId.Value, () => Guid.Empty);
+                if (organisationId == Guid.Empty)
+                {
+                    return Unauthorized("Organisation ID is required");
+                }
+
+                var result = await reviewService.GetSection(submissionId, organisationId, formModuleId, cancellationToken);
+                return result.Match<ActionResult<ReviewSectionDetailDto>>(r => r, NotFound());
+            },
+            e => Unauthorized(e.Message));
+    }
+
+    [HttpGet("{submissionId:guid}/review/sections/{formModuleId:guid}/activities/{activityId:guid}")]
+    public async Task<ActionResult<ReviewActivityDetailDto>> GetReviewActivity(
+        [FromRoute] Guid submissionId,
+        [FromRoute] Guid formModuleId,
+        [FromRoute] Guid activityId,
+        CancellationToken cancellationToken)
+    {
+        var permissions = permissionsService.GetOrganisationPermissions();
+        return await permissions.MatchAsync<ActionResult<ReviewActivityDetailDto>>(
+            async p =>
+            {
+                var organisationId = p.OrganisationId.Match(orgId => orgId.Value, () => Guid.Empty);
+                if (organisationId == Guid.Empty)
+                {
+                    return Unauthorized("Organisation ID is required");
+                }
+
+                var result = await reviewService.GetActivity(submissionId, organisationId, formModuleId, activityId, cancellationToken);
+                return result.Match<ActionResult<ReviewActivityDetailDto>>(r => r, NotFound());
+            },
+            e => Unauthorized(e.Message));
+    }
+
+    // Download of the caller's own current (live) submission - separate from the version
+    // download above, which serves a frozen historical snapshot. Mirrors the admin's
+    // localAuthorityDownload but scoped to the caller's own organisation.
+    [HttpGet("{submissionId:guid}/download")]
+    public async Task<ActionResult> DownloadSubmission(
+        [FromRoute] Guid submissionId,
+        CancellationToken cancellationToken)
+    {
+        var permissions = permissionsService.GetOrganisationPermissions();
+        return await permissions.MatchAsync<ActionResult>(
+            async p =>
+            {
+                var organisationId = p.OrganisationId.Match(orgId => orgId.Value, () => Guid.Empty);
+                if (organisationId == Guid.Empty)
+                {
+                    return Unauthorized("Organisation ID is required");
+                }
+
+                var zipResult = await submissionExportService.ExportSubmissionAsZipAsync(submissionId, organisationId, cancellationToken);
+                return zipResult.Match<ActionResult>(
+                    bytes => File(bytes, "application/zip", $"submission_{submissionId}.zip"),
+                    error => BadRequest(error));
+            },
+            e => Task.FromResult<ActionResult>(Unauthorized(e.Message)));
+    }
+
     [HttpGet("{submissionId:guid}/modules/{moduleId:guid}/bulk-upload/template")]
     public async Task<ActionResult> DownloadBulkUploadTemplate(
         [FromRoute] Guid submissionId,
@@ -805,6 +1021,39 @@ public class SubmissionsController(
 
                 var csvBytes = await bulkUploadService.GenerateCsvTemplateAsync(organisationId, moduleId, submissionId, dataCollectionId, cancellationToken);
                 return File(csvBytes, "text/csv", "bulk_upload_template.csv");
+            },
+            e => Task.FromResult<ActionResult>(Unauthorized(e.Message)));
+    }
+
+    // BLUM-7361: separate from the bulk-upload template above - this exports the module's actual
+    // submitted records, for the "Download copy in CSV" action on a record list (Outcome Scores,
+    // Service Users), as opposed to a blank/incomplete-rows-only template to fill in and upload.
+    [HttpGet("{submissionId:guid}/modules/{moduleId:guid}/export/csv")]
+    public async Task<ActionResult> ExportModuleCsv(
+        [FromRoute] Guid submissionId,
+        [FromRoute] Guid moduleId,
+        CancellationToken cancellationToken = default)
+    {
+        var permissions = permissionsService.GetOrganisationPermissions();
+        return await permissions.MatchAsync<ActionResult>(
+            async p =>
+            {
+                var organisationId = p.OrganisationId.Match(
+                    orgId => orgId.Value,
+                    () => Guid.Empty);
+
+                if (organisationId == Guid.Empty)
+                {
+                    return Unauthorized("Organisation ID is required");
+                }
+
+                // Note: submissionId in the route is actually the DataCollection.Id (dataCollectionId)
+                var dataCollectionId = submissionId;
+
+                var result = await submissionExportService.ExportModuleAsCsvAsync(dataCollectionId, organisationId, moduleId, cancellationToken);
+                return result.Match<ActionResult>(
+                    bytes => File(bytes, "text/csv", "export.csv"),
+                    error => BadRequest(error));
             },
             e => Task.FromResult<ActionResult>(Unauthorized(e.Message)));
     }
@@ -907,6 +1156,26 @@ public class SubmissionsController(
 
         var result = await mediator.Send(query, cancellationToken);
         return result.Match<ActionResult<List<ServiceUserDuplicateCheckDto>>>(
+            success => Ok(success),
+            error => BadRequest(error));
+    }
+
+    [HttpPost("{submissionId:guid}/modules/{moduleId:guid}/bulk-upload/check-activity-duplicates")]
+    public async Task<ActionResult<List<ActivityDuplicateCheckDto>>> CheckActivityDuplicates(
+        [FromRoute] Guid submissionId,
+        [FromRoute] Guid moduleId,
+        [FromBody] CheckActivityDuplicatesRequestDto request,
+        CancellationToken cancellationToken)
+    {
+        var query = new CheckActivityDuplicatesQuery
+        {
+            SubmissionId = submissionId,
+            ModuleId = moduleId,
+            Rows = request.Rows,
+        };
+
+        var result = await mediator.Send(query, cancellationToken);
+        return result.Match<ActionResult<List<ActivityDuplicateCheckDto>>>(
             success => Ok(success),
             error => BadRequest(error));
     }

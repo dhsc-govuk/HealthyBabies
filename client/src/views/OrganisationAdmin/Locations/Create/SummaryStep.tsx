@@ -1,5 +1,5 @@
 import React from 'react';
-import { GovUKSummaryTable } from '../../../../components/GovUKComponents';
+import { SummaryList } from '../../../../components/GovUKComponents';
 import { SiteFormQuestionDto } from '../../../../components/Global/SiteForms';
 import { LocationFormState } from '../Common';
 
@@ -59,7 +59,11 @@ const SummaryStep = ({ state, questions, onChangeAll }: SummaryStepProps): React
 
   return (
     <>
-      <GovUKSummaryTable rows={rows} onChangeAll={onChangeAll} />
+      {/* The GOV.UK Check answers pattern uses the Summary list component, which stacks to a
+          single column below the tablet breakpoint. The previous <table> could not reflow, so
+          at high zoom the columns collapsed and text fragmented mid-word
+          (DAC_Styles_and_Layout_Usability_02). */}
+      <SummaryList items={rows.map((row) => ({ ...row, onAction: onChangeAll, actionLabel: 'Change' }))} noOuterBorder />
 
       <h2 className="govuk-heading-m govuk-!-margin-top-6">Now save your site</h2>
       <p className="govuk-body">

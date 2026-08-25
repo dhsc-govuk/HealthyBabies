@@ -8,6 +8,7 @@ import { getOrganisations } from './queries';
 import { OrganisationUserForm, OrganisationUserFormData } from '../../../../components/Global/OrganisationUsers';
 import { useGovUKNotification } from '../../../../components/GovUKComponents';
 import { encodeForWaf } from '../../../../helpers/stringUtils';
+import { ROUTES } from '../../../../constants/routes';
 
 const CreateUser = (): React.ReactElement => {
   const navigate = useNavigate();
@@ -26,7 +27,7 @@ const CreateUser = (): React.ReactElement => {
     mutationKey: ['organisation-user-create'],
     mutationFn: createOrganisationUser,
     onSuccess(data) {
-      navigate('/admin/la-users', { state: { created: true } });
+      navigate(ROUTES.admin.laUsers.list, { state: { created: true } });
     },
     onError(error) {
       processError(error, (e) => setNotification({ type: 'important', title: 'Error', message: e }));
@@ -47,16 +48,18 @@ const CreateUser = (): React.ReactElement => {
   return (
     <SettingsLayout
       currentPage="Add an LA user"
-      backLink={{ href: '/admin/la-users', onClick: () => navigate('/admin/la-users') }}>
+      manageTitle={false}
+      backLink={{ href: ROUTES.admin.laUsers.list, onClick: () => navigate(ROUTES.admin.laUsers.list) }}>
       <OrganisationUserForm
         initialData={preselectedOrganisationId ? { organisationId: preselectedOrganisationId } : undefined}
         organisations={organisations}
         isLoading={loadingOrganisations}
         isSaving={saving}
         onSubmit={handleSubmit}
-        onCancel={() => navigate('/admin/la-users')}
+        onCancel={() => navigate(ROUTES.admin.laUsers.list)}
         submitLabel="Confirm and create"
         hideBackLink={true}
+        pageTitle="Add an LA user"
       />
     </SettingsLayout>
   );

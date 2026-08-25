@@ -1,9 +1,12 @@
 using Application.Common;
+using Application.Common.Dtos;
 using Application.Common.Interfaces;
 using Application.Common.Interfaces.Queries;
 using Application.Common.Interfaces.Repositories;
 using Application.Common.Permissions;
+using Application.Organisations;
 using Application.Submissions.Dtos;
+using Application.Submissions.Helpers;
 using Domain.DataCollections;
 using Domain.DataCollections.Forms;
 using Domain.DataCollections.Forms.ValueObjects;
@@ -54,17 +57,24 @@ public class ValidateBulkUploadCommandHandler(
         }
 
         var formModule = formModuleOption.Match(fm => fm, () => null!);
-        var fields = GetOrderedFields(formModule);
+        var isActivityModule = formModule.AllowsMultipleActivities;
+
+        var fields = BulkUploadTemplateColumns.ForModule(formModule);
 
         var orgId = permission.OrganisationId.Match(id => id, () => throw new InvalidOperationException("Organisation ID required"));
         var dcId = new DataCollectionId(request.SubmissionId);
+
+        // Activity modules match rows to an Activity rather than a Service, but their fields can still
+        // reference services through {"dynamicOptions":"services"} (the delivery-plan "Which service is
+        // this activity funding?" question), so the service list is needed either way.
+        var services = new List<Domain.Services.Service>();
         var allServices = await serviceQueries.GetByOrganisationIdAsync(orgId, cancellationToken);
 
         // For outcome-scores modules, only allow services that have QSU13 = "yes" in the Service Users
         // module — these are the only services actually collecting pre/post outcome scores.
-        var services = formModule.Code == DataCollectionFormModuleCodes.OutcomeScores
+        services = (formModule.Code == DataCollectionFormModuleCodes.OutcomeScores
             ? await FilterToEligibleServicesAsync(allServices, orgId, dcId, cancellationToken)
-            : allServices;
+            : allServices).ToList();
 
         var serviceNames = services.Select(s => s.Name.ToLowerInvariant()).ToHashSet();
 
@@ -128,18 +138,47 @@ public class ValidateBulkUploadCommandHandler(
                 ModuleError: "This file does not match the expected template for this module. Please download the correct template and try again.");
         }
 
-        // Skip label row if present
-        if (dataRows.Count > 0 && BulkUploadCsvHelper.IsLabelRow(dataRows[0], fields))
-        {
-            dataRows = dataRows.Skip(1).ToList();
-            skippedRows++;
-        }
+        // Skip the template's documentation rows (labels, valid options, R/O indicators) if present
+        var preambleRows = BulkUploadCsvHelper.CountPreambleRows(dataRows, fields);
+        dataRows = dataRows.Skip(preambleRows).ToList();
+        skippedRows += preambleRows;
 
-        // Skip required indicators row (R/O) if present
-        if (dataRows.Count > 0 && BulkUploadCsvHelper.IsRequiredIndicatorsRow(dataRows[0]))
+        // For Activity modules there's no Service to key off — derive a row label from the first
+        // user-editable field, same as SaveActivityForm derives an Activity's display Name.
+        var configuredNameFieldKey = DeliveryPlanStrandFields.ResolveActivityNameFieldKey(formModule.Code);
+        var nameField = isActivityModule
+            ? (configuredNameFieldKey is not null ? fields.FirstOrDefault(f => f.FieldKey == configuredNameFieldKey) : null)
+                ?? fields
+                    .Where(f => f.FieldType.Value != FieldTypeConstants.ReadOnly && f.FieldType.Value != FieldTypeConstants.Calculation)
+                    .OrderBy(f => formModule.Sections.FirstOrDefault(s => s.Id == f.FormSectionId)?.SectionNumber ?? 0)
+                    .ThenBy(f => f.DisplayOrder)
+                    .FirstOrDefault()
+            : null;
+
+        // The column that names what each row is about. The upload wizard matches rows against
+        // existing records on it, and a file without it leaves the "choose services you want to
+        // update" step with nothing to list and its Confirm button disabled for good - so treat a
+        // missing name column the same as a wrong-module file, which returns the user to the upload
+        // step with the reason on screen. Resolved the same way the template generates it
+        // (SubmissionsBulkUploadService), and returned to the client so it stops deriving its own.
+        var nameFieldCode = isActivityModule
+            ? nameField?.FieldKey
+            : formModule.Code == DataCollectionFormModuleCodes.OutcomeScores
+                ? fields.FirstOrDefault(f => f.FieldKey == "PPS01")?.FieldKey
+                : "ServiceName";
+
+        if (nameFieldCode != null && !headers.Any(h => string.Equals(h.Trim(), nameFieldCode, StringComparison.OrdinalIgnoreCase)))
         {
-            dataRows = dataRows.Skip(1).ToList();
-            skippedRows++;
+            return new BulkUploadValidationResultDto(
+                IsValid: false,
+                TotalRows: 0,
+                ValidRows: 0,
+                InvalidRows: 0,
+                RowValidations: Array.Empty<BulkUploadRowValidationDto>(),
+                FieldMetadata: Array.Empty<BulkUploadFieldMetadataDto>(),
+                StagingId: Guid.Empty,
+                NameFieldCode: nameFieldCode,
+                ModuleError: $"This file is missing the '{nameFieldCode}' column, so its rows cannot be matched to your records. Please download the correct template and try again.");
         }
 
         var rowValidations = new List<BulkUploadRowValidationDto>();
@@ -153,8 +192,8 @@ public class ValidateBulkUploadCommandHandler(
             var rowNumber = i + skippedRows + 1;
             var rowData = BulkUploadCsvHelper.MapRowToFields(headers, row);
 
-            var serviceName = rowData.GetValueOrDefault("ServiceName") ?? rowData.GetValueOrDefault("PPS01");
-            var serviceAnswers = serviceName != null ? serviceAnswersByName.GetValueOrDefault(serviceName.ToLowerInvariant()) : null;
+            var rowLabel = nameFieldCode != null ? rowData.GetValueOrDefault(nameFieldCode) : null;
+            var serviceAnswers = !isActivityModule && rowLabel != null ? serviceAnswersByName.GetValueOrDefault(rowLabel.ToLowerInvariant()) : null;
             var errors = ValidateRow(rowData, fields, serviceNames, formModule.Code, serviceAnswers);
 
             var isValid = errors.Count == 0;
@@ -167,7 +206,7 @@ public class ValidateBulkUploadCommandHandler(
                 invalidCount++;
             }
 
-            rowValidations.Add(new BulkUploadRowValidationDto(rowNumber, serviceName, isValid, errors));
+            rowValidations.Add(new BulkUploadRowValidationDto(rowNumber, rowLabel, isValid, errors));
         }
 
         // Build field metadata for fields with options (radio, select, checkbox)
@@ -211,7 +250,8 @@ public class ValidateBulkUploadCommandHandler(
                 invalidCount,
                 rowValidations,
                 fieldMetadata,
-                id),
+                id,
+                nameFieldCode),
             error => error);
     }
 
@@ -315,14 +355,6 @@ public class ValidateBulkUploadCommandHandler(
         return metadata;
     }
 
-    private static List<FormField> GetOrderedFields(DataCollectionFormModule formModule)
-    {
-        return formModule.Fields
-            .Where(f => f.IsActive)
-            .OrderBy(f => f.DisplayOrder)
-            .ToList();
-    }
-
     private static List<BulkUploadFieldErrorDto> ValidateRow(
         Dictionary<string, string> rowData,
         List<FormField> fields,
@@ -361,6 +393,17 @@ public class ValidateBulkUploadCommandHandler(
             {
                 errors.Add(new BulkUploadFieldErrorDto(field.FieldKey, field.Label, error));
             }
+        }
+
+        // Cross-field demographic checks (e.g. the QSU08 ethnicity boxes summing to more than the
+        // QSU03 total). Without this the rule only ran client-side and again at persist time in
+        // BulkUploadRowProcessor - so a breach was never reported by this endpoint, and a caller
+        // that skipped the browser reached the "choose services" step with the row still marked
+        // valid. Same validator as the persist path, so both agree on what a row means.
+        foreach (var (fieldKey, message) in BulkUploadFieldValueValidator.ValidateSumGroups(rowData, fields, serviceAnswers))
+        {
+            var label = fields.FirstOrDefault(f => f.FieldKey == fieldKey)?.Label ?? fieldKey;
+            errors.Add(new BulkUploadFieldErrorDto(fieldKey, label, message));
         }
 
         return errors;

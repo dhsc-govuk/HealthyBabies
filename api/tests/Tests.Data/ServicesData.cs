@@ -28,6 +28,21 @@ public static class ServicesData
         return service;
     }
 
+    // Bulk upload writes an answer for every column including SMD01, unlike the form, which handles the
+    // name separately. Used to check that orphan removal leaves that row alone.
+    public static Service BulkUploadedService(OrganisationId organisationId)
+    {
+        var service = Service.New(
+            id: ServiceId.New(),
+            organisationId: organisationId,
+            name: "Bulk Uploaded Service");
+
+        service.AddAnswer("SMD01", "What is the service name?", null, ServiceFormQuestionType.Text, 1, 1, "Bulk Uploaded Service", "Bulk Uploaded Service");
+        service.AddAnswer("SMD02", "Is the service funded by the BSFH&HB programme?", null, ServiceFormQuestionType.Radio, 1, 2, "0", "Funded");
+
+        return service;
+    }
+
     public static Service CompletedService(OrganisationId organisationId)
     {
         var service = Service.New(

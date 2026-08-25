@@ -40,8 +40,10 @@
   white-space: nowrap;
 }
 
+/* #b1b4b6 gave 2.08:1 against white. govuk-secondary-text-colour reaches 7.07:1 and still
+   reads as a lighter separator than the links either side of it. */
 .services-actions__divider {
-  color: #b1b4b6;
+  color: #505a5f;
 }
 
 /* Force no visited state on action links - override browser defaults */

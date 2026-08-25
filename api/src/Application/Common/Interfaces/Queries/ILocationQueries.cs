@@ -21,6 +21,10 @@ public interface ILocationQueries
         CancellationToken cancellationToken = default);
     Task<IReadOnlyList<Location>> GetAllForExport(CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<Location>> GetForExportByOrganisationIdAsync(
+        OrganisationId organisationId,
+        CancellationToken cancellationToken = default);
+
     Task<int> Count(
         Option<OrganisationId> organisationId,
         Permission permission,

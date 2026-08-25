@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { GeneralLayout } from '../../../layouts';
 import { H1, Paragraph } from '../../../components/GovUKComponents';
 import usePageTitle from '../../../hooks/usePageTitle';
+import { ROUTES } from '../../../constants/routes';
 
 const Home = (): React.ReactElement => {
   usePageTitle('Home');
@@ -14,17 +15,17 @@ const Home = (): React.ReactElement => {
       <Paragraph>You can:</Paragraph>
       <ul className="govuk-list govuk-list--bullet">
         <li>
-          <Link to="/admin/submissions" className="govuk-link">
+          <Link to={ROUTES.admin.submissions.list} className="govuk-link">
             track and access reported data from local authorities
           </Link>
         </li>
         <li>
-          <Link to="/admin/core-data" className="govuk-link">
+          <Link to={ROUTES.admin.coreData} className="govuk-link">
             download core data for sites and services
           </Link>
         </li>
         <li>
-          <Link to="/admin/settings" className="govuk-link">
+          <Link to={ROUTES.admin.settings} className="govuk-link">
             manage user accounts and data collections
           </Link>
         </li>

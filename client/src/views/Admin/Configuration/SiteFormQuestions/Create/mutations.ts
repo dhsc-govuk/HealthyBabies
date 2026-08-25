@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { SiteFormQuestion, SiteFormQuestionOption } from '../Common/types';
+import { API_ROUTES } from '../../../../../constants/apiRoutes';
 
 export interface CreateSiteFormQuestionRequest {
   code: string;
@@ -12,10 +13,10 @@ export interface CreateSiteFormQuestionRequest {
   helpText?: string | null;
   conditionalQuestionCode?: string | null;
   conditionalValue?: string | null;
-  conditionalRules?: string | null;
   dateValidationRule?: string | null;
+  conditionalRules?: string | null;
   options: Omit<SiteFormQuestionOption, 'id'>[];
 }
 
 export const createSiteFormQuestion = (data: CreateSiteFormQuestionRequest) =>
-  axios.post<SiteFormQuestion>('/site-form-questions', data);
+  axios.post<SiteFormQuestion>(API_ROUTES.siteFormQuestions.create, data);

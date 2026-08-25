@@ -20,6 +20,7 @@ public static class FieldTypeConstants
     public const string Currency = "currency";
     public const string Calculation = "calculation";
     public const string ReadOnly = "read_only";
+    public const string Date = "date";
 }
 
 /// <summary>
@@ -62,6 +63,7 @@ public class FieldType : ValueObject
     public static FieldType Currency => new(FieldTypeConstants.Currency);
     public static FieldType Calculation => new(FieldTypeConstants.Calculation);
     public static FieldType ReadOnly => new(FieldTypeConstants.ReadOnly);
+    public static FieldType Date => new(FieldTypeConstants.Date);
 
     public static implicit operator string(FieldType fieldType)
     {
@@ -103,6 +105,7 @@ public class FieldType : ValueObject
             yield return Currency;
             yield return Calculation;
             yield return ReadOnly;
+            yield return Date;
         }
     }
 }

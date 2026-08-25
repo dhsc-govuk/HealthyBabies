@@ -6,3 +6,49 @@
   opacity: 0.5;
   pointer-events: none;
 }
+
+/* Inline variant - used inside the bulk upload cell editor, where the surrounding
+   .cell-editor__content provides the label, the white background and the yellow frame. */
+.govuk-autocomplete-inline {
+  flex: 1;
+  min-width: 0;
+  background-color: #ffffff;
+}
+
+/* Borderless to match .cell-editor__input. The background must stay transparent:
+   the library's dropdown arrow sits behind the input at z-index -1. The 35px of right
+   padding keeps the text clear of that arrow (mirrors .autocomplete__input--show-all-values). */
+.govuk-autocomplete-inline .autocomplete__input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 8px 35px 8px 8px;
+  border: none;
+  font-size: 16px;
+  font-family: inherit;
+  background-color: transparent;
+}
+
+/* The editing cell already carries a permanent yellow focus frame, so a second
+   indicator on the input would double up - same as the <select> this replaced. */
+.govuk-autocomplete-inline .autocomplete__input:focus,
+.govuk-autocomplete-inline .autocomplete__input--focused {
+  outline: none;
+  box-shadow: none;
+}
+
+/* The menu is displayed inline (position: relative), so it grows the row rather than
+   overlaying it - the bulk upload table wrapper is a clipping scroll container.
+   Mirrors .cell-editor__checkbox-list. */
+.govuk-autocomplete-inline .autocomplete__menu--inline {
+  width: 100%;
+  max-height: 200px;
+  overflow-y: auto;
+  border: none;
+  border-top: 1px solid #b1b4b6; /* govuk-border-colour */
+}
+
+.govuk-autocomplete-inline .autocomplete__option {
+  padding: 6px 8px;
+  font-size: 16px;
+  overflow-wrap: break-word;
+}

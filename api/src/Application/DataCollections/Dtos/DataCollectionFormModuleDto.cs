@@ -50,6 +50,10 @@ public record DataCollectionFormModuleWithFieldsDto(
             formModule.IsActive,
             formModule.Type.Value,
             formModule.Sections.Select(FormSectionDto.FromDomainModel).ToList(),
-            formModule.Fields.OrderBy(f => f.DisplayOrder).Select(FormFieldDto.FromDomainModel).ToList());
+            formModule.Fields
+                .OrderBy(f => formModule.Sections.FirstOrDefault(s => s.Id == f.FormSectionId)?.SectionNumber ?? 0)
+                .ThenBy(f => f.DisplayOrder)
+                .Select(FormFieldDto.FromDomainModel)
+                .ToList());
     }
 }

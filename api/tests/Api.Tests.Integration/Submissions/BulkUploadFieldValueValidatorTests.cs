@@ -124,6 +124,73 @@ public class BulkUploadFieldValueValidatorTests
         errors.Should().BeEmpty();
     }
 
+    // BLUM-7184. QSU08_unknown was left out of the key list in 20260326061458, so it carried no
+    // sumGroup and every validator treated it as though it were not part of the ethnicity breakdown.
+    // These two spell out what that configuration is worth: with it, "Unknown" counts; without it,
+    // the same numbers pass. The migration BackfillQsu08UnknownEthnicitySumGroup supplies it.
+    [Fact]
+    public void ValidateSumGroups_CountsUnknownTowardsEthnicityTotal_WhenConfiguredInTheGroup()
+    {
+        var white = DemographicField("QSU08_white", "QSU03", "ethnicity");
+        var unknown = DemographicField("QSU08_unknown", "QSU03", "ethnicity");
+        var fields = new List<FormField> { white, unknown };
+
+        var rowData = new Dictionary<string, string>
+        {
+            ["QSU03"] = "10",
+            ["QSU08_white"] = "8",
+            ["QSU08_unknown"] = "5",
+        };
+
+        var errors = BulkUploadFieldValueValidator.ValidateSumGroups(rowData, fields);
+
+        errors.Should().Contain(e => e.FieldKey == "QSU08_unknown" && e.Message.Contains("cannot exceed the total number of service users (10)"));
+    }
+
+    [Fact]
+    public void ValidateSumGroups_IgnoresUnknown_WhenItCarriesNoSumGroupConfiguration()
+    {
+        var module = NewModule();
+        var white = DemographicField("QSU08_white", "QSU03", "ethnicity");
+        var unconfiguredUnknown = module.AddField("QSU08_unknown", "QSU08_unknown", FieldType.Number, 2);
+        var fields = new List<FormField> { white, unconfiguredUnknown };
+
+        var rowData = new Dictionary<string, string>
+        {
+            ["QSU03"] = "10",
+            ["QSU08_white"] = "8",
+            ["QSU08_unknown"] = "5",
+        };
+
+        var errors = BulkUploadFieldValueValidator.ValidateSumGroups(rowData, fields);
+
+        errors.Should().BeEmpty();
+    }
+
+    // The sum rule only applies to a breakdown the row is actually asked for. Some gates are on the
+    // Service record rather than on another column, and the validate endpoint has those answers, so
+    // they are passed in rather than defaulting the condition to visible.
+    [Fact]
+    public void ValidateSumGroups_SkipsGroup_WhenGatedOnAServiceAnswerThatDoesNotMatch()
+    {
+        var white = DemographicField("QSU08_white", "QSU03", "ethnicity");
+        white.SetConditionalRules("{\"showWhen\":{\"serviceFieldKey\":\"SMD02\",\"in\":[\"0\",\"1\"]}}");
+        var fields = new List<FormField> { white };
+
+        var rowData = new Dictionary<string, string>
+        {
+            ["QSU03"] = "10",
+            ["QSU08_white"] = "15",
+        };
+
+        var errors = BulkUploadFieldValueValidator.ValidateSumGroups(
+            rowData,
+            fields,
+            new Dictionary<string, string> { ["SMD02"] = "2" });
+
+        errors.Should().BeEmpty();
+    }
+
     [Fact]
     public void ValidateSumGroups_RejectsSingleFieldExceedingMax_WhenNoSumGroup()
     {

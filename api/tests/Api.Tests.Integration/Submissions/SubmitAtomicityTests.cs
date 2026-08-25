@@ -8,7 +8,6 @@ using Domain.ServiceForms;
 using Domain.Services;
 using FluentAssertions;
 using Infrastructure.Persistence;
-using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
@@ -45,11 +44,16 @@ public class SubmitAtomicityTests(OrganisationAdminIntegrationTestWebFactory fac
     [Fact]
     public async Task Submit_LeavesNoPartialState_WhenTheBatchedSaveFails()
     {
-        // Building the client boots a whole new host, which reruns the app's own startup seeding
-        // (ApplicationDbContextInitialiser.SeedDataAsync) through this same DbContext - the
-        // interceptor must stay disarmed until after that completes, or it throws during seeding
-        // instead of during the actual submit call under test.
-        using var throwingClient = BuildThrowingClient();
+        // This is the one place that still boots its own host, because the interceptor has to be attached
+        // to the DbContext the request pipeline resolves and the shared fixture host is built without it.
+        // That host runs the app's startup seeding (ApplicationDbContextInitialiser.SeedDataAsync), so the
+        // interceptor must stay disarmed until after the factory is built, or it throws during seeding
+        // instead of during the actual submit call under test. Disposed at the end of the test rather than
+        // left to the class fixture: a derived factory is held by its parent until the fixture goes away,
+        // and its host, DI container, EF model and Npgsql pool are exactly the retention this suite is
+        // trying to avoid.
+        await using var throwingFactory = BuildThrowingFactory();
+        using var throwingClient = CreateAuthenticatedClient(throwingFactory);
         _interceptor.ShouldThrow = true;
 
         var response = await throwingClient.PostAsync(SubmitUrl(), content: null);
@@ -77,16 +81,14 @@ public class SubmitAtomicityTests(OrganisationAdminIntegrationTestWebFactory fac
     private string SubmitUrl() =>
         $"organisation-admin/submissions/{_dataCollection.Id.Value}/submit";
 
-    private HttpClient BuildThrowingClient()
-    {
-        var client = factory.WithWebHostBuilder(builder =>
+    private WebApplicationFactory<Program> BuildThrowingFactory() =>
+        factory.WithWebHostBuilder(builder =>
         {
             builder.ConfigureTestServices(services =>
             {
-                services.AddAuthentication(defaultScheme: "TestScheme")
-                    .AddScheme<AuthenticationSchemeOptions, OrganisationAdminTestAuthHandler>(
-                        "TestScheme", _ => { });
-
+                // No TestScheme registration here: OrganisationAdminIntegrationTestWebFactory registers it
+                // in its own ConfigureWebHost, which this derived host inherits, and AuthenticationOptions
+                // .AddScheme throws on a duplicate name.
                 services.RemoveServiceByType(typeof(DbContextOptions<ApplicationDbContext>));
 
                 var dataSource = new NpgsqlDataSourceBuilder(factory.ConnectionString)
@@ -101,9 +103,13 @@ public class SubmitAtomicityTests(OrganisationAdminIntegrationTestWebFactory fac
                     .ConfigureWarnings(w => w.Ignore(CoreEventId.ManyServiceProvidersCreatedWarning))
                     .AddInterceptors(_interceptor));
             });
-        }).CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
+        });
 
+    private static HttpClient CreateAuthenticatedClient(WebApplicationFactory<Program> throwingFactory)
+    {
+        var client = throwingFactory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false });
         client.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue(scheme: "TestScheme");
+
         return client;
     }
 

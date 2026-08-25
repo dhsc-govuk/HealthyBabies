@@ -4,7 +4,7 @@
 .bulk-upload-caption {
   font-size: 24px;
   line-height: 30px;
-  font-weight: 300;
+  font-weight: 400;
   color: #505a5f;
   margin: 0 0 5px 0;
 }
@@ -34,7 +34,7 @@
 .bulk-upload-body {
   font-size: 19px;
   line-height: 25px;
-  font-weight: 300;
+  font-weight: 400;
   color: #0b0c0c;
   margin-bottom: 15px;
 }
@@ -42,7 +42,7 @@
 .bulk-upload-body-small {
   font-size: 16px;
   line-height: 20px;
-  font-weight: 300;
+  font-weight: 400;
   color: #505a5f;
   margin-bottom: 0;
 }
@@ -64,7 +64,7 @@
 .bulk-upload-file__hint {
   font-size: 19px;
   line-height: 25px;
-  font-weight: 300;
+  font-weight: 400;
   color: #505a5f;
   display: block;
   margin-bottom: 10px;
@@ -80,57 +80,11 @@
   margin-bottom: 0;
 }
 
-.bulk-upload-file__dropzone {
-  border: 2px dashed #b1b4b6;
-  background-color: #fff;
-  padding: 25px;
-}
-
-.bulk-upload-file__status {
-  background-color: #bbd4ea;
-  color: #0c2d4a;
-  padding: 15px 10px;
-  font-size: 19px;
-  line-height: 25px;
-  margin-bottom: 0;
-}
-
-.bulk-upload-file__status--success {
-  background-color: #cce2d8;
-  color: #005a30;
-}
-
-.bulk-upload-file__controls {
-  display: flex;
-  align-items: baseline;
-  gap: 15px;
-  margin-top: 15px;
-}
-
-.bulk-upload-file__button {
-  background-color: #f3f2f1;
-  border: none;
-  border-bottom: 2px solid #929191;
-  color: #0b0c0c;
-  font-size: 19px;
-  line-height: 25px;
-  padding: 8px 12px 7px;
-  cursor: pointer;
-  font-family: inherit;
-}
-
-.bulk-upload-file__button:hover {
-  background-color: #dbdad9;
-}
-
-.bulk-upload-file__or-text {
-  font-size: 19px;
-  line-height: 25px;
-  color: #0b0c0c;
-}
-
 /* Delimiter section */
 .bulk-upload-delimiter {
+  padding: 0;
+  border: 0;
+  margin-top: 0;
   margin-bottom: 30px;
 }
 
@@ -146,7 +100,7 @@
 .bulk-upload-delimiter__hint {
   font-size: 19px;
   line-height: 25px;
-  font-weight: 300;
+  font-weight: 400;
   color: #505a5f;
   display: block;
   margin-bottom: 15px;
@@ -372,7 +326,7 @@
 .bulk-upload-summary-list__service-status {
   font-size: 16px;
   line-height: 20px;
-  font-weight: 300;
+  font-weight: 400;
   color: #505a5f;
   margin: 0;
 }
@@ -399,45 +353,6 @@
   line-height: 20px;
   color: #505a5f;
   margin: 0;
-}
-
-/* Button styles */
-.bulk-upload-button {
-  background-color: #00703c;
-  border: none;
-  border-bottom: 2px solid #005a30;
-  color: #fff;
-  font-size: 19px;
-  line-height: 25px;
-  padding: 8px 12px 7px;
-  cursor: pointer;
-  font-family: inherit;
-}
-
-.bulk-upload-button:hover {
-  background-color: #005a30;
-}
-
-.bulk-upload-button:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.bulk-upload-button--secondary {
-  background-color: #f3f2f1;
-  border-bottom: 2px solid #929191;
-  color: #0b0c0c;
-}
-
-.bulk-upload-button--secondary:hover {
-  background-color: #dbdad9;
-}
-
-/* Button group */
-.bulk-upload-buttons {
-  display: flex;
-  gap: 15px;
-  margin-top: 30px;
 }
 
 /* Section spacing */
@@ -622,4 +537,20 @@
 .bulk-upload-tag--new {
   background-color: #1d70b8;
   color: #fff;
+}
+
+/* Editable cell value, wrapped in a real button so assistive technology exposes it as
+   interactive (a focusable <td> is announced as an ordinary cell). The button fills the cell
+   and inherits its typography so the table looks unchanged; focus styling comes from the
+   global non-GOV.UK button rule, which supplies a yellow ring over black. */
+.bulk-upload-table__cell-button {
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
 }

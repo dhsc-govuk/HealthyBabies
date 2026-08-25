@@ -12,6 +12,7 @@ import { GovUKActionMenu, useGovUKNotification } from '../../../../components/Go
 import type { ActionMenuItem } from '../../../../components/GovUKComponents';
 import './styles.css';
 import usePageTitle from '../../../../hooks/usePageTitle';
+import { ROUTES } from '../../../../constants/routes';
 
 type UrlParams = {
   userId: string;
@@ -71,7 +72,7 @@ const ViewAdmin = (): React.ReactElement => {
   });
 
   const handleEdit = () => {
-    navigate(`/admin/la-users/${userId}/edit`);
+    navigate(ROUTES.admin.laUsers.edit(userId));
   };
 
   // MFA State: 0=None, 1=PendingSetup, 2=Enabled, 3=Disabled
@@ -90,7 +91,7 @@ const ViewAdmin = (): React.ReactElement => {
       items.push({ label: 'Activate MFA', onClick: async () => { await enableMfa(); } });
     }
     
-    items.push({ label: 'Delete account', href: `/admin/la-users/${userId}/delete`, dividerBefore: true });
+    items.push({ label: 'Delete account', href: ROUTES.admin.laUsers.delete(userId), dividerBefore: true });
     
     return items;
   }, [mfaState, userId, disableMfa, resetMfa, enableMfa]);
@@ -103,9 +104,9 @@ const ViewAdmin = (): React.ReactElement => {
   return (
     <SettingsLayout
       breadcrumbs={[
-        { label: 'Home', link: '/admin/home' },
-        { label: 'Settings', link: '/admin/settings' },
-        { label: 'LA users', link: '/admin/la-users' },
+        { label: 'Home', link: ROUTES.admin.home },
+        { label: 'Settings', link: ROUTES.admin.settings },
+        { label: 'LA users', link: ROUTES.admin.laUsers.list },
       ]}>
       <LoadingBox loading={isLoading}>
         {user && (
@@ -118,7 +119,7 @@ const ViewAdmin = (): React.ReactElement => {
               </PageHeaderActions>
             </PageHeaderContainer>
 
-            <dl className="govuk-summary-list">
+            <dl className="govuk-summary-list user-view__summary">
               <div className="govuk-summary-list__row">
                 <dt className="govuk-summary-list__key">First name</dt>
                 <dd className="govuk-summary-list__value">{user.firstName}</dd>

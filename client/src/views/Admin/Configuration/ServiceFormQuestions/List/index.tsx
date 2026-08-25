@@ -28,6 +28,7 @@ import '../../../../../components/GovUKComponents/GovUKTable/styles.css';
 import { processError } from '../../../../../helpers/axiosErrorFallback';
 import { ServiceFormQuestion, questionTypeLabels } from '../Common/types';
 import usePageTitle from '../../../../../hooks/usePageTitle';
+import { ROUTES } from '../../../../../constants/routes';
 
 const ServiceFormQuestionsList = (): React.ReactElement => {
   usePageTitle('Service form questions');
@@ -94,11 +95,11 @@ const ServiceFormQuestionsList = (): React.ReactElement => {
   }, [filteredQuestions]);
 
   const handleEdit = (id: string) => {
-    navigate(`/admin/configuration/service-form-questions/${id}/edit`);
+    navigate(ROUTES.admin.configuration.serviceFormQuestions.edit(id));
   };
 
   const handleCreate = () => {
-    navigate('/admin/configuration/service-form-questions/create');
+    navigate(ROUTES.admin.configuration.serviceFormQuestions.create);
   };
 
   const handleDeleteClick = (item: ServiceFormQuestion) => {
@@ -199,7 +200,7 @@ const ServiceFormQuestionsList = (): React.ReactElement => {
         <DragIndicatorIcon sx={{ color: 'grey.500' }} />
         <Box sx={{ flex: 1 }}>
           <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.5 }}>
-            <Typography variant="subtitle1" fontWeight={600}>
+            <Typography variant="subtitle1" component="h3" fontWeight={600}>
               {question.code}
             </Typography>
             <Chip size="small" label={questionTypeLabels[question.questionType]} color="primary" variant="outlined" />
@@ -212,11 +213,14 @@ const ServiceFormQuestionsList = (): React.ReactElement => {
         </Box>
         <Stack direction="row" spacing={1}>
           <Button size="small" onClick={() => handleEdit(question.id)}>
-            Edit
+            {/* Every row repeats "Edit"/"Delete", so on their own a screen reader has no way to
+                tell which question the button acts on — the question name is only plain text.
+                Naming it here gives each button a unique accessible name (WCAG 2.4.4). */}
+            Edit<span className="govuk-visually-hidden"> {question.label}</span>
           </Button>
           {!question.isPredefined && (
             <Button size="small" color="error" onClick={() => handleDeleteClick(question)}>
-              Delete
+              Delete<span className="govuk-visually-hidden"> {question.label}</span>
             </Button>
           )}
         </Stack>
@@ -228,8 +232,8 @@ const ServiceFormQuestionsList = (): React.ReactElement => {
     <LoadingSpinner loading={isLoading || deleting} label={isLoading ? 'Loading questions' : 'Deleting question'}>
       <SettingsLayout
         breadcrumbs={[
-          { label: 'Home', link: '/admin/home' },
-          { label: 'Settings', link: '/admin/settings' },
+          { label: 'Home', link: ROUTES.admin.home },
+          { label: 'Settings', link: ROUTES.admin.settings },
         ]}>
         <PageHeaderContainer>
           <PageTitle>Service Form</PageTitle>
@@ -271,7 +275,7 @@ const ServiceFormQuestionsList = (): React.ReactElement => {
           <Grid item xs={12}>
             <Accordion defaultExpanded>
               <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                <Typography variant="h6">Step 1 - Service Details ({questionsByStep.step1.length})</Typography>
+                <Typography variant="h6" component="h2">Step 1 - Service Details ({questionsByStep.step1.length})</Typography>
               </AccordionSummary>
               <AccordionDetails>
                 {questionsByStep.step1.length === 0 ? (
@@ -283,7 +287,7 @@ const ServiceFormQuestionsList = (): React.ReactElement => {
             </Accordion>
             <Accordion defaultExpanded sx={{ mt: 2 }}>
               <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                <Typography variant="h6">Step 2 - Additional Information ({questionsByStep.step2.length})</Typography>
+                <Typography variant="h6" component="h2">Step 2 - Additional Information ({questionsByStep.step2.length})</Typography>
               </AccordionSummary>
               <AccordionDetails>
                 {questionsByStep.step2.length === 0 ? (

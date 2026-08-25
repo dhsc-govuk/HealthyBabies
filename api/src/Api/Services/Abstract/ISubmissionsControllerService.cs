@@ -20,6 +20,7 @@ public interface ISubmissionsControllerService
     Task<Option<ServiceUsersModuleDetailDto>> GetServiceUsersModule(Guid organisationId, Guid dataCollectionId, Guid moduleId, CancellationToken cancellationToken);
     Task<Option<ServiceFormDetailDto>> GetServiceForm(Guid organisationId, Guid dataCollectionId, Guid moduleId, Guid serviceId, CancellationToken cancellationToken);
     Task<Either<string, ServiceFormDetailDto>> SaveServiceForm(Guid organisationId, Guid dataCollectionId, Guid moduleId, Guid serviceId, SaveServiceFormRequest request, CancellationToken cancellationToken);
+    Task<Either<string, bool>> DeleteServiceForm(Guid organisationId, Guid dataCollectionId, Guid moduleId, Guid serviceId, CancellationToken cancellationToken);
 
     // Wider Service Users module methods
     Task<Option<WiderServiceUsersModuleDetailDto>> GetWiderServiceUsersModule(Guid organisationId, Guid dataCollectionId, Guid moduleId, CancellationToken cancellationToken);
@@ -49,4 +50,11 @@ public interface ISubmissionsControllerService
     Task<Either<string, SubmissionDetailDto>> ReopenSubmission(Guid organisationId, Guid dataCollectionId, CancellationToken cancellationToken);
     Task<SubmissionIntegrityDto> GetSubmissionIntegrity(Guid organisationId, Guid dataCollectionId, CancellationToken cancellationToken);
     Task<ResetCorruptedSubmissionResultDto> ResetCorruptedSubmission(Guid organisationId, Guid dataCollectionId, CancellationToken cancellationToken);
+
+    // Previous submissions (versions)
+    Task<IReadOnlyList<SubmissionVersionSummaryDto>> GetSubmissionVersions(Guid organisationId, Guid dataCollectionId, CancellationToken cancellationToken);
+    Task<Option<SubmissionVersionDetailDto>> GetSubmissionVersionDetail(Guid organisationId, Guid dataCollectionId, int versionNumber, CancellationToken cancellationToken);
+    Task<Option<byte[]>> GetSubmissionVersionZip(Guid organisationId, Guid dataCollectionId, int versionNumber, CancellationToken cancellationToken);
+    Task<Option<SubmissionVersionSectionDetailDto>> GetSubmissionVersionSection(Guid organisationId, Guid dataCollectionId, int versionNumber, Guid formModuleId, CancellationToken cancellationToken);
+    Task<Option<SubmissionVersionActivityDetailDto>> GetSubmissionVersionActivity(Guid organisationId, Guid dataCollectionId, int versionNumber, Guid formModuleId, Guid activityId, CancellationToken cancellationToken);
 }

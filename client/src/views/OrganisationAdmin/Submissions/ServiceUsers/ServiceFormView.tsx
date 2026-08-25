@@ -3,10 +3,14 @@ import { useNavigate, useParams } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from 'react-query';
 import { Button } from 'govuk-react';
 import { GeneralLayout } from '../../../../layouts';
-import { LoadingSpinner, GovUKButton, SummaryList } from '../../../../components/GovUKComponents';
+import { LoadingSpinner, GovUKButton, GovUKLinkButton, SummaryList, GovUKErrorSummary } from '../../../../components/GovUKComponents';
 import { getServiceForm, getSubmission, deleteServiceForm, FormModuleFieldDto } from '../queries';
 import { WarningPanel, WarningPanelTitle, WarningPanelBody, WarningPanelActions, WarningPanelAnchor } from '../../../../styles/govuk-global';
+import { isStoredAnswer, resolveSnapshotLabel } from '../../../../helpers/answerSnapshot';
 import { evaluateNumericOperators } from '../../../../helpers/conditionalOperators';
+import { groupFieldsForSummary, isInlineSubAnswer } from '../../../../helpers/formFieldOrdering';
+import { processError } from '../../../../helpers/axiosErrorFallback';
+import { ROUTES } from '../../../../constants/routes';
 import './styles.css';
 
 interface ConditionalRule {
@@ -48,6 +52,7 @@ const ServiceFormView = (): React.ReactElement => {
   }>();
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | undefined>(undefined);
 
   const { data: formData, isLoading: isLoadingForm } = useQuery({
     queryKey: ['service-form', submissionId, moduleId, serviceId],
@@ -66,9 +71,14 @@ const ServiceFormView = (): React.ReactElement => {
     onSuccess: () => {
       queryClient.invalidateQueries(['service-users-module', submissionId, moduleId]);
       queryClient.invalidateQueries(['organisation-admin-submission', submissionId]);
-      navigate(`/organisation-admin/submissions/${submissionId}/modules/${moduleId}/services`, {
+      navigate(ROUTES.organisationAdmin.submissions.serviceUsers.list(submissionId, moduleId), {
         state: { deletedServiceName: serviceForm?.serviceName },
       });
+    },
+    // Without this a refused delete - most often because the quarter has been submitted and is
+    // locked - looked like the button had simply done nothing.
+    onError: (error) => {
+      processError(error, setDeleteError);
     },
   });
 
@@ -97,14 +107,14 @@ const ServiceFormView = (): React.ReactElement => {
     return values;
   }, [serviceForm]);
 
-  const parseConditionalRules = (rulesJson: string | null): ConditionalRule | null => {
+  const parseConditionalRules = useCallback((rulesJson: string | null): ConditionalRule | null => {
     if (!rulesJson) return null;
     try {
       return JSON.parse(rulesJson) as ConditionalRule;
     } catch {
       return null;
     }
-  };
+  }, []);
 
   const isFieldVisible = useCallback(
     (field: FormModuleFieldDto): boolean => {
@@ -177,23 +187,17 @@ const ServiceFormView = (): React.ReactElement => {
 
       return true;
     },
-    [fieldValues, serviceForm]
+    [fieldValues, parseConditionalRules, serviceForm]
   );
 
-  const hasFieldValue = (field: FormModuleFieldDto): boolean => {
+  const hasFieldValue = useCallback((field: FormModuleFieldDto): boolean => {
     const value = fieldValues[field.code];
     if (value === null || value === undefined) return false;
     if (Array.isArray(value)) return value.length > 0;
     return value !== '';
-  };
+  }, [fieldValues]);
 
-  const isSubAnswerField = (field: FormModuleFieldDto): boolean => {
-    const rules = parseConditionalRules(field.conditionalRules);
-    const config = field.configuration ? JSON.parse(field.configuration) : null;
-    return !!config?.group || !!rules?.displayInline;
-  };
-
-  const getFieldDisplayValue = (field: FormModuleFieldDto): string => {
+  const getFieldDisplayValue = useCallback((field: FormModuleFieldDto): string => {
     const value = fieldValues[field.code];
     if (!value || (Array.isArray(value) && value.length === 0)) return '';
 
@@ -201,9 +205,7 @@ const ServiceFormView = (): React.ReactElement => {
 
     // Prefer the server's snapshot-resolved display, but only when rendering the stored answer
     // (not an in-progress edit), so historic answers survive later form/option changes.
-    const storedValue = field.value ?? '';
-    const currentAsString = Array.isArray(value) ? value.join(',') : (value ?? '');
-    if (field.displayValue && currentAsString === storedValue) {
+    if (field.displayValue && isStoredAnswer(field, value)) {
       return field.displayValue;
     }
 
@@ -213,29 +215,39 @@ const ServiceFormView = (): React.ReactElement => {
 
     const option = field.options.find((o) => o.value === value);
     return option?.label ?? (value as string);
-  };
+  }, [fieldValues]);
 
-  const processFieldLabel = (label: string) => label.replace(/\{serviceName\}/g, serviceForm?.serviceName || '');
+  const processFieldLabel = useCallback((label: string) => label.replace(/\{serviceName\}/g, serviceForm?.serviceName || ''), [serviceForm?.serviceName]);
 
   const summaryItems = useMemo(() => {
     if (!serviceForm) return [];
 
-    const allFields = [...serviceForm.fields].sort((a, b) => a.displayOrder - b.displayOrder);
-    const fieldsWithValues = allFields.filter((field) => hasFieldValue(field) && isFieldVisible(field));
-
-    return fieldsWithValues.map((field) => ({
-      label: processFieldLabel(field.label),
-      value: getFieldDisplayValue(field),
-      isSubAnswer: isSubAnswerField(field),
-    }));
-  }, [serviceForm, fieldValues, isFieldVisible]);
+    return groupFieldsForSummary(serviceForm.fields, (field) => hasFieldValue(field) && isFieldVisible(field)).flatMap((group) =>
+      group.groupKey
+        ? [
+            { label: processFieldLabel(group.label), value: '', isGroupHeader: true },
+            ...group.fields.map((field) => ({
+              label: processFieldLabel(resolveSnapshotLabel(field, fieldValues[field.code])),
+              value: getFieldDisplayValue(field),
+              isSubAnswer: true,
+            })),
+          ]
+        : [
+            {
+              label: processFieldLabel(resolveSnapshotLabel(group.fields[0], fieldValues[group.fields[0].code])),
+              value: getFieldDisplayValue(group.fields[0]),
+              isSubAnswer: isInlineSubAnswer(group.fields[0]),
+            },
+          ]
+    );
+  }, [serviceForm, fieldValues, getFieldDisplayValue, hasFieldValue, isFieldVisible, processFieldLabel]);
 
   const handleBack = () => {
-    navigate(`/organisation-admin/submissions/${submissionId}/modules/${moduleId}/services`);
+    navigate(ROUTES.organisationAdmin.submissions.serviceUsers.list(submissionId, moduleId));
   };
 
   const handleChange = () => {
-    navigate(`/organisation-admin/submissions/${submissionId}/modules/${moduleId}/services/${serviceId}`);
+    navigate(ROUTES.organisationAdmin.submissions.serviceUsers.form(submissionId, moduleId, serviceId));
   };
 
   const handleDelete = () => {
@@ -243,6 +255,8 @@ const ServiceFormView = (): React.ReactElement => {
   };
 
   const handleConfirmDelete = () => {
+    setDeleteError(undefined);
+    deleteMutation.reset();
     deleteMutation.mutate();
   };
 
@@ -263,7 +277,7 @@ const ServiceFormView = (): React.ReactElement => {
       <GeneralLayout>
         <h1 className="govuk-heading-l">Service not found</h1>
         <p className="govuk-body">The service you are looking for does not exist.</p>
-        <GovUKButton onClick={() => navigate(`/organisation-admin/submissions/${submissionId}/modules/${moduleId}/services`)}>Back to services</GovUKButton>
+        <GovUKButton onClick={() => navigate(ROUTES.organisationAdmin.submissions.serviceUsers.list(submissionId, moduleId))}>Back to services</GovUKButton>
       </GeneralLayout>
     );
   }
@@ -271,11 +285,13 @@ const ServiceFormView = (): React.ReactElement => {
   if (showDeleteConfirm) {
     return (
       <GeneralLayout currentPage="" backLink={{ href: '#', onClick: handleCancelDelete }}>
+        {deleteMutation.isError && (
+          <GovUKErrorSummary heading="There was a problem deleting" errors={[{ text: deleteError ?? 'Please try again or contact support if the problem persists.' }]} />
+        )}
         <WarningPanel>
           <WarningPanelTitle>Are you sure you want to delete service user data?</WarningPanelTitle>
           <WarningPanelBody>
-            Deleting service user data for &apos;{serviceForm.serviceName}&apos; will remove all saved information about users who accessed this service in the past 3 months, from{' '}
-            {dataCollectionStartDate} to {dataCollectionEndDate}.
+            Deleting service user data for &apos;{serviceForm.serviceName}&apos; will remove all saved information about users who accessed this service in the relevant quarter.
           </WarningPanelBody>
           <WarningPanelBody>
             This will not remove any saved service user data from previous Management Information data collections, or any saved information about the service itself.
@@ -283,7 +299,7 @@ const ServiceFormView = (): React.ReactElement => {
           <WarningPanelBody>
             <strong>This cannot be undone.</strong>
           </WarningPanelBody>
-          <WarningPanelBody>If you want to keep this service&apos;s user data for the past quarter, you can go back.</WarningPanelBody>
+          <WarningPanelBody>If you want to keep this service&apos;s user data for the relevant quarter, you can go back.</WarningPanelBody>
           <WarningPanelActions>
             <Button onClick={handleConfirmDelete} disabled={deleteMutation.isLoading} buttonColour="#ffffff" buttonTextColour="#1d70b8">
               Yes, I want to delete
@@ -305,20 +321,17 @@ const ServiceFormView = (): React.ReactElement => {
   return (
     <GeneralLayout
       breadcrumbs={[
-        { label: 'Home', link: '/organisation-admin/home' },
-        { label: 'Submissions', link: '/organisation-admin/submissions' },
-        { label: dataCollectionName || 'Submission', link: `/organisation-admin/submissions/${submissionId}` },
-        { label: 'Section 2: Service users', link: `/organisation-admin/submissions/${submissionId}/modules/${moduleId}/services` },
+        { label: 'Home', link: ROUTES.organisationAdmin.home },
+        { label: 'Submissions', link: ROUTES.organisationAdmin.submissions.list },
+        { label: dataCollectionName || 'Submission', link: ROUTES.organisationAdmin.submissions.view(submissionId) },
+        { label: 'Section 2: Service users', link: ROUTES.organisationAdmin.submissions.serviceUsers.list(submissionId, moduleId) },
       ]}
       currentPage=""
       backLink={{ href: '#', onClick: handleBack }}>
       <span className="govuk-caption-l">Section 2: Service users</span>
       <h1 className="govuk-heading-l">{serviceForm.serviceName}</h1>
 
-      <p className="govuk-body">
-        This page shows saved information you've provided about users who accessed the service '{serviceForm.serviceName}' from {dataCollectionStartDate} to {dataCollectionEndDate}
-        .
-      </p>
+      <p className="govuk-body">This page shows saved information you've provided about users who accessed the service '{serviceForm.serviceName}' in the relevant quarter.</p>
       <p className="govuk-body">
         You can update service user data at any time before submitting the quarterly Management Information data collection. To update the information, select 'Change'. To delete
         service users data, select 'Delete'.
@@ -343,25 +356,17 @@ const ServiceFormView = (): React.ReactElement => {
             <strong>{dataCollectionName}</strong>. {dateRange}
           </span>
           <div style={{ display: 'flex', gap: '15px' }}>
-            <a
-              href="#"
-              className="govuk-link govuk-!-font-weight-bold"
-              onClick={(e) => {
-                e.preventDefault();
-                handleChange();
-              }}>
+            <GovUKLinkButton
+              className="govuk-!-font-weight-bold"
+              onClick={handleChange}>
               Change<span className="govuk-visually-hidden"> {serviceForm.serviceName} service user data</span>
-            </a>
+            </GovUKLinkButton>
             <span style={{ color: '#b1b4b6' }}>|</span>
-            <a
-              href="#"
-              className="govuk-link govuk-!-font-weight-bold"
-              onClick={(e) => {
-                e.preventDefault();
-                handleDelete();
-              }}>
+            <GovUKLinkButton
+              className="govuk-!-font-weight-bold"
+              onClick={handleDelete}>
               Delete<span className="govuk-visually-hidden"> {serviceForm.serviceName} service user data</span>
-            </a>
+            </GovUKLinkButton>
           </div>
         </div>
         <div style={{ padding: '0 20px' }}>

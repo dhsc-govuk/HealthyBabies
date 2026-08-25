@@ -206,6 +206,10 @@ public class SeederDataImporter(
 
             if (existing.TryGetValue(q.Code, out var existingQuestion))
             {
+                // The seed files carry no date rule or conditional rules — both are configured through
+                // the admin API — so they have to be carried over from the existing row. Omitting them
+                // let the optional parameters default to null, and every re-import silently erased
+                // SMD05's not_in_past rule along with any configured conditions.
                 existingQuestion.UpdateDetails(
                     q.Label,
                     q.Hint,
@@ -218,7 +222,9 @@ public class SeederDataImporter(
                     q.HelpTextSummary,
                     q.HelpText,
                     q.ConditionalQuestionCode,
-                    q.ConditionalValue);
+                    q.ConditionalValue,
+                    existingQuestion.DateValidationRule,
+                    existingQuestion.ConditionalRules);
 
                 existingQuestion.ClearOptions();
                 foreach (var opt in q.Options)
@@ -300,7 +306,8 @@ public class SeederDataImporter(
                     q.HelpText,
                     q.ConditionalQuestionCode,
                     q.ConditionalValue,
-                    existingQuestion.DateValidationRule);
+                    existingQuestion.DateValidationRule,
+                    existingQuestion.ConditionalRules);
 
                 existingQuestion.ClearOptions();
                 foreach (var opt in q.Options)

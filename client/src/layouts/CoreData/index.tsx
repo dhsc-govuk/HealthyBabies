@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Box } from '@mui/material';
 import { useLocation, Link } from 'react-router-dom';
 import LayoutHeader from '../General/LayoutHeader';
@@ -6,6 +6,7 @@ import LayoutFooter from '../General/LayoutFooter';
 import GovUKPhaseBanner from '../../components/GovUKComponents/GovUKPhaseBanner';
 import { GovUKBreadcrumbs, GovUKBackLink, GovUKNotificationDisplay, GovUKSkipLink } from '../../components/GovUKComponents';
 import usePageTitle from '../../hooks/usePageTitle';
+import { ROUTES } from '../../constants/routes';
 import './styles.css';
 
 const govukWhite = '#ffffff';
@@ -23,15 +24,18 @@ interface Props extends React.PropsWithChildren {
 }
 
 const coreDataNavigation: NavItem[] = [
-  { label: 'Delivery locations', href: '/organisation-admin/core-data/delivery-locations' },
-  { label: 'Services', href: '/organisation-admin/core-data/services' },
-  { label: 'Wider service categories', href: '/organisation-admin/core-data/wider-service-categories' },
+  { label: 'Delivery locations', href: ROUTES.organisationAdmin.locations.list },
+  { label: 'Services', href: ROUTES.organisationAdmin.services.list },
+  { label: 'Wider service categories', href: ROUTES.organisationAdmin.widerServiceCategories.list },
 ];
 
 const CoreDataLayout = ({ children, breadcrumbs, currentPage, navigation, backLink }: Props): React.ReactElement => {
   usePageTitle(currentPage);
   const effectiveNavigation = navigation ?? coreDataNavigation;
   const location = useLocation();
+  // Below the tablet breakpoint the secondary nav collapses behind a "Menu" button so the
+  // page reflows to a single column without a nested scrollable region (WCAG 1.4.10).
+  const [navMenuOpen, setNavMenuOpen] = useState(false);
 
   const isActive = (href: string): boolean => {
     return location.pathname === href || location.pathname.startsWith(`${href}/`);
@@ -53,7 +57,13 @@ const CoreDataLayout = ({ children, breadcrumbs, currentPage, navigation, backLi
           <GovUKPhaseBanner phase="beta" />
           <Box className="core-data-layout">
             {/* Left Navigation */}
-            <nav className="app-subnav core-data-nav" aria-labelledby="core-data-subnav-heading">
+            <button type="button" className="app-subnav__toggle" aria-controls="core-data-nav-list" aria-expanded={navMenuOpen} onClick={() => setNavMenuOpen((open) => !open)}>
+              Menu
+            </button>
+            <nav
+              id="core-data-nav-list"
+              className={`app-subnav app-subnav--collapsible core-data-nav${navMenuOpen ? ' app-subnav--open' : ''}`}
+              aria-labelledby="core-data-subnav-heading">
               <h2 className="govuk-visually-hidden" id="core-data-subnav-heading">
                 Core data navigation
               </h2>

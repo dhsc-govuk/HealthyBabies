@@ -13,6 +13,7 @@ import { questionFormReducer } from '../Common/reducer';
 import { encodeForWaf, encodeNullableForWaf } from '../../../../../helpers/stringUtils';
 import { ValidationErrors, validationMessages, initialFormState, requiresOptions } from '../Common/types';
 import { getConditionFieldKeys } from '../../DataCollectionFormQuestions/Common/ConditionalRulesBuilder';
+import { ROUTES } from '../../../../../constants/routes';
 
 const CreateSiteFormQuestion = (): React.ReactElement => {
   const navigate = useNavigate();
@@ -40,7 +41,7 @@ const CreateSiteFormQuestion = (): React.ReactElement => {
     onSuccess() {
       queryClient.invalidateQueries(['site-form-questions-list']);
       setNotification({ type: 'success', title: 'Success', message: 'Question created successfully' });
-      navigate('/admin/configuration/site-form-questions');
+      navigate(ROUTES.admin.configuration.siteFormQuestions.list);
     },
     onError(error) {
       processError(error, (e) => setNotification({ type: 'important', title: 'Error', message: e }));
@@ -86,23 +87,23 @@ const CreateSiteFormQuestion = (): React.ReactElement => {
       helpText: encodeNullableForWaf(formState.helpText),
       conditionalQuestionCode: formState.conditionalQuestionCode || null,
       conditionalValue: encodeNullableForWaf(formState.conditionalValue),
-      conditionalRules: formState.conditionalRules || null,
       dateValidationRule: formState.dateValidationRule || null,
+      conditionalRules: formState.conditionalRules || null,
       options: formState.options.map((opt) => ({ ...opt, label: encodeForWaf(opt.label), value: encodeForWaf(opt.value) })),
     });
   };
 
   const handleCancel = () => {
-    navigate('/admin/configuration/site-form-questions');
+    navigate(ROUTES.admin.configuration.siteFormQuestions.list);
   };
 
   return (
     <>
       <SettingsLayout
         breadcrumbs={[
-          { label: 'Admin', link: '/admin/home' },
-          { label: 'Configuration', link: '/admin/configuration' },
-          { label: 'Delivery Location Form Questions', link: '/admin/configuration/site-form-questions' },
+          { label: 'Admin', link: ROUTES.admin.home },
+          { label: 'Configuration', link: ROUTES.admin.configuration.root },
+          { label: 'Delivery Location Form Questions', link: ROUTES.admin.configuration.siteFormQuestions.list },
         ]}
         currentPage="Create Question">
         <QuestionForm

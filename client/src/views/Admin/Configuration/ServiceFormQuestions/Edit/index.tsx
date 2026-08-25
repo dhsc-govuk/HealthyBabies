@@ -1,4 +1,4 @@
-import React, { useEffect, useReducer, useState, useCallback } from 'react';
+import React, { useEffect, useReducer, useState, useCallback, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from 'react-query';
 import { SettingsLayout } from '../../../../../layouts';
@@ -14,6 +14,7 @@ import { questionFormReducer, QuestionFormAction } from '../Common/reducer';
 import { encodeForWaf, encodeNullableForWaf } from '../../../../../helpers/stringUtils';
 import { ValidationErrors, validationMessages, initialFormState, requiresOptions, QuestionFormState } from '../Common/types';
 import { getConditionFieldKeys } from '../../DataCollectionFormQuestions/Common/ConditionalRulesBuilder';
+import { ROUTES } from '../../../../../constants/routes';
 
 type UrlParams = {
   questionId: string;
@@ -88,14 +89,14 @@ const EditServiceFormQuestion = (): React.ReactElement => {
       queryClient.invalidateQueries(['service-form-questions-list']);
       queryClient.invalidateQueries(['service-form-question-edit', questionId]);
       setNotification({ type: 'success', title: 'Success', message: 'Question updated successfully' });
-      navigate('/admin/configuration/service-form-questions');
+      navigate(ROUTES.admin.configuration.serviceFormQuestions.list);
     },
     onError(error) {
       processError(error, (e) => setNotification({ type: 'important', title: 'Error', message: e }));
     },
   });
 
-  const allQuestions = questionsData?.data ?? [];
+  const allQuestions = useMemo(() => questionsData?.data ?? [], [questionsData?.data]);
 
   const validate = useCallback(() => {
     const needsOptions = requiresOptions(formState.questionType) && formState.isPredefined;
@@ -152,17 +153,17 @@ const EditServiceFormQuestion = (): React.ReactElement => {
   };
 
   const handleCancel = () => {
-    navigate('/admin/configuration/service-form-questions');
+    navigate(ROUTES.admin.configuration.serviceFormQuestions.list);
   };
 
   return (
     <LoadingSpinner loading={loading || saving} label={loading ? 'Loading question' : 'Saving changes'}>
       <SettingsLayout
         breadcrumbs={[
-          { label: 'Home', link: '/admin/home' },
-          { label: 'Settings', link: '/admin/settings' },
+          { label: 'Home', link: ROUTES.admin.home },
+          { label: 'Settings', link: ROUTES.admin.settings },
         ]}
-        backLink={{ href: '/admin/configuration/service-form-questions', onClick: handleCancel }}
+        backLink={{ href: ROUTES.admin.configuration.serviceFormQuestions.list, onClick: handleCancel }}
         currentPage="Edit Question">
         <QuestionForm formState={formState} errors={errors} setErrors={setErrors} dispatch={dispatch} isEdit allQuestions={questionsData?.data ?? []} />
         <Stack direction="row" spacing={2} sx={{ mt: 3 }}>

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { GeneralLayout } from '../../../../layouts';
 import BulkUploadComponent from '../../../../components/Global/Organisations/Locations/BulkUpload';
 import { useAuthProvider } from '../../../../components/AuthProvider';
+import { ROUTES } from '../../../../constants/routes';
 
 interface NotificationData {
   type: 'success' | 'important';
@@ -15,19 +16,13 @@ const LocationBulkUpload = (): React.ReactElement => {
   const { organisationId } = useAuthProvider();
 
   const handleFinish = (notification?: NotificationData) => {
-    navigate(`/organisation-admin/core-data/delivery-locations`, {
+    navigate(ROUTES.organisationAdmin.locations.list, {
       state: notification ? { notification } : undefined,
     });
   };
 
   return (
-    <GeneralLayout
-      breadcrumbs={[
-        { label: 'Home', link: '/organisation-admin/home' },
-        { label: 'Delivery locations', link: `/organisation-admin/core-data/delivery-locations` },
-        { label: 'Bulk Upload', link: '' },
-      ]}
-      currentPage="Bulk Upload">
+    <GeneralLayout>
       <BulkUploadComponent organisationId={organisationId!} handleFinish={handleFinish} />
     </GeneralLayout>
   );

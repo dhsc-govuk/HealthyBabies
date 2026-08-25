@@ -118,4 +118,69 @@ public class FormFieldValueSnapshotTests
 
         AnswerSnapshotResolver.ResolveDisplayValue(fieldValue, field).Should().Be("Play group");
     }
+
+    [Fact]
+    public void ResolveQuestionLabel_ReturnsSnapshot_WhenLiveQuestionRelabelled()
+    {
+        var module = NewModule();
+        var field = module.AddField("SPCP01", "Have you published information about your Healthy Babies offer?", FieldType.Radio, displayOrder: 1);
+
+        var submission = FormSubmission.Create(module.Id);
+        var fieldValue = submission.SetFieldValue(field, "yes_both");
+
+        field.UpdateDetails(
+            "Have you published information about your Healthy Babies offer?22",
+            field.DisplayOrder,
+            field.IsRequired,
+            field.Placeholder,
+            field.HelpText,
+            field.DefaultValue);
+
+        AnswerSnapshotResolver.ResolveQuestionLabel(fieldValue)
+            .Should().Be("Have you published information about your Healthy Babies offer?");
+    }
+
+    [Fact]
+    public void ResolveQuestionLabel_ReturnsNull_WhenNoSnapshot()
+    {
+        var module = NewModule();
+        var field = module.AddField("SMD03", "Status", FieldType.Radio, displayOrder: 1);
+
+        // Legacy row: saved via the id-only overload, so no snapshot is captured and the caller
+        // has to fall back to the live label.
+        var submission = FormSubmission.Create(module.Id);
+        var fieldValue = submission.SetFieldValue(field.Id, "open");
+
+        AnswerSnapshotResolver.ResolveQuestionLabel(fieldValue).Should().BeNull();
+    }
+
+    [Fact]
+    public void ResolveQuestionLabel_ReturnsNull_WhenAnswerIsMissing()
+    {
+        AnswerSnapshotResolver.ResolveQuestionLabel(fieldValue: null).Should().BeNull();
+    }
+
+    [Fact]
+    public void ResolveDisplayValue_ReadsTheShapeTheBackfillMigrationWrites()
+    {
+        var module = NewModule();
+        var field = module.AddField("SPCP01", "Have you published information?", FieldType.Radio, displayOrder: 1);
+        field.AddOption("yes_both", "Yes - now relabelled", 1);
+
+        var submission = FormSubmission.Create(module.Id);
+        var fieldValue = submission.SetFieldValue(field.Id, "yes_both");
+
+        // Verbatim output of json_agg(json_build_object('Value', ..., 'Label', ...))::text, spacing
+        // included - BackfillFormFieldValueSnapshot writes this, not System.Text.Json, and the two
+        // have to stay readable by the same parser.
+        fieldValue.SetSnapshot(
+            "SPCP01",
+            "Have you published information?",
+            null,
+            FieldType.Radio.Value,
+            1,
+            "[{\"Value\" : \"yes_both\", \"Label\" : \"Yes - both physically and online\"}, {\"Value\" : \"no\", \"Label\" : \"No\"}]");
+
+        AnswerSnapshotResolver.ResolveDisplayValue(fieldValue, field).Should().Be("Yes - both physically and online");
+    }
 }

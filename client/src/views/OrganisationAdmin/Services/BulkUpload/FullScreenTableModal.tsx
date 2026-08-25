@@ -34,7 +34,7 @@ const FullScreenTableModal: React.FC<FullScreenTableModalProps> = ({
     rowIndex: number;
     header: string;
   } | null>(null);
-  const activeCellRef = useRef<HTMLTableCellElement | null>(null);
+  const activeCellRef = useRef<HTMLButtonElement | null>(null);
 
   const getQuestionByCode = (code: string): ServiceFormQuestionDto | undefined => {
     return questions.find((q) => q.code === code);
@@ -58,7 +58,7 @@ const FullScreenTableModal: React.FC<FullScreenTableModalProps> = ({
     return option ? option.label : value;
   };
 
-  const handleCellActivate = (rowIndex: number, header: string, cellEl: HTMLTableCellElement) => {
+  const handleCellActivate = (rowIndex: number, header: string, cellEl: HTMLButtonElement) => {
     if (!editable) return;
     activeCellRef.current = cellEl;
     setEditingCell({ rowIndex, header });
@@ -96,7 +96,8 @@ const FullScreenTableModal: React.FC<FullScreenTableModalProps> = ({
 
       <DialogContent sx={{ padding: 0 }}>
         <div style={{ overflow: 'auto', height: '100%' }} tabIndex={0}>
-          <table className="bulk-upload-table" role="grid" style={{ minWidth: '100%' }}>
+          <table className="bulk-upload-table" style={{ minWidth: '100%' }}>
+            <caption className="govuk-visually-hidden">{title} services table</caption>
             <thead>
               <tr>
                 <th className="bulk-upload-table__row-number" style={{ position: 'sticky', left: 0 }}>
@@ -150,20 +151,27 @@ const FullScreenTableModal: React.FC<FullScreenTableModalProps> = ({
                       <td
                         key={`${row.rowIndex}-${header}`}
                         role="gridcell"
-                        tabIndex={editable ? 0 : undefined}
                         className={`${editable ? 'bulk-upload-table__cell--editable' : ''}${cellError ? ' bulk-upload-table__cell--error' : ''}`}
                         aria-invalid={!!cellError}
-                        onClick={(e) => handleCellActivate(row.rowIndex, header, e.currentTarget)}
-                        onKeyDown={(e) => {
-                          if (editable && (e.key === 'Enter' || e.key === ' ')) {
-                            e.preventDefault();
-                            handleCellActivate(row.rowIndex, header, e.currentTarget);
-                          }
-                        }}
                       >
-                        {displayValue || (cellError ? '(empty)' : '')}
-                        {cellError && (
-                          <span className="govuk-visually-hidden"> Error: {cellError.message}</span>
+                        {/* When editable, the value sits in a real button so assistive tech
+                            exposes it as interactive; a focusable <td> reads as a plain cell. */}
+                        {editable ? (
+                          <button
+                            type="button"
+                            className="bulk-upload-table__cell-button"
+                            aria-invalid={!!cellError}
+                            onClick={(e) => handleCellActivate(row.rowIndex, header, e.currentTarget)}
+                          >
+                            {displayValue || (cellError ? '(empty)' : '')}
+                            {cellError && <span className="govuk-visually-hidden"> Error: {cellError.message}</span>}
+                            <span className="govuk-visually-hidden"> select to edit</span>
+                          </button>
+                        ) : (
+                          <>
+                            {displayValue || (cellError ? '(empty)' : '')}
+                            {cellError && <span className="govuk-visually-hidden"> Error: {cellError.message}</span>}
+                          </>
                         )}
                       </td>
                     );
@@ -176,7 +184,7 @@ const FullScreenTableModal: React.FC<FullScreenTableModalProps> = ({
       </DialogContent>
 
       <DialogActions sx={{ padding: '15px 20px', borderTop: '1px solid #b1b4b6' }}>
-        <button type="button" className="bulk-upload-button" onClick={onClose}>
+        <button type="button" className="govuk-button govuk-!-margin-bottom-0" onClick={onClose}>
           Close
         </button>
       </DialogActions>

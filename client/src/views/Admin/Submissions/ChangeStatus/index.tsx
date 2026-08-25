@@ -4,24 +4,13 @@ import { useQuery, useMutation, useQueryClient } from 'react-query';
 import { LoadingBox } from 'govuk-react';
 import { GeneralLayout } from '../../../../layouts';
 import { GovUKButton, useGovUKNotification } from '../../../../components/GovUKComponents';
-import { getSubmissionById, getSubmissionStatus } from '../View/queries';
+import { getSubmissionById, getSubmissionStatus, updateSubmissionDates } from '../View/queries';
 import { processError } from '../../../../helpers/axiosErrorFallback';
-import axios from 'axios';
 import './styles.css';
 import usePageTitle from '../../../../hooks/usePageTitle';
+import { ROUTES } from '../../../../constants/routes';
 
 type StatusOption = 'Planned' | 'Open' | 'Closed';
-
-interface UpdateDataCollectionDto {
-  id: string;
-  name: string;
-  description: string | null;
-  startDate: string;
-  endDate: string;
-}
-
-const updateSubmissionDates = (dto: UpdateDataCollectionDto) =>
-  axios.put('/admin/data-collections/edit', dto);
 
 function ChangeStatus(): React.ReactElement {
   usePageTitle('Change status');
@@ -87,10 +76,7 @@ function ChangeStatus(): React.ReactElement {
         }
       }
 
-      return updateSubmissionDates({
-        id: submissionId!,
-        name: submission.name,
-        description: submission.description,
+      return updateSubmissionDates(submissionId!, {
         startDate: startDate.toISOString(),
         endDate: endDate.toISOString(),
       });
@@ -99,7 +85,7 @@ function ChangeStatus(): React.ReactElement {
       setNotification({ type: 'success', title: 'Success', message: 'Status updated successfully' });
       queryClient.invalidateQueries(['submission-view', submissionId]);
       queryClient.invalidateQueries(['submissions-list']);
-      navigate(`/admin/submissions/${submissionId}`);
+      navigate(ROUTES.admin.submissions.view(submissionId));
     },
     onError: (error) => {
       processError(error, (e) => setNotification({ type: 'important', title: 'Error', message: e }));
@@ -112,7 +98,7 @@ function ChangeStatus(): React.ReactElement {
   };
 
   const handleCancel = () => {
-    navigate(`/admin/submissions/${submissionId}`);
+    navigate(ROUTES.admin.submissions.view(submissionId));
   };
 
   const statusOptions: { value: StatusOption; label: string; hint: string }[] = [
@@ -136,12 +122,11 @@ function ChangeStatus(): React.ReactElement {
   return (
     <GeneralLayout
       breadcrumbs={[
-        { label: 'Home', link: '/admin/home' },
-        { label: 'Submissions', link: '/admin/submissions' },
-        { label: submission?.name || 'Submission', link: `/admin/submissions/${submissionId}` },
+        { label: 'Home', link: ROUTES.admin.home },
+        { label: 'Submissions', link: ROUTES.admin.submissions.list },
+        { label: submission?.name || 'Submission', link: ROUTES.admin.submissions.view(submissionId) },
         { label: 'Change status', link: '' },
-      ]}
-    >
+      ]}>
       <LoadingBox loading={isLoading}>
         {submission && (
           <>
@@ -156,7 +141,7 @@ function ChangeStatus(): React.ReactElement {
                   <legend className="govuk-fieldset__legend govuk-fieldset__legend--m">
                     <h2 className="govuk-fieldset__heading">Select a new status</h2>
                   </legend>
-                  <div className="govuk-radios">
+                  <div className="govuk-radios govuk-radios--small">
                     {statusOptions.map((option) => (
                       <div className="govuk-radios__item" key={option.value}>
                         <input
@@ -168,15 +153,10 @@ function ChangeStatus(): React.ReactElement {
                           checked={selectedStatus === option.value}
                           onChange={() => setSelectedStatus(option.value)}
                         />
-                        <label
-                          className="govuk-label govuk-radios__label"
-                          htmlFor={`status-${option.value}`}
-                        >
+                        <label className="govuk-label govuk-radios__label" htmlFor={`status-${option.value}`}>
                           {option.label}
                         </label>
-                        <div className="govuk-hint govuk-radios__hint">
-                          {option.hint}
-                        </div>
+                        <div className="govuk-hint govuk-radios__hint">{option.hint}</div>
                       </div>
                     ))}
                   </div>
@@ -188,13 +168,12 @@ function ChangeStatus(): React.ReactElement {
                   {isUpdating ? 'Saving...' : 'Save changes'}
                 </GovUKButton>
                 <a
-                  href={`/admin/submissions/${submissionId}`}
+                  href={ROUTES.admin.submissions.view(submissionId)}
                   className="govuk-link"
                   onClick={(e) => {
                     e.preventDefault();
                     handleCancel();
-                  }}
-                >
+                  }}>
                   Cancel
                 </a>
               </div>

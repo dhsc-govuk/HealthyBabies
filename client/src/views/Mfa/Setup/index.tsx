@@ -21,6 +21,7 @@ import { GovUKHeaderLogo } from '../../../components/Logos';
 import LayoutFooter from '../../../layouts/General/LayoutFooter';
 import GovUKPhaseBanner from '../../../components/GovUKComponents/GovUKPhaseBanner';
 import GovUKBackLink from '../../../components/GovUKComponents/GovUKBackLink';
+import { ROUTES } from '../../../constants/routes';
 import '../styles.css';
 
 const MfaSetup = (): React.ReactElement => {
@@ -36,7 +37,12 @@ const MfaSetup = (): React.ReactElement => {
   const stepFocusRef = useStepFocus<HTMLDivElement>(activeStep);
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
-  usePageTitle('Set up two-factor authentication', !!error);
+  const MFA_STEPS: Record<number, string> = {
+    0: 'Step 1 of 3: Set up authenticator',
+    1: 'Step 2 of 3: Enter code',
+    2: 'Step 3 of 3: Recovery codes',
+  };
+  usePageTitle('Set up two-factor authentication', !!error, MFA_STEPS[activeStep]);
   const [isVerifying, setIsVerifying] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
   const hasSubmittedRef = useRef(false);
@@ -58,12 +64,12 @@ const MfaSetup = (): React.ReactElement => {
     }
     
     if (!isAuthenticated) {
-      navigate('/sign-in');
+      navigate(ROUTES.signIn);
       return;
     }
 
     if (isEnabled) {
-      const homeRoute = userRole ? `/${roleToAreaMap(userRole)}/home` : '/';
+      const homeRoute = userRole ? ROUTES.areaHome(roleToAreaMap(userRole)) : ROUTES.home;
       navigate(homeRoute);
       return;
     }
@@ -87,7 +93,7 @@ const MfaSetup = (): React.ReactElement => {
         }
         
         if (err?.response?.status === 409) {
-          const homeRoute = userRole ? `/${roleToAreaMap(userRole)}/home` : '/';
+          const homeRoute = userRole ? ROUTES.areaHome(roleToAreaMap(userRole)) : ROUTES.home;
           navigate(homeRoute);
         } else {
           const errorMessage = err?.response?.data?.message || err?.message || 'Failed to initialize MFA setup. Please try again.';
@@ -105,7 +111,7 @@ const MfaSetup = (): React.ReactElement => {
     return () => {
       isMounted = false;
     };
-  }, [isMsalLoading, isAuthenticated, isEnabled, navigate, userRole, setupData, accounts.length, activeStep, recoveryCodes.length]);
+  }, [isMsalLoading, isAuthenticated, isEnabled, navigate, userRole, setupData, accounts.length, activeStep, recoveryCodes.length, initiateSetup]);
 
   const handleCodeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>): void => {
     const value = e.target.value.replace(/\D/g, '').slice(0, 6);
@@ -146,7 +152,7 @@ const MfaSetup = (): React.ReactElement => {
   const handleFinish = (): void => {
     clearRecoveryCodes();
     const role = userRoleRef.current || userRole;
-    const homeRoute = role ? `/${roleToAreaMap(role)}/home` : '/sign-in';
+    const homeRoute = role ? ROUTES.areaHome(roleToAreaMap(role)) : ROUTES.signIn;
     navigate(homeRoute);
   };
 

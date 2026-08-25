@@ -3,12 +3,26 @@ import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useQuery } from 'react-query';
 
 import { GeneralLayout } from '../../../../../layouts';
-import { LoadingSpinner, GovUKButton, GovUKTag, GovUKNotificationBanner } from '../../../../../components/GovUKComponents';
+import { LoadingSpinner, GovUKButton, GovUKLinkButton, GovUKTag, GovUKNotificationBanner } from '../../../../../components/GovUKComponents';
+import { SpreadsheetIcon } from '../../../../../components/Icons';
 import { getSubmissionStatusTagColour } from '../../../../../helpers/submissionStatusColour';
-import { getActivitiesModule, ActivityRecordDto } from '../../queries';
+import { getActivitiesModule, downloadBulkUploadTemplate, ActivityRecordDto } from '../../queries';
+import { getBulkUploadTemplateFileName, type TemplateFormat } from '../../../../../components/Global/BulkUpload/dtos';
 import usePageTitle from '../../../../../hooks/usePageTitle';
 import { getModuleContent } from '../moduleContent';
 import { decodeFromWaf } from '../../../../../helpers/stringUtils';
+import { ROUTES } from '../../../../../constants/routes';
+
+const downloadFile = (blob: Blob, filename: string) => {
+  const url = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  window.URL.revokeObjectURL(url);
+};
 
 const ActivitiesList = (): React.ReactElement => {
   const navigate = useNavigate();
@@ -20,8 +34,7 @@ const ActivitiesList = (): React.ReactElement => {
 
   const notification = routerLocation.state?.notification as { type: 'success' | 'error'; title: string; message: string } | undefined;
 
-  const apiBase = routerLocation.pathname.startsWith('/organisation-admin') ? 'organisation-admin' : 'delivery-plan';
-  const basePath = `/${apiBase}`;
+  const apiBase = routerLocation.pathname.startsWith(ROUTES.organisationAdmin.root) ? 'organisation-admin' : 'delivery-plan';
 
   const { data, isLoading } = useQuery({
     queryKey: ['activities-module', submissionId, moduleId],
@@ -31,11 +44,23 @@ const ActivitiesList = (): React.ReactElement => {
 
   const moduleData = data?.data;
   const content = getModuleContent(moduleData?.code);
+  // Once the round is submitted (or its window has closed) the plan is a record, not a form.
+  const isReadOnly = moduleData?.isReadOnly === true;
 
   usePageTitle(moduleData?.name ?? content.listHeading);
 
   const handleAddActivity = () => {
-    navigate(`${basePath}/submissions/${submissionId}/modules/${moduleId}/activities/new`);
+    navigate(ROUTES.areaSubmissions.activities.create(apiBase, submissionId, moduleId));
+  };
+
+  const handleBulkUpload = () => {
+    navigate(ROUTES.areaSubmissions.activities.bulkUpload(apiBase, submissionId, moduleId));
+  };
+
+  const handleDownloadTemplate = async (format: TemplateFormat = 'csv') => {
+    const blob = await downloadBulkUploadTemplate(submissionId!, moduleId!, format, apiBase);
+    const filename = getBulkUploadTemplateFileName(format, moduleData?.code ?? 'activities');
+    downloadFile(blob, filename);
   };
 
   const filteredAndSorted = useMemo(() => {
@@ -62,21 +87,21 @@ const ActivitiesList = (): React.ReactElement => {
   }, [moduleData?.activities, searchTerm, sortOrder]);
 
   const handleView = (activityId: string) => {
-    navigate(`${basePath}/submissions/${submissionId}/modules/${moduleId}/activities/${activityId}/view`);
+    navigate(ROUTES.areaSubmissions.activities.view(apiBase, submissionId, moduleId, activityId));
   };
 
   const handleChange = (activityId: string) => {
-    navigate(`${basePath}/submissions/${submissionId}/modules/${moduleId}/activities/${activityId}`);
+    navigate(ROUTES.areaSubmissions.activities.form(apiBase, submissionId, moduleId, activityId));
   };
 
   const handleDelete = (activityId: string, activityDisplayName: string, moduleCode: string | undefined) => {
-    navigate(`${basePath}/submissions/${submissionId}/modules/${moduleId}/activities/${activityId}/delete`, {
+    navigate(ROUTES.areaSubmissions.activities.delete(apiBase, submissionId, moduleId, activityId), {
       state: { activityName: decodeFromWaf(activityDisplayName) || content.addButtonText, moduleCode },
     });
   };
 
   const handleBack = () => {
-    navigate(`${basePath}/submissions/${submissionId}`);
+    navigate(ROUTES.areaSubmissions.view(apiBase, submissionId));
   };
 
   return (
@@ -101,24 +126,51 @@ const ActivitiesList = (): React.ReactElement => {
             </ul>
 
             <p className="govuk-body">
-              <a href="#" className="govuk-link">
+              <GovUKLinkButton>
                 ► {content.helpLinkText}
-              </a>
+              </GovUKLinkButton>
             </p>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'flex-start', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '10px' }}>
-              <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-                <GovUKButton className="govuk-button govuk-!-margin-bottom-0" onClick={handleAddActivity}>
-                  {content.addButtonText}
-                </GovUKButton>
-                <GovUKButton className="govuk-button govuk-button--secondary govuk-!-margin-bottom-0" onClick={() => {}}>
-                  {content.uploadLabel}
-                </GovUKButton>
-                <GovUKButton className="govuk-button govuk-button--secondary govuk-!-margin-bottom-0" onClick={() => {}}>
-                  {content.downloadLabel}
-                </GovUKButton>
+            <div className="govuk-grid-row govuk-!-margin-top-4 govuk-!-margin-bottom-4">
+              <div className="govuk-grid-column-full">
+                <div style={{ display: 'flex', alignItems: 'flex-start', gap: '15px' }}>
+                  <SpreadsheetIcon />
+                  <div>
+                    <p className="govuk-body govuk-!-font-weight-bold govuk-!-margin-bottom-0">{moduleData.name}</p>
+                    <p className="govuk-body-s govuk-!-margin-bottom-2">Template</p>
+                    <ul className="govuk-list govuk-!-margin-bottom-0">
+                      <li>
+                        <GovUKLinkButton onClick={() => handleDownloadTemplate('csv')}>
+                          Download CSV template
+                        </GovUKLinkButton>
+                      </li>
+                      <li>
+                        <GovUKLinkButton onClick={() => handleDownloadTemplate('xlsx')}>
+                          Download Excel template with guidance
+                        </GovUKLinkButton>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
               </div>
             </div>
+
+            {isReadOnly ? (
+              <div className="govuk-inset-text govuk-!-margin-top-0">
+                This delivery plan has been submitted, so it can no longer be changed. You can still view everything recorded in it.
+              </div>
+            ) : (
+              <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'flex-start', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '10px' }}>
+                <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
+                  <GovUKButton className="govuk-button govuk-!-margin-bottom-0" onClick={handleAddActivity}>
+                    {content.addButtonText}
+                  </GovUKButton>
+                  <GovUKButton className="govuk-button govuk-button--secondary govuk-!-margin-bottom-0" onClick={handleBulkUpload}>
+                    {content.uploadLabel}
+                  </GovUKButton>
+                </div>
+              </div>
+            )}
 
             <div className="govuk-grid-row govuk-!-margin-bottom-4">
               <div className="govuk-grid-column-three-quarters">
@@ -199,15 +251,11 @@ const ActivitiesList = (): React.ReactElement => {
                         borderBottom: '1px solid #b1b4b6',
                       }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                        <a
-                          href="#"
-                          className="govuk-link govuk-!-font-weight-bold govuk-body govuk-!-margin-bottom-0"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            handleChange(activity.activityId);
-                          }}>
+                        <GovUKLinkButton
+                          className="govuk-!-font-weight-bold govuk-body govuk-!-margin-bottom-0"
+                          onClick={() => (isReadOnly ? handleView(activity.activityId) : handleChange(activity.activityId))}>
                           {displayName}
-                        </a>
+                        </GovUKLinkButton>
                         {activity.status === 'Draft' && (
                           <GovUKTag colour={getSubmissionStatusTagColour(activity.status)}>
                             {activity.status}
@@ -216,33 +264,19 @@ const ActivitiesList = (): React.ReactElement => {
                         )}
                       </div>
                       <div style={{ display: 'flex', gap: '15px' }}>
-                        <a
-                          href="#"
-                          className="govuk-link"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            handleView(activity.activityId);
-                          }}>
+                        <GovUKLinkButton onClick={() => handleView(activity.activityId)}>
                           View<span className="govuk-visually-hidden"> {displayName}</span>
-                        </a>
-                        <a
-                          href="#"
-                          className="govuk-link"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            handleChange(activity.activityId);
-                          }}>
-                          Change<span className="govuk-visually-hidden"> {displayName}</span>
-                        </a>
-                        <a
-                          href="#"
-                          className="govuk-link"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            handleDelete(activity.activityId, activity.activityName, moduleData?.code);
-                          }}>
-                          Delete<span className="govuk-visually-hidden"> {displayName}</span>
-                        </a>
+                        </GovUKLinkButton>
+                        {!isReadOnly && (
+                          <>
+                            <GovUKLinkButton onClick={() => handleChange(activity.activityId)}>
+                              Change<span className="govuk-visually-hidden"> {displayName}</span>
+                            </GovUKLinkButton>
+                            <GovUKLinkButton onClick={() => handleDelete(activity.activityId, activity.activityName, moduleData?.code)}>
+                              Delete<span className="govuk-visually-hidden"> {displayName}</span>
+                            </GovUKLinkButton>
+                          </>
+                        )}
                       </div>
                     </li>
                   );

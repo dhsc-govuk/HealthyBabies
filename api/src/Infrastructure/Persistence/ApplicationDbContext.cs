@@ -78,6 +78,8 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
 
     public required DbSet<DataCollectionSubmission> DataCollectionSubmissions { get; set; }
 
+    public required DbSet<DataCollectionSubmissionVersion> DataCollectionSubmissionVersions { get; set; }
+
     // Service Categories
     public required DbSet<ServiceCategory> ServiceCategories { get; set; }
 
@@ -90,6 +92,10 @@ public class ApplicationDbContext(DbContextOptions<ApplicationDbContext> options
     protected override void OnModelCreating(ModelBuilder builder)
     {
         builder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
+
+        builder.HasDbFunction(typeof(DbFunctionsExtensions).GetMethod(nameof(DbFunctionsExtensions.MoneySql))!)
+            .HasName("money_sql")
+            .HasSchema("public");
 
         base.OnModelCreating(builder);
     }

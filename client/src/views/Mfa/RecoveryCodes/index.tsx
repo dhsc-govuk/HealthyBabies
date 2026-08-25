@@ -5,6 +5,7 @@ import { useMfa } from '../../../components/MfaProvider';
 import OtpInput from '../../../components/MfaProvider/OtpInput';
 import RecoveryCodesList from '../../../components/MfaProvider/RecoveryCodesList';
 import { useAuthProvider, roleToAreaMap } from '../../../components/AuthProvider';
+import { ROUTES } from '../../../constants/routes';
 
 const MfaRecoveryCodes = (): React.ReactElement => {
   const navigate = useNavigate();
@@ -44,7 +45,7 @@ const MfaRecoveryCodes = (): React.ReactElement => {
 
   const handleClose = (): void => {
     clearRecoveryCodes();
-    const homeRoute = userRole ? `/${roleToAreaMap(userRole)}/home` : '/';
+    const homeRoute = userRole ? ROUTES.areaHome(roleToAreaMap(userRole)) : ROUTES.home;
     navigate(homeRoute);
   };
 
@@ -57,7 +58,7 @@ const MfaRecoveryCodes = (): React.ReactElement => {
         <Button
           variant="contained"
           sx={{ mt: 2 }}
-          onClick={() => navigate('/mfa/setup')}
+          onClick={() => navigate(ROUTES.mfa.setup)}
         >
           Set up two-factor authentication
         </Button>

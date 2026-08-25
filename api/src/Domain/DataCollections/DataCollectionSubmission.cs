@@ -23,6 +23,13 @@ public class DataCollectionSubmission : AuditableEntity<DataCollectionSubmission
     public User? ReviewedBy { get; private set; }
     public string? ReviewNotes { get; private set; }
 
+    /// <summary>
+    /// Form modules the reviewer asked the local authority to focus on when reopening. Purely
+    /// informational - the local authority can still amend any section regardless. Empty when
+    /// no sections were selected, or for a decision that is not a reopen.
+    /// </summary>
+    public IReadOnlyList<Guid> SectionsToReview { get; private set; } = [];
+
     private DataCollectionSubmission()
     {
         DataCollectionId = DataCollectionId.Empty();
@@ -79,7 +86,15 @@ public class DataCollectionSubmission : AuditableEntity<DataCollectionSubmission
         UpdatedAt = DateTime.UtcNow;
     }
 
-    public void Reject(UserId reviewedBy, string notes)
+    /// <summary>
+    /// Records a DHSC decision that the plan is not accepted, with a mandatory reason.
+    /// This is the action behind the "Reopen submission" button in the admin UI - the wording
+    /// shown to users is "reopen", but the recorded decision is a rejection. The plan becomes
+    /// editable again so the local authority can amend and resubmit; see IsLockedForEditing.
+    /// Do not confuse this with <see cref="Reopen"/>, which serves the management information
+    /// quarterly flow and records nothing.
+    /// </summary>
+    public void Reject(UserId reviewedBy, string notes, IReadOnlyList<Guid> sectionsToReview)
     {
         Guard.NotNullOrEmptyOrWhiteSpace(notes, nameof(notes));
         Guard.Ensure(Status == DataCollectionSubmissionStatus.Submitted, "Can only reject submitted data collections");
@@ -88,6 +103,7 @@ public class DataCollectionSubmission : AuditableEntity<DataCollectionSubmission
         ReviewedAt = DateTime.UtcNow;
         ReviewedById = reviewedBy;
         ReviewNotes = notes;
+        SectionsToReview = sectionsToReview;
         UpdatedAt = DateTime.UtcNow;
     }
 
@@ -115,8 +131,12 @@ public class DataCollectionSubmission : AuditableEntity<DataCollectionSubmission
         UpdatedAt = DateTime.UtcNow;
     }
 
+    /// <summary>
+    /// Rejected is deliberately absent: a rejection reopens the plan for amendment, so the
+    /// local authority must be able to edit and resubmit. Only an in-flight submission awaiting
+    /// review, or an approved (Complete) plan, is locked.
+    /// </summary>
     public bool IsLockedForEditing() =>
         Status == DataCollectionSubmissionStatus.Submitted ||
-        Status == DataCollectionSubmissionStatus.Approved ||
-        Status == DataCollectionSubmissionStatus.Rejected;
+        Status == DataCollectionSubmissionStatus.Approved;
 }

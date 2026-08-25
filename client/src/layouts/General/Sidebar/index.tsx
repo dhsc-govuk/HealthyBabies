@@ -7,6 +7,7 @@ import { EnumUserRole, useAuthProvider } from '../../../components/AuthProvider'
 import { MenuItemProps } from '../../../components/Menu/MenuItem';
 import { listItems } from '../../../components/DashboardProviderArgs';
 import SettingsIcon from '@mui/icons-material/Settings';
+import { ROUTES } from '../../../constants/routes';
 
 interface Props {
   open: boolean;
@@ -33,12 +34,12 @@ const Sidebar = ({ open, setOpenDrawer }: Props) => {
           {
             name: 'User Management',
             Icon: UsersIcon,
-            link: '/admin/la-users',
+            link: ROUTES.admin.laUsers.list,
           },
           {
             name: 'Configuration',
             Icon: ConfigIcon,
-            link: '/admin/configuration/lookup-data',
+            link: ROUTES.admin.configuration.lookupData.list,
           },
         ]
       : []),
@@ -47,7 +48,7 @@ const Sidebar = ({ open, setOpenDrawer }: Props) => {
           {
             name: 'Settings',
             Icon: SettingsIcon,
-            link: '/organisation-admin/settings',
+            link: ROUTES.organisationAdmin.settings,
           },
         ]
       : []),

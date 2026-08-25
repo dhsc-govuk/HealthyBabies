@@ -16,6 +16,7 @@ import {
 } from '../../../../components/Global/ServiceCategories';
 import './styles.css';
 import usePageTitle from '../../../../hooks/usePageTitle';
+import { ROUTES } from '../../../../constants/routes';
 
 interface LocationState {
   notification?: {
@@ -49,8 +50,8 @@ const ServiceCategoriesList = (): React.ReactElement => {
     queryFn: () => getServiceCategories(),
   });
 
-  const lookupCategories = lookupData?.data ?? [];
-  const serviceCategories = serviceCategoriesData?.data ?? [];
+  const lookupCategories = useMemo(() => lookupData?.data ?? [], [lookupData?.data]);
+  const serviceCategories = useMemo(() => serviceCategoriesData?.data ?? [], [serviceCategoriesData?.data]);
 
   const categoriesWithStatus: CategoryWithStatus[] = useMemo(() => {
     const serviceCategoryMap = new Map<string, ServiceCategoryListDto>();
@@ -71,7 +72,7 @@ const ServiceCategoriesList = (): React.ReactElement => {
   }, [lookupCategories, serviceCategories]);
 
   const handleAdd = (category: CategoryWithStatus) => {
-    navigate('/organisation-admin/core-data/wider-service-categories/add', {
+    navigate(ROUTES.organisationAdmin.widerServiceCategories.add, {
       state: {
         categoryCode: category.code,
         categoryName: category.name,
@@ -81,19 +82,19 @@ const ServiceCategoriesList = (): React.ReactElement => {
 
   const handleView = (category: CategoryWithStatus) => {
     if (category.serviceCategoryId) {
-      navigate(`/organisation-admin/core-data/wider-service-categories/${category.serviceCategoryId}`);
+      navigate(ROUTES.organisationAdmin.widerServiceCategories.view(category.serviceCategoryId));
     }
   };
 
   const handleChange = (category: CategoryWithStatus) => {
     if (category.serviceCategoryId) {
-      navigate(`/organisation-admin/core-data/wider-service-categories/${category.serviceCategoryId}/edit`);
+      navigate(ROUTES.organisationAdmin.widerServiceCategories.edit(category.serviceCategoryId));
     }
   };
 
   const handleDelete = (category: CategoryWithStatus) => {
     if (category.serviceCategoryId) {
-      navigate(`/organisation-admin/core-data/wider-service-categories/${category.serviceCategoryId}/delete`);
+      navigate(ROUTES.organisationAdmin.widerServiceCategories.delete(category.serviceCategoryId));
     }
   };
 
@@ -119,7 +120,8 @@ const ServiceCategoriesList = (): React.ReactElement => {
   const columns: Column<CategoryWithStatus>[] = [
     {
       key: 'name',
-      header: '',
+      header: 'Category name',
+      headerVisuallyHidden: true,
       render: (category) => (
         <>
           <span style={{ fontWeight: 700 }}>{category.name}</span>
@@ -133,11 +135,17 @@ const ServiceCategoriesList = (): React.ReactElement => {
     },
     {
       key: 'actions',
-      header: '',
+      header: 'Actions',
+      headerVisuallyHidden: true,
       align: 'right',
       render: (category) =>
         category.hasData ? (
-          <span style={{ display: 'flex', gap: '15px', justifyContent: 'flex-end' }}>
+          // flexWrap intentionally omitted: when the content pane is squeezed narrower than
+          // these three links need (CoreDataLayout's content pane is `min-width: 0`), wrapping
+          // breaks View/Change/Delete onto separate lines (BLUM-7457). GovUKTableScroll already
+          // provides an accessible horizontal-scroll fallback for the whole table in that case,
+          // so this row should stay on one line rather than reflow internally.
+          <span style={{ display: 'flex', flexWrap: 'nowrap', gap: '15px', justifyContent: 'flex-end' }}>
             <Link
               href="#"
               onClick={(e: React.MouseEvent) => {
@@ -183,7 +191,7 @@ const ServiceCategoriesList = (): React.ReactElement => {
 
   return (
     <LoadingBox loading={isLoading}>
-      <CoreDataLayout breadcrumbs={[{ label: 'Home', link: '/organisation-admin/home' }]}>
+      <CoreDataLayout breadcrumbs={[{ label: 'Home', link: ROUTES.organisationAdmin.home }]}>
         {locationState?.notification && (
           <GovUKNotificationBanner type={locationState.notification.type === 'error' ? 'important' : 'success'} title={locationState.notification.title}>
             <p className="govuk-body">{locationState.notification.message}</p>
@@ -267,16 +275,10 @@ const ServiceCategoriesList = (): React.ReactElement => {
           </div>
         </div> */}
 
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-          <H2 style={{ marginBottom: 0 }}>Wider services category</H2>
-          <div style={{ display: 'flex', gap: '10px' }}>
-            <button type="button" className="govuk-button govuk-button--secondary" style={{ marginBottom: 0 }}>
-              Upload with CSV
-            </button>
-          </div>
-        </div>
+        <H2>Wider services category</H2>
 
         <GovUKTable<CategoryWithStatus>
+          caption="Wider service categories"
           data={categoriesWithStatus}
           columns={columns}
           searchPlaceholder="Search category by name"

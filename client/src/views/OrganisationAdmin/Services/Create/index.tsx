@@ -23,6 +23,7 @@ import StepOne from './StepOne';
 import StepTwo from './StepTwo';
 import StepThree from './StepThree';
 import { encodeForWaf } from '../../../../helpers/stringUtils';
+import { ROUTES } from '../../../../constants/routes';
 
 const CreateService = (): React.ReactElement => {
   const navigate = useNavigate();
@@ -43,7 +44,7 @@ const CreateService = (): React.ReactElement => {
 
   useEffect(() => {
     trackStarted();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Helper to get serviceId from either state or ref (ref is backup for state batching issues)
@@ -54,20 +55,20 @@ const CreateService = (): React.ReactElement => {
     staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
-  const questions = questionsResponse?.data ?? [];
+  const questions = useMemo(() => questionsResponse?.data ?? [], [questionsResponse?.data]);
   const stepOneQuestions = questions.filter((q) => q.step === 1);
   const stepTwoQuestions = questions.filter((q) => q.step === 2);
 
   // Helper to build step one request
   const buildStepOneRequest = (advanceStep: boolean): UpdateServiceStepOneRequest => ({
     name: encodeForWaf(state.name),
-    answers: buildAnswersForRequest(state, stepOneQuestions),
+    answers: buildAnswersForRequest(state, stepOneQuestions, questions),
     advanceStep,
   });
 
   // Helper to build step two request
   const buildStepTwoRequest = (advanceStep: boolean): UpdateServiceStepTwoRequest => ({
-    answers: buildAnswersForRequest(state, stepTwoQuestions),
+    answers: buildAnswersForRequest(state, stepTwoQuestions, questions),
     advanceStep,
   });
 
@@ -79,7 +80,7 @@ const CreateService = (): React.ReactElement => {
         trackDraftSaved();
         queryClient.invalidateQueries(servicesCacheKey());
         setNotification({ type: 'success', title: 'Service saved', message: 'Service has been saved as draft' });
-        navigate('/organisation-admin/core-data/services');
+        navigate(ROUTES.organisationAdmin.services.list);
       } else {
         if (skipStepTwo) {
           trackReviewReached();
@@ -126,7 +127,7 @@ const CreateService = (): React.ReactElement => {
         trackDraftSaved();
         queryClient.invalidateQueries(servicesCacheKey());
         setNotification({ type: 'success', title: 'Service saved', message: 'Service has been saved as draft' });
-        navigate('/organisation-admin/core-data/services');
+        navigate(ROUTES.organisationAdmin.services.list);
       } else {
         trackReviewReached();
         setStep(2);
@@ -148,7 +149,7 @@ const CreateService = (): React.ReactElement => {
         message: 'The service has been added to your list of services. You can view, change, or delete the service record at any time.',
       });
       queryClient.invalidateQueries(servicesCacheKey());
-      navigate('/organisation-admin/core-data/services');
+      navigate(ROUTES.organisationAdmin.services.list);
     },
     onError: (error) => {
       processError(error, (e) => setNotification({ type: 'important', title: 'Error', message: e || 'Failed to complete service' }));
@@ -159,21 +160,25 @@ const CreateService = (): React.ReactElement => {
 
   const validate = (currentStep: number): boolean => {
     if (currentStep === 0) {
-      const stepErrors = validateStep(state, stepOneQuestions);
+      const stepErrors = validateStep(state, stepOneQuestions, questions);
       setErrors(stepErrors);
       setSubmitAttempts((n) => n + 1);
       if (Object.keys(stepErrors).length > 0) {
-        Object.entries(stepErrors).forEach(([field, message]) => { if (message) trackValidationFailed(field, message); });
+        Object.entries(stepErrors).forEach(([field, message]) => {
+          if (message) trackValidationFailed(field, message);
+        });
         return true;
       }
       return false;
     }
     if (currentStep === 1 && !skipStepTwo) {
-      const stepErrors = validateStep(state, stepTwoQuestions);
+      const stepErrors = validateStep(state, stepTwoQuestions, questions);
       setErrors(stepErrors);
       setSubmitAttempts((n) => n + 1);
       if (Object.keys(stepErrors).length > 0) {
-        Object.entries(stepErrors).forEach(([field, message]) => { if (message) trackValidationFailed(field, message); });
+        Object.entries(stepErrors).forEach(([field, message]) => {
+          if (message) trackValidationFailed(field, message);
+        });
         return true;
       }
       return false;
@@ -277,10 +282,7 @@ const CreateService = (): React.ReactElement => {
         if (question) {
           if (question.questionType === ServiceFormQuestionType.Date) {
             targetName = `${lcKey}-day`;
-          } else if (
-            (question.questionType === ServiceFormQuestionType.Radio || question.questionType === ServiceFormQuestionType.Checkbox) &&
-            question.options.length > 0
-          ) {
+          } else if ((question.questionType === ServiceFormQuestionType.Radio || question.questionType === ServiceFormQuestionType.Checkbox) && question.options.length > 0) {
             const firstOption = [...question.options].sort((a, b) => a.displayOrder - b.displayOrder)[0];
             targetName = `${lcKey}-${firstOption.value}`;
           }
@@ -321,8 +323,8 @@ const CreateService = (): React.ReactElement => {
   return (
     <GeneralLayout
       breadcrumbs={[
-        { label: 'Home', link: '/organisation-admin/home' },
-        { label: 'Services', link: '/organisation-admin/core-data/services' },
+        { label: 'Home', link: ROUTES.organisationAdmin.home },
+        { label: 'Services', link: ROUTES.organisationAdmin.services.list },
       ]}>
       {errorList.length > 0 && <GovUKErrorSummary errors={errorList} />}
       <GovUKStepper
@@ -334,6 +336,8 @@ const CreateService = (): React.ReactElement => {
         validate={validate}
         isNextDisabled={isLoading}
         title="Add a service"
+        pageTitle="Add a service"
+        pageHasErrors={errorList.length > 0}
         description="Tell us about the service offered so it can be added to your account. This information will be saved and can be updated at any time."
         helpSummary="Help with services"
         helpContent={

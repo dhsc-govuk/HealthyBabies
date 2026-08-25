@@ -1,0 +1,82 @@
+/* Stat cards (Financial data + Delivery data tabs) */
+.la-stat-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.la-stat-grid--four {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.la-stat-grid--full {
+  grid-template-columns: 1fr;
+}
+
+.la-stat-card {
+  padding: 15px 20px;
+  background-color: #f3f2f1;
+}
+
+.la-stat-card--highlight {
+  background-color: #d2e2f1;
+}
+
+.la-stat-card--green {
+  background-color: #cce2d8;
+}
+
+.la-stat-card--yellow {
+  background-color: #fff7bf;
+}
+
+.la-stat-card__value {
+  font-family: 'GDS Transport', arial, sans-serif;
+  font-weight: 700;
+  font-size: 2.25rem;
+  line-height: 1.1;
+  margin: 0 0 10px;
+}
+
+.la-stat-card--highlight .la-stat-card__value {
+  color: #1d70b8;
+}
+
+.la-stat-card--green .la-stat-card__value {
+  color: #005a30;
+}
+
+.la-stat-card--yellow .la-stat-card__value {
+  color: #594d00;
+}
+
+.la-stat-card__percent {
+  color: #505a5f;
+  font-size: 1rem;
+  margin: 0 0 10px;
+}
+
+.la-stat-card__label {
+  font-weight: 700;
+  font-size: 1.1875rem;
+  margin: 0;
+}
+
+.la-stat-card__sublabel {
+  color: #505a5f;
+  font-size: 1rem;
+  margin: 5px 0 0;
+}
+
+.la-chart-container {
+  max-width: 700px;
+  margin-bottom: 15px;
+}
+
+@media (max-width: 40.0625em) {
+  .la-stat-grid,
+  .la-stat-grid--four {
+    grid-template-columns: 1fr;
+  }
+}

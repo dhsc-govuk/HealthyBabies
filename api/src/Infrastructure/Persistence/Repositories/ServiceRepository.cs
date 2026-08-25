@@ -23,6 +23,20 @@ public class ServiceRepository(ApplicationDbContext dbContext)
             .ToListAsync(cancellationToken);
     }
 
+    // BLUM-7251: LA self-serve equivalent of GetAllForExport above - same shape, scoped to one
+    // organisation so an LA can download only their own services data.
+    public async Task<IReadOnlyList<Service>> GetForExportByOrganisationIdAsync(
+        OrganisationId organisationId,
+        CancellationToken cancellationToken = default)
+    {
+        return await Context.Services
+            .AsNoTracking()
+            .Include(x => x.Answers.OrderBy(a => a.Step).ThenBy(a => a.DisplayOrder))
+            .Where(x => x.OrganisationId == organisationId)
+            .OrderBy(x => x.Name)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<IReadOnlyList<Service>> GetAll(
         Permission permission,
         CancellationToken cancellationToken)

@@ -1,4 +1,5 @@
 import React from 'react';
+import GovUKLinkButton from '../GovUKLinkButton';
 
 export interface SummaryCardAction {
   label: string;
@@ -26,16 +27,10 @@ function GovUKSummaryCard({ title, actions, children }: GovUKSummaryCardProps): 
           <ul className="govuk-summary-card__actions">
             {actions.map((action, index) => (
               <li className="govuk-summary-card__action" key={index}>
-                <a
-                  href="#"
-                  className="govuk-link"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    action.onClick();
-                  }}>
+                <GovUKLinkButton onClick={action.onClick}>
                   {action.label}
                   {action.visuallyHiddenText && <span className="govuk-visually-hidden"> {action.visuallyHiddenText}</span>}
-                </a>
+                </GovUKLinkButton>
               </li>
             ))}
           </ul>

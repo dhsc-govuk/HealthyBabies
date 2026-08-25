@@ -77,7 +77,8 @@ interface GovUKFieldsetRadioGroupProps {
   disabled?: boolean;
   required?: boolean;
   questionCode?: string;
-  size?: 'small';
+  /** Radios/checkboxes use the 'Smaller' variant by default; pass 'large' to opt out. */
+  size?: 'small' | 'large';
   onChange?: (value: string) => void;
 }
 
@@ -99,7 +100,8 @@ interface GovUKFieldsetCheckboxGroupProps {
   disabled?: boolean;
   required?: boolean;
   questionCode?: string;
-  size?: 'small';
+  /** Radios/checkboxes use the 'Smaller' variant by default; pass 'large' to opt out. */
+  size?: 'small' | 'large';
   onChange?: (value: string, checked: boolean, allValues: string[]) => void;
 }
 
@@ -155,7 +157,7 @@ function GovUKFieldsetInput({
   return (
     <div className={`govuk-form-group ${error ? 'govuk-form-group--error' : ''}`} style={{ position: 'relative' }}>
       <label className={`govuk-label govuk-label--${labelSize}`} htmlFor={id}>
-        {questionCode && <span className="govuk-visually-hidden">{questionCode}: </span>}
+        {questionCode && <span className="govuk-visually-hidden">Question ID: {questionCode}: </span>}
         {label}
       </label>
 
@@ -237,7 +239,7 @@ function GovUKFieldsetSelect({
   return (
     <div className={`govuk-form-group ${error ? 'govuk-form-group--error' : ''}`} style={{ position: 'relative' }}>
       <label className={`govuk-label govuk-label--${labelSize}`} htmlFor={id}>
-        {questionCode && <span className="govuk-visually-hidden">{questionCode}: </span>}
+        {questionCode && <span className="govuk-visually-hidden">Question ID: {questionCode}: </span>}
         {label}
       </label>
 
@@ -288,16 +290,32 @@ function GovUKFieldsetRadioGroup({
   onChange,
 }: GovUKFieldsetRadioGroupProps): React.ReactElement {
   const fieldsetId = `${name}-fieldset`;
-  const radiosClassName = ['govuk-radios', size === 'small' ? 'govuk-radios--small' : ''].filter(Boolean).join(' ');
+  // 'Smaller radios' is the service-wide default (DAC_Styles_and_Layout_Usability_09); it is
+  // the variant with a visible hover state. Callers can still opt out with size="large".
+  const radiosClassName = ['govuk-radios', size === 'large' ? '' : 'govuk-radios--small'].filter(Boolean).join(' ');
 
   return (
     <div className={`govuk-form-group ${error ? 'govuk-form-group--error' : ''}`} style={{ position: 'relative' }}>
-      <fieldset className="govuk-fieldset" aria-describedby={[hint ? `${fieldsetId}-hint` : '', error ? `${fieldsetId}-error` : ''].filter(Boolean).join(' ') || undefined}>
-        <legend className={`govuk-fieldset__legend govuk-fieldset__legend--${legendSize}`}>
-          {questionCode && <span className="govuk-visually-hidden">Question ID: {questionCode}: </span>}
+      <fieldset
+        className="govuk-fieldset"
+        aria-describedby={[hint ? `${fieldsetId}-hint` : '', error ? `${fieldsetId}-error` : ''].filter(Boolean).join(' ') || undefined}
+        aria-labelledby={questionCode ? `${fieldsetId}-question-code ${fieldsetId}-legend` : undefined}>
+        <legend id={`${fieldsetId}-legend`} className={`govuk-fieldset__legend govuk-fieldset__legend--${legendSize}`}>
           {legend}
           {required && <span className="govuk-visually-hidden"> (required)</span>}
         </legend>
+
+        {/* Identifier sits inside the fieldset after the legend (never nested in it), but is
+            wired into the group's accessible NAME via aria-labelledby rather than its
+            description: a group's description is not reliably announced, whereas its name
+            demonstrably is — that is how the legend itself gets read out. This also matches the
+            label-based fields, where the code sits inside the <label> and so forms part of the
+            control's name. */}
+        {questionCode && (
+          <span id={`${fieldsetId}-question-code`} className="govuk-visually-hidden">
+            Question ID: {questionCode}:{' '}
+          </span>
+        )}
 
         {hint && (
           <div className="govuk-hint" id={`${fieldsetId}-hint`}>
@@ -357,6 +375,7 @@ function GovUKFieldsetCheckboxGroup({
   size,
   onChange,
 }: GovUKFieldsetCheckboxGroupProps): React.ReactElement {
+  const fieldsetId = `${name}-fieldset`;
   const handleChange = (optionValue: string, checked: boolean) => {
     const updated = checked ? [...value, optionValue] : value.filter((v: string) => v !== optionValue);
     onChange?.(optionValue, checked, updated);
@@ -365,16 +384,34 @@ function GovUKFieldsetCheckboxGroup({
 
   return (
     <div className={`govuk-form-group ${error ? 'govuk-form-group--error' : ''}`}>
-      <fieldset className="govuk-fieldset">
-        <legend className={`govuk-fieldset__legend govuk-fieldset__legend--${legendSize}`}>
-          {questionCode && <span className="govuk-visually-hidden">Question ID: {questionCode}: </span>}
+      <fieldset
+        className="govuk-fieldset"
+        aria-describedby={[hint ? `${fieldsetId}-hint` : '', error ? `${fieldsetId}-error` : ''].filter(Boolean).join(' ') || undefined}
+        aria-labelledby={questionCode ? `${fieldsetId}-question-code ${fieldsetId}-legend` : undefined}>
+        <legend id={`${fieldsetId}-legend`} className={`govuk-fieldset__legend govuk-fieldset__legend--${legendSize}`}>
           {legend}
         </legend>
 
-        {hint && <div className="govuk-hint">{hint}</div>}
+        {/* Identifier sits inside the fieldset after the legend (never nested in it), but is
+            wired into the group's accessible NAME via aria-labelledby rather than its
+            description: a group's description is not reliably announced, whereas its name
+            demonstrably is — that is how the legend itself gets read out. This also matches the
+            label-based fields, where the code sits inside the <label> and so forms part of the
+            control's name. */}
+        {questionCode && (
+          <span id={`${fieldsetId}-question-code`} className="govuk-visually-hidden">
+            Question ID: {questionCode}:{' '}
+          </span>
+        )}
+
+        {hint && (
+          <div className="govuk-hint" id={`${fieldsetId}-hint`}>
+            {hint}
+          </div>
+        )}
 
         {error && (
-          <p className="govuk-error-message">
+          <p className="govuk-error-message" id={`${fieldsetId}-error`}>
             <span className="govuk-visually-hidden">Error:</span> {error}
           </p>
         )}
@@ -419,7 +456,7 @@ function GovUKFieldsetTextarea({
   return (
     <div className={`govuk-form-group ${error ? 'govuk-form-group--error' : ''}`} style={{ position: 'relative' }}>
       <label className={`govuk-label govuk-label--${labelSize}`} htmlFor={id}>
-        {questionCode && <span className="govuk-visually-hidden">{questionCode}: </span>}
+        {questionCode && <span className="govuk-visually-hidden">Question ID: {questionCode}: </span>}
         {label}
         {required && <span className="govuk-visually-hidden"> (required)</span>}
       </label>

@@ -13,6 +13,7 @@ import { questionFormReducer } from '../Common/reducer';
 import { encodeForWaf, encodeNullableForWaf } from '../../../../../helpers/stringUtils';
 import { ValidationErrors, validationMessages, initialFormState, requiresOptions } from '../Common/types';
 import { getConditionFieldKeys } from '../../DataCollectionFormQuestions/Common/ConditionalRulesBuilder';
+import { ROUTES } from '../../../../../constants/routes';
 
 const CreateServiceFormQuestion = (): React.ReactElement => {
   const navigate = useNavigate();
@@ -43,7 +44,7 @@ const CreateServiceFormQuestion = (): React.ReactElement => {
     onSuccess() {
       queryClient.invalidateQueries(['service-form-questions-list']);
       setNotification({ type: 'success', title: 'Success', message: 'Question created successfully' });
-      navigate('/admin/configuration/service-form-questions');
+      navigate(ROUTES.admin.configuration.serviceFormQuestions.list);
     },
     onError(error) {
       processError(error, (e) => setNotification({ type: 'important', title: 'Error', message: e }));
@@ -94,17 +95,17 @@ const CreateServiceFormQuestion = (): React.ReactElement => {
   };
 
   const handleCancel = () => {
-    navigate('/admin/configuration/service-form-questions');
+    navigate(ROUTES.admin.configuration.serviceFormQuestions.list);
   };
 
   return (
     <LoadingSpinner loading={isLoading} label="Creating question">
       <SettingsLayout
         breadcrumbs={[
-          { label: 'Home', link: '/admin/home' },
-          { label: 'Settings', link: '/admin/settings' },
+          { label: 'Home', link: ROUTES.admin.home },
+          { label: 'Settings', link: ROUTES.admin.settings },
         ]}
-        backLink={{ href: '/admin/configuration/service-form-questions', onClick: handleCancel }}
+        backLink={{ href: ROUTES.admin.configuration.serviceFormQuestions.list, onClick: handleCancel }}
         currentPage="Create Question">
         <QuestionForm formState={formState} errors={errors} setErrors={setErrors} dispatch={dispatch} allQuestions={questionsData?.data ?? []} />
         <Stack direction="row" spacing={2} sx={{ mt: 3 }}>

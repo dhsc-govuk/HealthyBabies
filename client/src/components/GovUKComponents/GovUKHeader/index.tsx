@@ -1,5 +1,6 @@
 import React from 'react';
 import { GovUKHeaderLogo } from '../../Logos';
+import { ROUTES } from '../../../constants/routes';
 
 interface GovUKHeaderProps {
   serviceName?: string;
@@ -14,7 +15,7 @@ interface GovUKHeaderProps {
 
 function GovUKHeader({ 
   serviceName, 
-  serviceUrl = '/', 
+  serviceUrl = ROUTES.home, 
   navigation,
   children 
 }: GovUKHeaderProps): React.ReactElement {

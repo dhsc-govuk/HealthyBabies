@@ -48,6 +48,7 @@ export const MfaProvider = ({ children }: MfaProviderProps): React.ReactElement 
       setSetupData(response.data);
     },
   });
+  const { mutateAsync: initiateSetupMutation } = setupMutation;
 
   const verifySetupMutation = useMutation(verifyMfaSetup, {
     onSuccess: (response) => {
@@ -88,9 +89,9 @@ export const MfaProvider = ({ children }: MfaProviderProps): React.ReactElement 
   });
 
   const initiateSetup = useCallback(async (): Promise<MfaSetupResponse> => {
-    const response = await setupMutation.mutateAsync();
+    const response = await initiateSetupMutation();
     return response.data;
-  }, [setupMutation]);
+  }, [initiateSetupMutation]);
 
   const completeSetup = useCallback(
     async (code: string): Promise<MfaSetupCompleteResponse> => {

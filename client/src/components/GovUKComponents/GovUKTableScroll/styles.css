@@ -1,0 +1,14 @@
+/* Keyboard-reachable horizontal scroll container for tables that cannot practically stack
+   at 320px / 400% zoom. Only this region scrolls — the page never scrolls horizontally
+   (WCAG 1.4.10). */
+.govuk-table-scroll {
+  overflow-x: auto;
+  max-width: 100%;
+}
+
+.govuk-table-scroll:focus-visible {
+  /* Black behind the yellow so the ring clears 3:1 against the white page (WCAG 1.4.11). */
+  outline: 3px solid #ffdd00;
+  outline-offset: 0;
+  box-shadow: 0 0 0 3px #0b0c0c;
+}

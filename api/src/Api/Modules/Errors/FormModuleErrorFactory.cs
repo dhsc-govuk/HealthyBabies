@@ -12,7 +12,6 @@ public static class FormModuleErrorFactory
             StatusCode = error switch
             {
                 FormModuleNotFoundException => StatusCodes.Status404NotFound,
-                FormModuleDuplicateCodeException => StatusCodes.Status409Conflict,
                 FormModuleHasFieldsException => StatusCodes.Status400BadRequest,
                 FormSectionNotFoundException => StatusCodes.Status404NotFound,
                 FormSectionHasFieldsException => StatusCodes.Status400BadRequest,

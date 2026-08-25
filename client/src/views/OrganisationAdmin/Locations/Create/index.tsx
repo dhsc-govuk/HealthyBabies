@@ -9,9 +9,11 @@ import { processError } from '../../../../helpers/axiosErrorFallback';
 import useErrorSummaryFocus from '../../../../hooks/useErrorSummaryFocus';
 import useFormTelemetry from '../../../../hooks/useFormTelemetry';
 import axios from 'axios';
-import { ValidationErrors, initialLocationState, locationReducer, validateLocation, buildAnswersForRequest } from '../Common';
+import { ValidationErrors, initialLocationState, locationReducer, validateLocation, buildAnswersForRequest, SITE_NAME_QUESTION_CODE } from '../Common';
 import LocationForm from './LocationForm';
 import SummaryStep from './SummaryStep';
+import { ROUTES } from '../../../../constants/routes';
+import { API_ROUTES } from '../../../../constants/apiRoutes';
 
 const LocationsCreate = (): React.ReactElement => {
   const navigate = useNavigate();
@@ -22,8 +24,12 @@ const LocationsCreate = (): React.ReactElement => {
   const [step, setStep] = useState(0);
   const [state, dispatch] = useReducer(locationReducer, initialLocationState);
   const [errors, setErrors] = useState<ValidationErrors>({});
+  // Server-side rejections (e.g. duplicate site name) belong in the error summary alongside
+  // client-side validation, not in a notification banner — the banner moves no focus and
+  // offers no link to the offending field (DAC_Validation_Pattern_Usability_03).
+  const [submitError, setSubmitError] = useState<string | undefined>(undefined);
   const [submitAttempts, setSubmitAttempts] = useState(0);
-  useErrorSummaryFocus(submitAttempts, Object.values(errors).some(Boolean));
+  useErrorSummaryFocus(submitAttempts, Object.values(errors).some(Boolean) || !!submitError);
 
   const { trackStarted, trackReviewReached, trackSubmitAttempted, trackSubmitted, trackValidationFailed } = useFormTelemetry('location_create');
 
@@ -36,10 +42,10 @@ const LocationsCreate = (): React.ReactElement => {
     staleTime: 5 * 60 * 1000,
   });
 
-  const questions = questionsResponse?.data ?? [];
+  const questions = useMemo(() => questionsResponse?.data ?? [], [questionsResponse?.data]);
 
   const createMutation = useMutation({
-    mutationFn: (data: { answers: any[] }) => axios.post(`/organisations/${organisationId}/locations/create`, data),
+    mutationFn: (data: { answers: any[] }) => axios.post(API_ROUTES.organisations.locations.create(organisationId), data),
     onSuccess: () => {
       trackSubmitted();
       setNotification({
@@ -48,10 +54,13 @@ const LocationsCreate = (): React.ReactElement => {
         message: 'The site has been added to your list of sites. You can view, change, or delete the site record at any time.',
       });
       queryClient.invalidateQueries(['locations']);
-      navigate('/organisation-admin/core-data/delivery-locations');
+      navigate(ROUTES.organisationAdmin.locations.list);
     },
     onError: (error) => {
-      processError(error, (e) => setNotification({ type: 'important', title: 'Error', message: e || 'Failed to create site' }));
+      processError(error, (e) => setSubmitError(e || 'Failed to create site'));
+      // Bump the attempt counter so the summary is re-focused on repeat submissions, when it
+      // is already mounted and its own mount-time focus will not fire again.
+      setSubmitAttempts((n) => n + 1);
     },
   });
 
@@ -79,13 +88,29 @@ const LocationsCreate = (): React.ReactElement => {
 
   const handleComplete = () => {
     trackSubmitAttempted();
+    setSubmitError(undefined);
     createMutation.mutate({
       answers: buildAnswersForRequest(state, questions),
     });
   };
 
   const errorList = useMemo(() => {
-    return Object.entries(errors)
+    // A duplicate-name rejection is about the official public name, which lives on step 1 —
+    // so the link returns to that step before focusing the field. Any other server error has
+    // no specific field, so it carries no target and renders as text.
+    const serverErrors = submitError
+      ? [
+          /already exists/i.test(submitError)
+            ? {
+                targetName: SITE_NAME_QUESTION_CODE.toLowerCase(),
+                text: submitError,
+                onNavigate: () => setStep(0),
+              }
+            : { text: submitError },
+        ]
+      : [];
+
+    const fieldErrors = Object.entries(errors)
       .filter(([, value]) => value)
       .map(([key, value]) => {
         const lcKey = key.toLowerCase();
@@ -94,17 +119,16 @@ const LocationsCreate = (): React.ReactElement => {
         if (question) {
           if (question.questionType === SiteFormQuestionType.Date) {
             targetName = `${lcKey}-day`;
-          } else if (
-            (question.questionType === SiteFormQuestionType.Radio || question.questionType === SiteFormQuestionType.Checkbox) &&
-            question.options.length > 0
-          ) {
+          } else if ((question.questionType === SiteFormQuestionType.Radio || question.questionType === SiteFormQuestionType.Checkbox) && question.options.length > 0) {
             const firstOption = [...question.options].sort((a, b) => a.displayOrder - b.displayOrder)[0];
             targetName = `${lcKey}-${firstOption.value}`;
           }
         }
         return { targetName, text: value || '' };
       });
-  }, [errors, questions]);
+
+    return [...serverErrors, ...fieldErrors];
+  }, [errors, questions, submitError]);
 
   if (isLoadingQuestions) {
     return (
@@ -128,8 +152,8 @@ const LocationsCreate = (): React.ReactElement => {
   return (
     <GeneralLayout
       breadcrumbs={[
-        { label: 'Home', link: '/organisation-admin/home' },
-        { label: 'Delivery locations', link: '/organisation-admin/core-data/delivery-locations' },
+        { label: 'Home', link: ROUTES.organisationAdmin.home },
+        { label: 'Delivery locations', link: ROUTES.organisationAdmin.locations.list },
       ]}>
       {errorList.length > 0 && <GovUKErrorSummary errors={errorList} />}
       <GovUKStepper
@@ -141,6 +165,10 @@ const LocationsCreate = (): React.ReactElement => {
         validate={validate}
         isNextDisabled={createMutation.isLoading}
         title="Add delivery location"
+        pageTitle="Add delivery location"
+        // Drives the "Error: " title prefix (WCAG 2.4.2 / 3.3.1). errorList covers both
+        // client-side validation and server rejections, and empties once they are resolved.
+        pageHasErrors={errorList.length > 0}
         description="Tell us about the site so it can be added to your account. This information will be saved and can be updated at any time."
         helpSummary="Help with sites"
         helpContent={<p>Sites are the physical locations where services are delivered. Each site should be recorded separately to help families find the right support.</p>}

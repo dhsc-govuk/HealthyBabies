@@ -4,6 +4,9 @@ import { useQuery } from 'react-query';
 import { GeneralLayout } from '../../../../layouts';
 import { LoadingSpinner, SummaryList, GovUKSummaryCard } from '../../../../components/GovUKComponents';
 import { getOutcomeScoreRecord, getOutcomeScoresModule, getSubmission, FormModuleFieldDto } from '../queries';
+import { resolveSnapshotLabel } from '../../../../helpers/answerSnapshot';
+import { sortFieldsForDisplay } from '../../../../helpers/formFieldOrdering';
+import { ROUTES } from '../../../../constants/routes';
 
 const OutcomeScoreView = (): React.ReactElement => {
   const navigate = useNavigate();
@@ -87,15 +90,15 @@ const OutcomeScoreView = (): React.ReactElement => {
   );
 
   const handleBack = () => {
-    navigate(`/organisation-admin/submissions/${submissionId}/modules/${moduleId}/outcome-scores`);
+    navigate(ROUTES.organisationAdmin.submissions.outcomeScores.list(submissionId, moduleId));
   };
 
   const handleChange = () => {
-    navigate(`/organisation-admin/submissions/${submissionId}/modules/${moduleId}/outcome-scores/${recordId}/edit`);
+    navigate(ROUTES.organisationAdmin.submissions.outcomeScores.edit(submissionId, moduleId, recordId));
   };
 
   const handleDelete = () => {
-    navigate(`/organisation-admin/submissions/${submissionId}/modules/${moduleId}/outcome-scores/${recordId}/delete`);
+    navigate(ROUTES.organisationAdmin.submissions.outcomeScores.delete(submissionId, moduleId, recordId));
   };
 
   // Build summary items for SummaryList component
@@ -106,54 +109,51 @@ const OutcomeScoreView = (): React.ReactElement => {
     const groups: Record<string, { label: string; fields: Array<{ field: FormModuleFieldDto; displayValue: string }> }> = {};
     const fieldOrder: string[] = [];
 
-    outcomeScoreForm.fields
-      .filter(isFieldVisible)
-      .sort((a, b) => a.displayOrder - b.displayOrder)
-      .forEach((field) => {
-        const value = fieldValues[field.code];
+    sortFieldsForDisplay(outcomeScoreForm.fields.filter(isFieldVisible)).forEach((field) => {
+      const value = fieldValues[field.code];
 
-        // Skip fields with no value selected
-        if (value === null || value === undefined || value === '') {
-          return;
-        }
+      // Skip fields with no value selected
+      if (value === null || value === undefined || value === '') {
+        return;
+      }
 
-        let displayValue: string;
-        if (field.code === 'PPS01' && outcomeScoreForm.availableServices) {
-          const service = outcomeScoreForm.availableServices.find((s) => s.serviceId === value);
-          displayValue = service?.serviceName || value;
-        } else if (field.fieldType.toLowerCase() === 'checkbox' && field.options?.length) {
-          // Handle checkbox fields - value is comma-separated
-          const selectedValues = value.split(',').map((v) => v.trim());
-          const labels = selectedValues.map((v) => {
-            const option = field.options?.find((o) => o.value === v);
-            return option?.label || v;
-          });
-          displayValue = labels.join(', ');
-        } else {
-          const option = field.options?.find((o) => o.value === value);
-          displayValue = option?.label || value;
-        }
+      let displayValue: string;
+      if (field.code === 'PPS01' && outcomeScoreForm.availableServices) {
+        const service = outcomeScoreForm.availableServices.find((s) => s.serviceId === value);
+        displayValue = service?.serviceName || value;
+      } else if (field.fieldType.toLowerCase() === 'checkbox' && field.options?.length) {
+        // Handle checkbox fields - value is comma-separated
+        const selectedValues = value.split(',').map((v) => v.trim());
+        const labels = selectedValues.map((v) => {
+          const option = field.options?.find((o) => o.value === v);
+          return option?.label || v;
+        });
+        displayValue = labels.join(', ');
+      } else {
+        const option = field.options?.find((o) => o.value === value);
+        displayValue = option?.label || value;
+      }
 
-        let groupKey = field.code;
-        let groupLabel = field.label;
-        if (field.configuration) {
-          try {
-            const config = JSON.parse(field.configuration);
-            if (config.group) {
-              groupKey = config.group;
-              groupLabel = config.groupLabel || field.label;
-            }
-          } catch {
-            // Ignore
+      let groupKey = field.code;
+      let groupLabel = field.label;
+      if (field.configuration) {
+        try {
+          const config = JSON.parse(field.configuration);
+          if (config.group) {
+            groupKey = config.group;
+            groupLabel = config.groupLabel || field.label;
           }
+        } catch {
+          // Ignore
         }
+      }
 
-        if (!groups[groupKey]) {
-          groups[groupKey] = { label: groupLabel, fields: [] };
-          fieldOrder.push(groupKey);
-        }
-        groups[groupKey].fields.push({ field, displayValue });
-      });
+      if (!groups[groupKey]) {
+        groups[groupKey] = { label: groupLabel, fields: [] };
+        fieldOrder.push(groupKey);
+      }
+      groups[groupKey].fields.push({ field, displayValue });
+    });
 
     // Convert groups to summary items
     fieldOrder.forEach((groupKey) => {
@@ -166,7 +166,7 @@ const OutcomeScoreView = (): React.ReactElement => {
             items.push({ label: group.label, value: '', isGroupHeader: true });
             // Add child fields as sub-answers
             group.fields.forEach(({ field, displayValue }) => {
-              items.push({ label: field.label, value: displayValue, isSubAnswer: true });
+              items.push({ label: resolveSnapshotLabel(field, fieldValues[field.code]), value: displayValue, isSubAnswer: true });
             });
             return;
           }
@@ -176,7 +176,7 @@ const OutcomeScoreView = (): React.ReactElement => {
       }
       // Single field
       const { field, displayValue } = group.fields[0];
-      items.push({ label: field.label, value: displayValue });
+      items.push({ label: resolveSnapshotLabel(field, fieldValues[field.code]), value: displayValue });
     });
 
     return items;
@@ -189,10 +189,10 @@ const OutcomeScoreView = (): React.ReactElement => {
     <LoadingSpinner loading={isLoading} label="Loading outcome score record">
       <GeneralLayout
         breadcrumbs={[
-          { label: 'Home', link: '/organisation-admin/home' },
-          { label: 'Submissions', link: '/organisation-admin/submissions' },
-          { label: dataCollectionName || 'Submission', link: `/organisation-admin/submissions/${submissionId}` },
-          { label: 'Outcome scores', link: `/organisation-admin/submissions/${submissionId}/modules/${moduleId}/outcome-scores` },
+          { label: 'Home', link: ROUTES.organisationAdmin.home },
+          { label: 'Submissions', link: ROUTES.organisationAdmin.submissions.list },
+          { label: dataCollectionName || 'Submission', link: ROUTES.organisationAdmin.submissions.view(submissionId) },
+          { label: 'Outcome scores', link: ROUTES.organisationAdmin.submissions.outcomeScores.list(submissionId, moduleId) },
         ]}
         currentPage=""
         backLink={{ href: '#', onClick: handleBack }}>
@@ -202,8 +202,7 @@ const OutcomeScoreView = (): React.ReactElement => {
             <h1 className="govuk-heading-l">{anonymisedId || 'Outcome Score Record'}</h1>
 
             <p className="govuk-body">
-              This page shows saved information you've provided about outcome scores for a service user who used one of your services from {dataCollectionStartDate} to{' '}
-              {dataCollectionEndDate}.
+              This page shows saved information you've provided about outcome scores for a service user who used one of your services in the relevant quarter.
             </p>
             <p className="govuk-body">
               You can update this outcome score record at any time before submitting the quarterly Management Information data collection. To update the information, select

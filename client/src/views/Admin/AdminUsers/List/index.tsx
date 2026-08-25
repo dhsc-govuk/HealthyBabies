@@ -8,6 +8,7 @@ import { useQuery } from 'react-query';
 import { SettingsLayout } from '../../../../layouts';
 import { PageHeaderContainer, PageHeaderActions, PageTitle } from '../../../../styles/govuk-global';
 import usePageTitle from '../../../../hooks/usePageTitle';
+import { ROUTES } from '../../../../constants/routes';
 
 const AdminUsersList = (): React.ReactElement => {
   usePageTitle('Departmental users');
@@ -27,7 +28,7 @@ const AdminUsersList = (): React.ReactElement => {
       key: 'name',
       header: 'Name',
       render: (user) => (
-        <Link href={`/admin/departmental-users/${user.id}`} onClick={(e: React.MouseEvent) => { e.preventDefault(); navigate(`/admin/departmental-users/${user.id}`); }}>
+        <Link href={ROUTES.admin.departmentalUsers.view(user.id)} onClick={(e: React.MouseEvent) => { e.preventDefault(); navigate(ROUTES.admin.departmentalUsers.view(user.id)); }}>
           {user.firstName} {user.lastName}<span className="govuk-visually-hidden"> - view departmental user</span>
         </Link>
       ),
@@ -58,25 +59,26 @@ const AdminUsersList = (): React.ReactElement => {
   return (
     <SettingsLayout
       breadcrumbs={[
-        { label: 'Home', link: '/admin/home' },
-        { label: 'Settings', link: '/admin/settings' },
+        { label: 'Home', link: ROUTES.admin.home },
+        { label: 'Settings', link: ROUTES.admin.settings },
       ]}>
       <PageHeaderContainer>
         <PageTitle>Departmental users</PageTitle>
         <PageHeaderActions>
-          <Button onClick={() => navigate('/admin/departmental-users/create')}>Add departmental user</Button>
+          <Button onClick={() => navigate(ROUTES.admin.departmentalUsers.create)}>Add departmental user</Button>
         </PageHeaderActions>
       </PageHeaderContainer>
 
       <LoadingBox loading={isLoading}>
         <GovUKTable<GetAdminsResponse>
+          caption="Departmental users"
           data={adminsData?.data ?? []}
           columns={adminColumns}
           searchPlaceholder="Search departmental user by name"
           searchable={true}
           sortOptions={sortOptions}
           keyExtractor={(user) => user.id}
-          getRowHref={(user) => `/admin/departmental-users/${user.id}`}
+          getRowHref={(user) => ROUTES.admin.departmentalUsers.view(user.id)}
           emptyMessage="No departmental users found"
         />
       </LoadingBox>

@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { API_ROUTES } from '../../../../constants/apiRoutes';
 
 export interface SubmissionDataCollection {
   id: string;
@@ -20,7 +21,7 @@ export interface SubmissionItem {
 }
 
 export const getSubmissions = () =>
-  axios.get<SubmissionDataCollection[]>('/admin/data-collections');
+  axios.get<SubmissionDataCollection[]>(API_ROUTES.admin.dataCollections.list);
 
 export const getSubmissionStatus = (collection: SubmissionDataCollection): SubmissionStatus => {
   const now = new Date();

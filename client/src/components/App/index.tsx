@@ -2,7 +2,7 @@ import { GlobalStyle } from 'govuk-react';
 import 'govuk-frontend/dist/govuk/govuk-frontend.min.css';
 import '../../styles/govuk-refreshed-branding.css';
 import { BrowserRouter } from 'react-router-dom';
-import { PublicClientApplication } from '@azure/msal-browser';
+import { InteractionRequiredAuthError, PublicClientApplication } from '@azure/msal-browser';
 import { MsalProvider } from '@azure/msal-react';
 import { CssBaseline } from '@mui/material';
 import { styled } from '@mui/material/styles';
@@ -13,11 +13,13 @@ import AppRoutes from '../../Routes';
 import { CustomThemeProvider, DashboardProvider, GovUKNotificationProvider, type ThemeModes } from '../GovUKComponents';
 import useLocalStorage from '../../hooks/useLocalStorage';
 import { withRouter } from '../DashboardProviderArgs';
+import AriaPageAnnouncer from '../AriaPageAnnouncer';
 import { QueryClient, QueryClientProvider } from 'react-query';
 import axios from 'axios';
 import appConfig from '../../config.json';
 import { loginRequest } from '../AuthProvider';
 import { stagingRequestInterceptor } from '../../helpers/requestStaging';
+import { ROUTES } from '../../constants/routes';
 
 const modes: ThemeModes = {
   primary: {
@@ -112,6 +114,14 @@ axios.interceptors.request.use(
       });
       config.headers['Authorization'] = 'Bearer ' + msalResponse.accessToken;
     } catch (error) {
+      if (error instanceof InteractionRequiredAuthError) {
+        // Silent renewal failed because the identity provider has no session to renew from (its
+        // SSO cookie was blocked, expired, or never set) - sending the request without a token
+        // would just come back as a 401 and leave the caller to figure out why. Go straight to an
+        // interactive sign-in instead, and never resolve so the doomed request is never sent.
+        await msalInstance.loginRedirect(loginRequest);
+        return new Promise(() => {});
+      }
       console.error('Failed to acquire token:', error);
     }
     return config;
@@ -131,24 +141,24 @@ axios.interceptors.response.use(
       : rawPath;
     const mfaVerifiedAt = sessionStorage.getItem('mfa_verified_at');
     const isRecentlyVerified = mfaVerifiedAt && (Date.now() - parseInt(mfaVerifiedAt, 10)) < 5000;
-    const mfaPath = '/mfa/';
+    const mfaPath = `${ROUTES.mfa.root}/`;
     if (error.response?.status === 403 && !currentPath.startsWith(mfaPath) && !isRecentlyVerified) {
       const errorCode = error.response?.data?.error;
-      const rootPath = '/';
-      const signInPath = '/sign-in';
+      const rootPath = ROUTES.home;
+      const signInPath = ROUTES.signIn;
       if (errorCode === 'MFA_SETUP_REQUIRED') {
         // Don't store root or sign-in as redirect paths
         if (currentPath !== rootPath && currentPath !== signInPath) {
           sessionStorage.setItem('mfa_redirect_path', currentPath);
         }
-        window.location.href = `${basePath}mfa/setup`.replace('//', '/');
+        window.location.href = `${basePath}${ROUTES.mfa.setup}`.replace('//', '/');
         return new Promise(() => {}); // Prevent further processing
       } else if (errorCode === 'MFA_REQUIRED') {
         // Don't store root or sign-in as redirect paths
         if (currentPath !== rootPath && currentPath !== signInPath) {
           sessionStorage.setItem('mfa_redirect_path', currentPath);
         }
-        window.location.href = `${basePath}mfa/verify`.replace('//', '/');
+        window.location.href = `${basePath}${ROUTES.mfa.verify}`.replace('//', '/');
         return new Promise(() => {}); // Prevent further processing
       }
     }
@@ -167,7 +177,11 @@ const App = () => {
               <SnackbarProvider maxSnack={3} autoHideDuration={3000} anchorOrigin={{ vertical: 'top', horizontal: 'right' }}>
               <CssBaseline />
                 <GlobalStyle />
-                <Root>
+                {/* id is the landing spot for focus on every route change. It sits ahead of the
+                    skip link in the DOM, so the user's first Tab reaches "Skip to main content"
+                    (see useRouteFocus). */}
+                <Root id="app-top" tabIndex={-1}>
+                  <AriaPageAnnouncer />
                   <BrowserRouter basename={(import.meta.env.BASE_URL || '/').replace(/\/$/, '') || '/'}>
                     <GovUKNotificationProvider>
                       <AppRoutes />

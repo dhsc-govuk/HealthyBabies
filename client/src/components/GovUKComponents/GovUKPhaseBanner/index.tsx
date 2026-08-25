@@ -19,7 +19,7 @@ const GovUKPhaseBanner = ({
         </strong>
         <span className="govuk-phase-banner__text">
           This is a new service – your{' '}
-          <a className="govuk-link" href={feedbackUrl} target='_blank'>feedback</a>{' '}
+          <a className="govuk-link" href={feedbackUrl} target="_blank" rel="noreferrer">feedback</a>{' '}
           will help us to improve it.
         </span>
       </p>

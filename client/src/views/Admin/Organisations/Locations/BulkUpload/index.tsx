@@ -4,6 +4,7 @@ import { LoadingSpinner } from '../../../../../components/GovUKComponents';
 import { GeneralLayout } from '../../../../../layouts';
 import BulkUploadComponent from '../../../../../components/Global/Organisations/Locations/BulkUpload';
 import { useOrganisationQuery } from '../../../../../components/Global/Queries/organisations';
+import { ROUTES } from '../../../../../constants/routes';
 
 type UrlParams = {
   organisationId: string;
@@ -16,19 +17,18 @@ const LocationBulkUpload = (): React.ReactElement => {
   const { data: orgData, isLoading: orgLoading } = useOrganisationQuery({ organisationId: organisationId! });
 
   const handleFinish = () => {
-    navigate(`/admin/organisations/${organisationId}/service-delivery-locations`);
+    navigate(ROUTES.admin.organisations.locations.list(organisationId));
   };
 
   return (
     <LoadingSpinner loading={orgLoading} label="Loading">
       <GeneralLayout
         breadcrumbs={[
-          { label: 'Home', link: '/admin/home' },
-          { label: 'Local Authorities', link: '/admin/organisations' },
-          { label: orgData?.data.name ?? '', link: `/admin/organisations/${organisationId}` },
-          { label: 'Delivery location', link: `/admin/organisations/${organisationId}/service-delivery-locations` },
-        ]}
-        currentPage="Bulk Upload">
+          { label: 'Home', link: ROUTES.admin.home },
+          { label: 'Local Authorities', link: ROUTES.admin.organisations.list },
+          { label: orgData?.data.name ?? '', link: ROUTES.admin.organisations.view(organisationId) },
+          { label: 'Delivery location', link: ROUTES.admin.organisations.locations.list(organisationId) },
+        ]}>
         <BulkUploadComponent organisationId={organisationId!} handleFinish={handleFinish} />
       </GeneralLayout>
     </LoadingSpinner>

@@ -11,9 +11,10 @@ interface Props {
   dispatch: React.Dispatch<{ type: OrganisationReducerAction; value: any }>;
   handleSave: () => void;
   onCancel?: () => void;
+  pageTitle?: string;
 }
 
-const OrganisationSteps = ({ completeLabel, organisation, dispatch, handleSave, onCancel }: Props): React.ReactElement => {
+const OrganisationSteps = ({ completeLabel, organisation, dispatch, handleSave, onCancel, pageTitle }: Props): React.ReactElement => {
   const [step, setStep] = useState<number>(0);
 
   const [errors, setErrors] = useState<ValidationErrors>({
@@ -60,6 +61,8 @@ const OrganisationSteps = ({ completeLabel, organisation, dispatch, handleSave, 
       validate={validate}
       isNextDisabled={hasErrors}
       onCancel={onCancel}
+      pageTitle={pageTitle}
+      pageHasErrors={hasErrors}
     />
   );
 };

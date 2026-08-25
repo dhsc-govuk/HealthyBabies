@@ -9,6 +9,8 @@ import { stringFromArray } from '../../../../helpers/stringUtils';
 import axios from 'axios';
 import { WarningPanel, WarningPanelTitle, WarningPanelBody, WarningPanelActions, WarningPanelAnchor } from '../../../../styles/govuk-global';
 import usePageTitle from '../../../../hooks/usePageTitle';
+import { ROUTES } from '../../../../constants/routes';
+import { API_ROUTES } from '../../../../constants/apiRoutes';
 
 type UrlParams = {
   userId: string;
@@ -22,8 +24,8 @@ interface AdminUserResponse {
   isActive: boolean;
 }
 
-const getAdminUser = (userId: string) => axios.get<AdminUserResponse>(`/admin/users/${userId}`);
-const deleteAdminUser = (userId: string) => axios.delete(`/admin/users/${userId}`);
+const getAdminUser = (userId: string) => axios.get<AdminUserResponse>(API_ROUTES.admin.users.byId(userId));
+const deleteAdminUser = (userId: string) => axios.delete(API_ROUTES.admin.users.byId(userId));
 
 const DeleteAdminUser = (): React.ReactElement => {
   usePageTitle('Delete departmental user');
@@ -43,7 +45,7 @@ const DeleteAdminUser = (): React.ReactElement => {
     onSuccess() {
       setNotification({ type: 'success', title: 'Success', message: 'Departmental user deleted successfully' });
       queryClient.invalidateQueries(['departmental-users-list']);
-      navigate('/admin/departmental-users');
+      navigate(ROUTES.admin.departmentalUsers.list);
     },
     onError(error) {
       processError(error, (e) => setNotification({ type: 'important', title: 'Error', message: e }));
@@ -55,13 +57,13 @@ const DeleteAdminUser = (): React.ReactElement => {
   };
 
   const handleCancel = () => {
-    navigate(`/admin/departmental-users/${userId}`);
+    navigate(ROUTES.admin.departmentalUsers.view(userId));
   };
 
   const userName = data ? stringFromArray([data.data.firstName, data.data.lastName]) : '';
 
   return (
-    <SettingsLayout hideNavigation backLink={{ href: `/admin/departmental-users/${userId}`, onClick: handleCancel }}>
+    <SettingsLayout hideNavigation backLink={{ href: ROUTES.admin.departmentalUsers.view(userId), onClick: handleCancel }}>
       <LoadingBox loading={isLoading || isDeleting}>
         {data && (
           <WarningPanel>
@@ -79,7 +81,7 @@ const DeleteAdminUser = (): React.ReactElement => {
                 Yes, I want to delete
               </Button>
               <WarningPanelAnchor
-                href={`/admin/departmental-users/${userId}`}
+                href={ROUTES.admin.departmentalUsers.view(userId)}
                 onClick={(e) => {
                   e.preventDefault();
                   handleCancel();

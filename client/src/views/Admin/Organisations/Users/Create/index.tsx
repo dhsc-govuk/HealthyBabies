@@ -6,6 +6,7 @@ import { useQuery } from 'react-query';
 import { defaultStaleTime, viewOrganisationCacheKey } from '../../../../../helpers/queriesParams';
 import CreateOrganisationUsersComponent from '../../../../../components/Global/Organisations/Users/Create';
 import { GeneralLayout } from '../../../../../layouts';
+import { ROUTES } from '../../../../../constants/routes';
 
 type UrlParams = {
   organisationId: string;
@@ -22,21 +23,21 @@ const CreateOrganisationUsers = (): React.ReactElement => {
   });
 
   const handleFinish = (organisationId: string, userId: string) => {
-    navigate(`/admin/organisations/${organisationId}/users/${userId}`);
+    navigate(ROUTES.admin.organisations.users.view(organisationId, userId));
   };
 
   return (
     <LoadingSpinner loading={loading} label="Loading">
       <GeneralLayout
         breadcrumbs={[
-          { label: 'Home', link: '/admin/home' },
-          { label: 'Local Authorities', link: '/admin/organisations' },
-          { label: orgData?.data.name ?? '', link: `/admin/organisations/${organisationId}` },
-          { label: 'Local Authority Users', link: `/admin/organisations/${organisationId}/users` },
+          { label: 'Home', link: ROUTES.admin.home },
+          { label: 'Local Authorities', link: ROUTES.admin.organisations.list },
+          { label: orgData?.data.name ?? '', link: ROUTES.admin.organisations.view(organisationId) },
+          { label: 'Local Authority Users', link: ROUTES.admin.organisations.users.list(organisationId) },
           { label: 'Create', link: '' },
         ]}
         currentPage="Create">
-        <CreateOrganisationUsersComponent organisationId={organisationId!} handleFinish={handleFinish} onCancel={() => navigate(`/admin/organisations/${organisationId}/users`)} />
+        <CreateOrganisationUsersComponent organisationId={organisationId!} handleFinish={handleFinish} onCancel={() => navigate(ROUTES.admin.organisations.users.list(organisationId))} />
       </GeneralLayout>
     </LoadingSpinner>
   );

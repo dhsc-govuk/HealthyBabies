@@ -8,6 +8,7 @@ import { useQuery } from 'react-query';
 import { SettingsLayout } from '../../../../layouts';
 import { PageHeaderContainer, PageHeaderActions, PageTitle } from '../../../../styles/govuk-global';
 import usePageTitle from '../../../../hooks/usePageTitle';
+import { ROUTES } from '../../../../constants/routes';
 
 interface LocationState {
   created?: boolean;
@@ -37,7 +38,7 @@ const OrganisationUsersList = (): React.ReactElement => {
       key: 'name',
       header: 'Name',
       render: (user) => (
-        <Link href={`/admin/la-users/${user.id}`} onClick={(e: React.MouseEvent) => { e.preventDefault(); navigate(`/admin/la-users/${user.id}`); }}>
+        <Link href={ROUTES.admin.laUsers.view(user.id)} onClick={(e: React.MouseEvent) => { e.preventDefault(); navigate(ROUTES.admin.laUsers.view(user.id)); }}>
           {user.firstName} {user.lastName}<span className="govuk-visually-hidden"> - view LA user</span>
         </Link>
       ),
@@ -54,7 +55,8 @@ const OrganisationUsersList = (): React.ReactElement => {
     },
     {
       key: 'isActive',
-      header: '',
+      header: 'Status',
+      headerVisuallyHidden: true,
       align: 'right',
       render: (user) => (
         user.isActive ? (
@@ -75,8 +77,8 @@ const OrganisationUsersList = (): React.ReactElement => {
   return (
     <SettingsLayout
       breadcrumbs={[
-        { label: 'Home', link: '/admin/home' },
-        { label: 'Settings', link: '/admin/settings' },
+        { label: 'Home', link: ROUTES.admin.home },
+        { label: 'Settings', link: ROUTES.admin.settings },
       ]}>
       {showSuccessBanner && (
         <div className="govuk-notification-banner govuk-notification-banner--success" role="alert" aria-labelledby="govuk-notification-banner-title">
@@ -99,19 +101,20 @@ const OrganisationUsersList = (): React.ReactElement => {
       <PageHeaderContainer>
         <PageTitle>LA users</PageTitle>
         <PageHeaderActions>
-          <Button onClick={() => navigate('/admin/la-users/create')}>Add LA user</Button>
+          <Button onClick={() => navigate(ROUTES.admin.laUsers.create)}>Add LA user</Button>
         </PageHeaderActions>
       </PageHeaderContainer>
 
       <LoadingBox loading={isLoading}>
         <GovUKTable<OrganisationUserResponse>
+          caption="Local authority users"
           data={orgUsersData?.data.items ?? []}
           columns={orgUserColumns}
           searchPlaceholder="Search LA user by name"
           searchable={true}
           sortOptions={sortOptions}
           keyExtractor={(user) => user.id}
-          getRowHref={(user) => `/admin/la-users/${user.id}`}
+          getRowHref={(user) => ROUTES.admin.laUsers.view(user.id)}
           emptyMessage="No LA users found"
         />
       </LoadingBox>

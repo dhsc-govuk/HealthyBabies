@@ -13,9 +13,10 @@ interface Props {
   handleSave: () => void;
   roles: GlobalDataDto[];
   onCancel?: () => void;
+  pageTitle?: string;
 }
 
-const ContactSteps = ({ completeLabel, contact, dispatch, handleSave, roles, onCancel }: Props): React.ReactElement => {
+const ContactSteps = ({ completeLabel, contact, dispatch, handleSave, roles, onCancel, pageTitle }: Props): React.ReactElement => {
   const [step, setStep] = useState<number>(0);
 
   const [errors, setErrors] = useState<ValidationErrors>({
@@ -64,6 +65,8 @@ const ContactSteps = ({ completeLabel, contact, dispatch, handleSave, roles, onC
       validate={validate}
       isNextDisabled={hasErrors}
       onCancel={onCancel}
+      pageTitle={pageTitle}
+      pageHasErrors={hasErrors}
     />
   );
 };

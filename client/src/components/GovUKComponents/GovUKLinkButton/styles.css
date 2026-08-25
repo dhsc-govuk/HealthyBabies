@@ -1,0 +1,11 @@
+.govuk-link-button {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  font: inherit;
+  cursor: pointer;
+}
+
+.govuk-link-button:disabled {
+  cursor: default;
+}

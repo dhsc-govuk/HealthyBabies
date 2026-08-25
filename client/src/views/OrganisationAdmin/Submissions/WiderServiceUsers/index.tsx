@@ -2,9 +2,10 @@ import React, { useState, useMemo } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useQuery } from 'react-query';
 import { GeneralLayout } from '../../../../layouts';
-import { LoadingSpinner, GovUKButton, GovUKTag, GovUKDetails, GovUKNotificationBanner } from '../../../../components/GovUKComponents';
+import { LoadingSpinner, GovUKButton, GovUKLinkButton, GovUKTag, GovUKDetails, GovUKNotificationBanner } from '../../../../components/GovUKComponents';
 import { getWiderServiceUsersModule } from '../queries';
 import { getSubmissionStatusTagColour } from '../../../../helpers/submissionStatusColour';
+import { ROUTES } from '../../../../constants/routes';
 import './styles.css';
 
 interface WiderServiceCategoryStatus {
@@ -62,11 +63,11 @@ const WiderServiceUsersList = (): React.ReactElement => {
   }, [moduleData?.categories, searchTerm, sortBy]);
 
   const handleCategoryClick = (categoryId: string) => {
-    navigate(`/organisation-admin/submissions/${submissionId}/modules/${moduleId}/wider-services/${categoryId}`);
+    navigate(ROUTES.organisationAdmin.submissions.widerServices.form(submissionId, moduleId, categoryId));
   };
 
   const handleManageCategories = () => {
-    navigate('/organisation-admin/core-data/wider-service-categories');
+    navigate(ROUTES.organisationAdmin.widerServiceCategories.list);
   };
 
   if (isLoading) {
@@ -82,7 +83,7 @@ const WiderServiceUsersList = (): React.ReactElement => {
       <GeneralLayout>
         <h1 className="govuk-heading-l">Module not found</h1>
         <p className="govuk-body">The module you are looking for does not exist.</p>
-        <GovUKButton onClick={() => navigate(`/organisation-admin/submissions/${submissionId}`)}>Back to submission</GovUKButton>
+        <GovUKButton onClick={() => navigate(ROUTES.organisationAdmin.submissions.view(submissionId))}>Back to submission</GovUKButton>
       </GeneralLayout>
     );
   }
@@ -90,13 +91,13 @@ const WiderServiceUsersList = (): React.ReactElement => {
   return (
     <GeneralLayout
       breadcrumbs={[
-        { label: 'Home', link: '/organisation-admin/home' },
-        { label: 'Submissions', link: '/organisation-admin/submissions' },
-        { label: moduleData.submissionName || 'Submission', link: `/organisation-admin/submissions/${submissionId}` },
+        { label: 'Home', link: ROUTES.organisationAdmin.home },
+        { label: 'Submissions', link: ROUTES.organisationAdmin.submissions.list },
+        { label: moduleData.submissionName || 'Submission', link: ROUTES.organisationAdmin.submissions.view(submissionId) },
         { label: 'Section 3: Wider services', link: '#' },
       ]}
       currentPage=""
-      backLink={!notification ? { href: `/organisation-admin/submissions/${submissionId}` } : undefined}>
+      backLink={!notification ? { href: ROUTES.organisationAdmin.submissions.view(submissionId) } : undefined}>
       {notification && (
         <GovUKNotificationBanner type={notification.type === 'success' ? 'success' : 'important'} title={notification.title}>
           <p className="govuk-body">{notification.message}</p>
@@ -109,7 +110,7 @@ const WiderServiceUsersList = (): React.ReactElement => {
       <h2 className="govuk-heading-m">Tell us about your service users</h2>
       <p className="govuk-body">
         Provide information about the users of any wider services your local authority has delivered, or arranged to be delivered on its behalf, through your Best Start Family Hub
-        and Healthy Babies Network over the past 3 months.
+        and Healthy Babies Network in the relevant quarter.
       </p>
       <p className="govuk-body">If you do not have any user data for this period, you can tell us that instead.</p>
 
@@ -178,15 +179,11 @@ const WiderServiceUsersList = (): React.ReactElement => {
         <ul className="govuk-list wider-service-users__list">
           {filteredAndSortedCategories.map((category: WiderServiceCategoryStatus) => (
             <li key={category.serviceCategoryId} className="wider-service-users__list-item">
-              <a
-                href="#"
-                className="govuk-link wider-service-users__link"
-                onClick={(e) => {
-                  e.preventDefault();
-                  handleCategoryClick(category.serviceCategoryId);
-                }}>
+              <GovUKLinkButton
+                className="wider-service-users__link"
+                onClick={() => handleCategoryClick(category.serviceCategoryId)}>
                 {category.categoryName}
-              </a>
+              </GovUKLinkButton>
               <GovUKTag colour={getSubmissionStatusTagColour(category.status)}>{category.status}</GovUKTag>
             </li>
           ))}

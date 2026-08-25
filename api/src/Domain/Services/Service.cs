@@ -122,4 +122,9 @@ public class Service : SoftDeletableEntity<ServiceId>
     {
         _answers.RemoveAll(a => a.Step == step);
     }
+
+    public void RemoveAnswers(IReadOnlyCollection<string> questionCodes)
+    {
+        _answers.RemoveAll(a => questionCodes.Contains(a.QuestionCode));
+    }
 }

@@ -1,0 +1,20 @@
+/* Column widths for the equal / half-width variants.
+   These live in CSS — not inline styles — so that govuk-frontend's built-in mobile
+   stacking (which sets the key/value rows to display:block below the tablet breakpoint)
+   still wins at 320px and 400% zoom. An inline width would override the media query and
+   force a two-column layout, causing horizontal scrolling (WCAG 1.4.10). */
+@media (min-width: 40.0625em) {
+  .app-summary-list--equal-columns .govuk-summary-list__key,
+  .app-summary-list--equal-columns .govuk-summary-list__value {
+    width: 50%;
+  }
+}
+
+/* Long unbroken values (reference numbers, postcodes, URLs) wrap instead of overflowing the
+   column at high zoom. break-word breaks only where necessary and prefers word boundaries,
+   unlike word-break: break-all which fragments ordinary words mid-word
+   (DAC_Styles_and_Layout_Usability_02). */
+.govuk-summary-list__key,
+.govuk-summary-list__value {
+  overflow-wrap: break-word;
+}

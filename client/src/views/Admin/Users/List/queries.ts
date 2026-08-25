@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { API_ROUTES } from '../../../../constants/apiRoutes';
 
 export interface GetAdminsResponse {
   id: string;
@@ -31,9 +32,9 @@ export interface PaginatedResult<T> {
   hasNextPage: boolean;
 }
 
-export const getAdmins = () => axios.get<GetAdminsResponse[]>('admin/users');
+export const getAdmins = () => axios.get<GetAdminsResponse[]>(API_ROUTES.admin.users.list);
 
 export const getAllOrganisationUsers = (pageSize = 100, pageNumber = 1) =>
-  axios.get<PaginatedResult<OrganisationUserResponse>>('admin/users/organisation-users', {
+  axios.get<PaginatedResult<OrganisationUserResponse>>(API_ROUTES.admin.users.organisationUsers.list, {
     params: { pageSize, pageNumber },
   });

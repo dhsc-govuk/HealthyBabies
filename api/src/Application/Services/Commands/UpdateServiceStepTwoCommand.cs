@@ -101,6 +101,8 @@ public class UpdateServiceStepTwoCommandHandler(
                 }
             }
 
+            RemoveOrphanedAnswers(service, request.Answers, questions);
+
             if (request.AdvanceStep)
             {
                 service.AdvanceToStep(3);
@@ -112,6 +114,26 @@ public class UpdateServiceStepTwoCommandHandler(
         {
             return new ServiceUnknownException(service.Id, exception);
         }
+    }
+
+    // The client posts the complete visible answer set for the step, so a question that is active in
+    // this step but absent from the request has been hidden by a conditional and its stored answer is
+    // orphaned - e.g. SMD08 moves off "parenting", so SMD10/SMD10a no longer apply (BLUM-7221).
+    // Leaving them behind keeps them on the service View page and in the core data export.
+    // Scoped to this step's active questions, so answers to deactivated questions are left alone -
+    // the client is never served those, so it can never send them back.
+    private static void RemoveOrphanedAnswers(
+        Service service,
+        IReadOnlyList<ServiceAnswerInputDto> answers,
+        IReadOnlyList<ServiceFormQuestion> questions)
+    {
+        var submittedCodes = answers.Select(a => a.QuestionCode).ToHashSet();
+        var orphanedCodes = questions
+            .Select(q => q.Code)
+            .Where(code => !submittedCodes.Contains(code))
+            .ToList();
+
+        service.RemoveAnswers(orphanedCodes);
     }
 
     private static string? GetDisplayValue(ServiceFormQuestion question, string? value)

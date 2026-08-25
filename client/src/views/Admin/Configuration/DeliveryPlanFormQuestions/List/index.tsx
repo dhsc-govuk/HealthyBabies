@@ -25,6 +25,7 @@ import { getAllModules, getModuleWithFields } from './queries';
 import { deleteFormField, reorderFormFields } from './mutations';
 import { FormField, fieldTypeLabels } from '../../DataCollectionFormQuestions/Common/types';
 import usePageTitle from '../../../../../hooks/usePageTitle';
+import { ROUTES } from '../../../../../constants/routes';
 
 const DeliveryPlanFormQuestionsList = (): React.ReactElement => {
   usePageTitle('Delivery plan form questions');
@@ -109,7 +110,7 @@ const DeliveryPlanFormQuestionsList = (): React.ReactElement => {
   };
 
   const handleEdit = (fieldId: string) => {
-    navigate(`/admin/configuration/delivery-plan-form-questions/edit/${fieldId}`);
+    navigate(ROUTES.admin.configuration.deliveryPlanFormQuestions.edit(fieldId));
   };
 
   const handleDeleteClick = (field: FormField) => {
@@ -172,17 +173,17 @@ const DeliveryPlanFormQuestionsList = (): React.ReactElement => {
   return (
     <SettingsLayout
       breadcrumbs={[
-        { label: 'Home', link: '/admin/home' },
-        { label: 'Settings', link: '/admin/settings' },
+        { label: 'Home', link: ROUTES.admin.home },
+        { label: 'Settings', link: ROUTES.admin.settings },
       ]}>
       <PageHeaderContainer>
         <PageTitle>Delivery Plan Form Questions</PageTitle>
         <PageHeaderActions>
-          <Button onClick={() => navigate('/admin/configuration/delivery-plan-form-questions/create')}>Add Question</Button>
+          <Button onClick={() => navigate(ROUTES.admin.configuration.deliveryPlanFormQuestions.create)}>Add Question</Button>
         </PageHeaderActions>
       </PageHeaderContainer>
       <Box sx={{ mb: 3 }}>
-        <Typography variant="h6" sx={{ mb: 2 }}>
+        <Typography variant="h6" component="h2" sx={{ mb: 2 }}>
           Select a Form Module
         </Typography>
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
@@ -222,7 +223,7 @@ const DeliveryPlanFormQuestionsList = (): React.ReactElement => {
             Object.entries(groupedFields).map(([sectionId, fields]) => (
               <Accordion key={sectionId} defaultExpanded>
                 <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                  <Typography variant="h6">{getSectionTitle(sectionId)}</Typography>
+                  <Typography variant="h6" component="h3">{getSectionTitle(sectionId)}</Typography>
                   <Chip label={fields.length} size="small" sx={{ ml: 2 }} />
                 </AccordionSummary>
                 <AccordionDetails>
@@ -250,7 +251,7 @@ const DeliveryPlanFormQuestionsList = (): React.ReactElement => {
                       }}>
                       <DragIndicatorIcon sx={{ color: 'grey.500', mr: 2 }} />
                       <Box sx={{ flex: 1 }}>
-                        <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                        <Typography variant="subtitle1" component="h4" sx={{ fontWeight: 600 }}>
                           {field.fieldKey}
                         </Typography>
                         <Typography variant="body2" color="text.secondary">

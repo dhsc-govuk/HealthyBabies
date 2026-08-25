@@ -10,6 +10,8 @@ import { getDataCollectionFormModules } from '../List/queries';
 import axios from 'axios';
 import { encodeForWaf, encodeNullableForWaf } from '../../../../helpers/stringUtils';
 import usePageTitle from '../../../../hooks/usePageTitle';
+import { ROUTES } from '../../../../constants/routes';
+import { API_ROUTES } from '../../../../constants/apiRoutes';
 
 interface CreateDataCollectionRequest {
   name: string;
@@ -27,7 +29,7 @@ interface CreateDataCollectionResponse {
   id: string;
 }
 
-const createDataCollection = (data: CreateDataCollectionRequest) => axios.post<CreateDataCollectionResponse>('/admin/data-collections/create', data);
+const createDataCollection = (data: CreateDataCollectionRequest) => axios.post<CreateDataCollectionResponse>(API_ROUTES.admin.dataCollections.create, data);
 
 const parseDateString = (dateStr: string): Date | null => {
   if (!dateStr) return null;
@@ -58,7 +60,7 @@ const CreateDataCollection = (): React.ReactElement => {
     mutationKey: ['data-collection-create'],
     mutationFn: createDataCollection,
     onSuccess() {
-      navigate('/admin/data-collections', {
+      navigate(ROUTES.admin.dataCollections.list, {
         state: {
           successMessage: 'The data collection has been added to your list of data collections. You can view, change, or delete the data collection at any time.',
         },
@@ -110,7 +112,7 @@ const CreateDataCollection = (): React.ReactElement => {
         availableFormModules={availableFormModules}
         onSubmit={(data) => handleSubmit(data, false)}
         onSaveAsDraft={(data) => handleSubmit(data, true)}
-        onCancel={() => navigate('/admin/data-collections')}
+        onCancel={() => navigate(ROUTES.admin.dataCollections.list)}
         submitLabel="Confirm and save"
       />
     </SettingsLayout>

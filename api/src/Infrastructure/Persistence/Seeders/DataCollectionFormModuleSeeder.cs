@@ -168,11 +168,11 @@ public static class DataCollectionFormModuleSeeder
             DataCollectionFormModuleCodes.HealthyBabies,
             1,
             "Healthy Babies offer and Parent-Carer Panels",
-            "Tell us about the users who accessed the service over the past 3 months. This information will be included in your quarterly Management Information data collection.",
+            "Tell us about the users who accessed the service in the relevant quarter. This information will be included in your quarterly Management Information data collection.",
             lastChangedOn,
             type: DataCollectionType.ManagementInformation);
 
-        var section1 = module.AddSection(1, "Healthy Babies offer", "Tell us about the users who accessed the service over the past 3 months.");
+        var section1 = module.AddSection(1, "Healthy Babies offer", "Tell us about the users who accessed the service in the relevant quarter.");
         var section2 = module.AddSection(2, "Parent-Carer Panel meetings", "Questions about Parent-Carer Panel meetings and engagement.");
         var section3 = module.AddSection(3, "Parent-Carer Panel demographics", "Questions about Parent-Carer Panel membership demographics.");
 
@@ -192,7 +192,7 @@ public static class DataCollectionFormModuleSeeder
         field2.AddOption("panel_meetings", "Parent-Carer Panel meetings", 3);
         field2.AddOption("other", "Other", 4);
 
-        var field3 = module.AddField("SPCP05", "How many Parent-Carer Panel meetings have occurred in the past quarter?", FieldType.Number, 3, true, "meetings", "Give a figure for the last 3 months, from 1 January to 31 March 2026.");
+        var field3 = module.AddField("SPCP05", "How many Parent-Carer Panel meetings have occurred in the relevant quarter?", FieldType.Number, 3, true, "meetings", "Give a figure for the relevant quarter.");
         field3.SetSection(section2.Id);
 
         var field4 = module.AddField("SPCP06", "Have you used feedback from Parent-Carer Panels to influence service design and delivery?", FieldType.Radio, 4, true);
@@ -205,7 +205,7 @@ public static class DataCollectionFormModuleSeeder
         field5.SetSection(section2.Id);
         field5.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"SPCP06\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
 
-        var field6 = module.AddField("SPCP07", "How many parents/carers are on your Parent Carer Panel?", FieldType.Number, 6, true, "parents/carers", "Give a figure as of 31 March 2026.");
+        var field6 = module.AddField("SPCP07", "How many parents/carers are on your Parent Carer Panel?", FieldType.Number, 6, true, "parents/carers", "Give a figure as of the end of the relevant quarter.");
         field6.SetSection(section3.Id);
         field6.SetConfiguration("{\"suffix\":\"parents/carers\",\"width\":\"5\"}");
 
@@ -218,7 +218,7 @@ public static class DataCollectionFormModuleSeeder
         var field8 = module.AddField("SPCP08a_female", "Female", FieldType.Number, 8, false, "parents/carers");
         field8.SetSection(section3.Id);
         field8.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"SPCP08\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
-        field8.SetConfiguration("{\"suffix\":\"parents/carers\",\"width\":\"5\",\"group\":\"SPCP08a\",\"groupLabel\":\"How many members of the Parent Carer Panel are there, broken down by sex?\",\"groupHint\":\"For each sex, give a figure as of 31 March 2026.\",\"sumGroup\":\"sex\",\"maxSumField\":\"SPCP07\",\"min\":0}");
+        field8.SetConfiguration("{\"suffix\":\"parents/carers\",\"width\":\"5\",\"group\":\"SPCP08a\",\"groupLabel\":\"How many members of the Parent Carer Panel are there, broken down by sex?\",\"groupHint\":\"For each sex, give a figure as of the end of the relevant quarter.\",\"sumGroup\":\"sex\",\"maxSumField\":\"SPCP07\",\"min\":0}");
 
         var field9 = module.AddField("SPCP08a_male", "Male", FieldType.Number, 9, false, "parents/carers");
         field9.SetSection(section3.Id);
@@ -244,7 +244,7 @@ public static class DataCollectionFormModuleSeeder
         var field13 = module.AddField("SPCP09a_18_24", "18-24", FieldType.Number, 13, false, "parents/carers");
         field13.SetSection(section3.Id);
         field13.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"SPCP09\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
-        field13.SetConfiguration("{\"suffix\":\"parents/carers\",\"width\":\"5\",\"group\":\"SPCP09a\",\"groupLabel\":\"How many members of the Parent Carer Panel are there, broken down by age?\",\"groupHint\":\"For each age group, give a figure as of 31 March 2026.\",\"sumGroup\":\"age\",\"maxSumField\":\"SPCP07\",\"min\":0}");
+        field13.SetConfiguration("{\"suffix\":\"parents/carers\",\"width\":\"5\",\"group\":\"SPCP09a\",\"groupLabel\":\"How many members of the Parent Carer Panel are there, broken down by age?\",\"groupHint\":\"For each age group, give a figure as of the end of the relevant quarter.\",\"sumGroup\":\"age\",\"maxSumField\":\"SPCP07\",\"min\":0}");
 
         var field14 = module.AddField("SPCP09a_25_34", "25-34", FieldType.Number, 14, false, "parents/carers");
         field14.SetSection(section3.Id);
@@ -280,7 +280,7 @@ public static class DataCollectionFormModuleSeeder
         var field20 = module.AddField("SPCP010a_white", "White/White British", FieldType.Number, 20, false, "parents/carers");
         field20.SetSection(section3.Id);
         field20.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"SPCP010\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
-        field20.SetConfiguration("{\"suffix\":\"parents/carers\",\"width\":\"5\",\"group\":\"SPCP010a\",\"groupLabel\":\"How many members of the Parent Carer Panel are there, broken down by ethnicity?\",\"groupHint\":\"For each ethnicity, give a figure as of 31 March 2026.\",\"sumGroup\":\"ethnicity\",\"maxSumField\":\"SPCP07\",\"min\":0}");
+        field20.SetConfiguration("{\"suffix\":\"parents/carers\",\"width\":\"5\",\"group\":\"SPCP010a\",\"groupLabel\":\"How many members of the Parent Carer Panel are there, broken down by ethnicity?\",\"groupHint\":\"For each ethnicity, give a figure as of the end of the relevant quarter.\",\"sumGroup\":\"ethnicity\",\"maxSumField\":\"SPCP07\",\"min\":0}");
 
         var field21 = module.AddField("SPCP010a_mixed", "Mixed/Multiple ethnic groups", FieldType.Number, 21, false, "parents/carers");
         field21.SetSection(section3.Id);
@@ -322,7 +322,7 @@ public static class DataCollectionFormModuleSeeder
             DataCollectionFormModuleCodes.ServiceUsers,
             2,
             "Service users",
-            "Tell us about the users who accessed the service over the past 3 months. This information will be included in your quarterly Management Information data collection.",
+            "Tell us about the users who accessed the service in the relevant quarter. This information will be included in your quarterly Management Information data collection.",
             lastChangedOn,
             type: DataCollectionType.ManagementInformation);
 
@@ -348,13 +348,13 @@ public static class DataCollectionFormModuleSeeder
 
         // ========== STEP 2: User numbers (Section 2) ==========
         // QSU03: Overall user count
-        var qsu03 = module.AddField("QSU03", "Overall, how many service users have used this service?", FieldType.Number, 3, true, "users", "Give a figure for the last 3 months, from 1 October to 31 December 2026. This includes service users across all delivery methods.");
+        var qsu03 = module.AddField("QSU03", "Overall, how many service users have used this service?", FieldType.Number, 3, true, "users", "Give a figure for the relevant quarter. This includes service users across all delivery methods.");
         qsu03.SetSection(section2.Id);
         qsu03.SetConditionalRules("{\"showWhen\":{\"allOf\":[{\"fieldKey\":\"QSU01\",\"equals\":\"yes\"},{\"fieldKey\":\"QSU02\",\"equals\":\"yes\"}]}}");
         qsu03.SetConfiguration("{\"suffix\":\"users\",\"width\":\"5\"}");
 
         // QSU04: Virtual users
-        var qsu04 = module.AddField("QSU04", "How many service users have used this service virtually?", FieldType.Number, 4, false, "users", "Give a figure for the last 3 months, from 1 October to 31 December 2026. This includes virtual co-ordinator led group sessions and virtual 1:1 sessions, but excludes any self-directed online access (website visits) or app downloads.");
+        var qsu04 = module.AddField("QSU04", "How many service users have used this service virtually?", FieldType.Number, 4, false, "users", "Give a figure for the relevant quarter. This includes virtual co-ordinator led group sessions and virtual 1:1 sessions, but excludes any self-directed online access (website visits) or app downloads.");
         qsu04.SetSection(section2.Id);
         qsu04.SetConditionalRules("{\"showWhen\":{\"allOf\":[{\"fieldKey\":\"QSU01\",\"equals\":\"yes\"},{\"fieldKey\":\"QSU02\",\"equals\":\"yes\"}]}}");
         qsu04.SetConfiguration("{\"suffix\":\"users\",\"width\":\"5\",\"maxSumField\":\"QSU03\",\"min\":0}");
@@ -393,7 +393,7 @@ public static class DataCollectionFormModuleSeeder
         var qsu08_white = module.AddField("QSU08_white", "White/White British", FieldType.Number, 8, false, "parents/carers");
         qsu08_white.SetSection(section3.Id);
         qsu08_white.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"QSU07\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
-        qsu08_white.SetConfiguration("{\"group\":\"QSU08\",\"groupLabel\":\"How many parents or carers have used this service, broken down by ethnicity?\",\"groupHint\":\"For each ethnic group, give a figure for the last 3 months, from 1 October to 31 December 2026.\",\"suffix\":\"parents/carers\",\"width\":\"5\",\"sumGroup\":\"ethnicity\",\"maxSumField\":\"QSU03\",\"min\":0}");
+        qsu08_white.SetConfiguration("{\"group\":\"QSU08\",\"groupLabel\":\"How many parents or carers have used this service, broken down by ethnicity?\",\"groupHint\":\"For each ethnic group, give a figure for the relevant quarter.\",\"suffix\":\"parents/carers\",\"width\":\"5\",\"sumGroup\":\"ethnicity\",\"maxSumField\":\"QSU03\",\"min\":0}");
 
         var qsu08_mixed = module.AddField("QSU08_mixed", "Mixed/Multiple ethnic groups", FieldType.Number, 9, false, "parents/carers");
         qsu08_mixed.SetSection(section3.Id);
@@ -431,7 +431,7 @@ public static class DataCollectionFormModuleSeeder
         var qsu10_decile1 = module.AddField("QSU10_decile1", "IMD Decile 1", FieldType.Number, 15, false, "parents/carers");
         qsu10_decile1.SetSection(section3.Id);
         qsu10_decile1.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"QSU09\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
-        qsu10_decile1.SetConfiguration("{\"group\":\"QSU10\",\"groupLabel\":\"How many parents or carers have used this service, broken down by IMD?\",\"groupHint\":\"For each IMD decile, give a figure for the last 3 months, from 1 October to 31 December 2026.\",\"suffix\":\"parents/carers\",\"width\":\"5\",\"sumGroup\":\"imd\",\"maxSumField\":\"QSU03\",\"min\":0}");
+        qsu10_decile1.SetConfiguration("{\"group\":\"QSU10\",\"groupLabel\":\"How many parents or carers have used this service, broken down by IMD?\",\"groupHint\":\"For each IMD decile, give a figure for the relevant quarter.\",\"suffix\":\"parents/carers\",\"width\":\"5\",\"sumGroup\":\"imd\",\"maxSumField\":\"QSU03\",\"min\":0}");
 
         var qsu10_decile2 = module.AddField("QSU10_decile2", "IMD Decile 2", FieldType.Number, 16, false, "parents/carers");
         qsu10_decile2.SetSection(section3.Id);
@@ -489,7 +489,7 @@ public static class DataCollectionFormModuleSeeder
         var qsu12_female = module.AddField("QSU12_female", "Female", FieldType.Number, 26, false, "parents/carers");
         qsu12_female.SetSection(section3.Id);
         qsu12_female.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"QSU11\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
-        qsu12_female.SetConfiguration("{\"group\":\"QSU12\",\"groupLabel\":\"How many parents or carers have used this service, broken down by sex?\",\"groupHint\":\"For each sex, give a figure for the last 3 months, from 1 October to 31 December 2026.\",\"suffix\":\"parents/carers\",\"width\":\"5\",\"sumGroup\":\"sex\",\"maxSumField\":\"QSU03\",\"min\":0}");
+        qsu12_female.SetConfiguration("{\"group\":\"QSU12\",\"groupLabel\":\"How many parents or carers have used this service, broken down by sex?\",\"groupHint\":\"For each sex, give a figure for the relevant quarter.\",\"suffix\":\"parents/carers\",\"width\":\"5\",\"sumGroup\":\"sex\",\"maxSumField\":\"QSU03\",\"min\":0}");
 
         var qsu12_male = module.AddField("QSU12_male", "Male", FieldType.Number, 27, false, "parents/carers");
         qsu12_male.SetSection(section3.Id);
@@ -518,7 +518,7 @@ public static class DataCollectionFormModuleSeeder
         var qsu13b_0_2 = module.AddField("QSU13B_0_2", "0-2", FieldType.Number, 31, false, "parents/carers");
         qsu13b_0_2.SetSection(section3.Id);
         qsu13b_0_2.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"QSU13A\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
-        qsu13b_0_2.SetConfiguration("{\"group\":\"QSU13B\",\"groupLabel\":\"How many parents or carers have used this service, broken down by age?\",\"groupHint\":\"For each age group, give a figure for the last 3 months, from 1 October to 31 December 2026.\",\"suffix\":\"parents/carers\",\"width\":\"5\",\"sumGroup\":\"age\",\"maxSumField\":\"QSU03\",\"min\":0}");
+        qsu13b_0_2.SetConfiguration("{\"group\":\"QSU13B\",\"groupLabel\":\"How many parents or carers have used this service, broken down by age?\",\"groupHint\":\"For each age group, give a figure for the relevant quarter.\",\"suffix\":\"parents/carers\",\"width\":\"5\",\"sumGroup\":\"age\",\"maxSumField\":\"QSU03\",\"min\":0}");
 
         var qsu13b_3_4 = module.AddField("QSU13B_3_4", "3-4", FieldType.Number, 32, false, "parents/carers");
         qsu13b_3_4.SetSection(section3.Id);
@@ -561,7 +561,7 @@ public static class DataCollectionFormModuleSeeder
         qsu13.SetConditionalRules("{\"showWhen\":{\"allOf\":[{\"fieldKey\":\"QSU01\",\"equals\":\"yes\"},{\"serviceFieldKey\":\"SMD02\",\"in\":[\"0\",\"1\"]}]}}");
 
         // QSU14: Number of users with outcome scores
-        var qsu14 = module.AddField("QSU14", "How many of all service users completed a pre- and post-outcome score for at least one service they accessed during the quarter?", FieldType.Number, 39, false, "users", "Give a figure for the last 3 months, from 1 October to 31 December 2026.");
+        var qsu14 = module.AddField("QSU14", "How many of all service users completed a pre- and post-outcome score for at least one service they accessed during the quarter?", FieldType.Number, 39, false, "users", "Give a figure for the relevant quarter.");
         qsu14.SetSection(section3.Id);
         qsu14.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"QSU13\",\"equals\":\"yes\"},\"requiredWhen\":{\"fieldKey\":\"QSU13\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
         qsu14.SetConfiguration("{\"suffix\":\"users\",\"width\":\"5\",\"maxSumField\":\"QSU03\",\"min\":0}");
@@ -577,7 +577,7 @@ public static class DataCollectionFormModuleSeeder
         qsu15.SetConditionalRules("{\"showWhen\":{\"allOf\":[{\"fieldKey\":\"QSU01\",\"equals\":\"yes\"},{\"serviceFieldKey\":\"SMD02\",\"in\":[\"0\",\"1\"]},{\"serviceFieldKey\":\"SMD09\",\"in\":[\"1\",\"2\"]}]}}");
 
         // QSU16: Average waiting time
-        var qsu16 = module.AddField("QSU16", "What is the average waiting time for service users from referral to receiving their first appointment or session?", FieldType.Number, 41, false, "days", "Give the average for the last 3 months, from 1 October to 31 December 2026, in number of days.");
+        var qsu16 = module.AddField("QSU16", "What is the average waiting time for service users from referral to receiving their first appointment or session?", FieldType.Number, 41, false, "days", "Give the average for the relevant quarter, in number of days.");
         qsu16.SetSection(section3.Id);
         qsu16.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"QSU15\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
         qsu16.SetConfiguration("{\"suffix\":\"days\",\"width\":\"5\"}");
@@ -598,7 +598,7 @@ public static class DataCollectionFormModuleSeeder
             DataCollectionFormModuleCodes.WiderServiceUsers,
             3,
             "Wider service users",
-            "Tell us about the users who accessed the wider services in this category over the past 3 months. This information will be included in your quarterly Management Information data collection.",
+            "Tell us about the users who accessed the wider services in this category in the relevant quarter. This information will be included in your quarterly Management Information data collection.",
             lastChangedOn,
             type: DataCollectionType.ManagementInformation);
 
@@ -611,7 +611,7 @@ public static class DataCollectionFormModuleSeeder
             1,
             true,
             null,
-            "Give a figure for the last 3 months, from {startDate} to {endDate}.");
+            "Give a figure for the relevant quarter.");
         field1.SetSection(section1.Id);
 
         if (systemUserId != UserId.Empty())
@@ -629,24 +629,24 @@ public static class DataCollectionFormModuleSeeder
             DataCollectionFormModuleCodes.OutcomeScores,
             4,
             "Outcome scores",
-            "Tell us about outcome scores for your service users. If services delivered by your local authority, or arranged on its behalf through the Best Start Family Hubs and Start for Life programme, collect scores before and after an intervention, provide these outcome scores for service users in the past 3 months.",
+            "Tell us about outcome scores for your service users. If services delivered by your local authority, or arranged on its behalf through the Best Start Family Hubs and Start for Life programme, collect scores before and after an intervention, provide these outcome scores for service users in the relevant quarter.",
             lastChangedOn,
             type: DataCollectionType.ManagementInformation);
 
         // Section 1: Service Selection
-        var section1 = module.AddSection(1, "Service selection", "Tell us about outcome scores for a service user who used one of your services in the past 3 months. This information will be included in your quarterly Management Information data collection.");
+        var section1 = module.AddSection(1, "Service selection", "Tell us about outcome scores for a service user who used one of your services in the relevant quarter. This information will be included in your quarterly Management Information data collection.");
 
         // Section 2: Outcome Measures Selection
-        var section2 = module.AddSection(2, "Outcome measures", "Tell us about outcome scores for a service user who used one of your services in the past 3 months. This information will be included in your quarterly Management Information data collection.");
+        var section2 = module.AddSection(2, "Outcome measures", "Tell us about outcome scores for a service user who used one of your services in the relevant quarter. This information will be included in your quarterly Management Information data collection.");
 
         // Section 3: User Demographics
-        var section3 = module.AddSection(3, "User demographics", "Tell us about outcome scores for a service user who used one of your services in the past 3 months. This information will be included in your quarterly Management Information data collection.");
+        var section3 = module.AddSection(3, "User demographics", "Tell us about outcome scores for a service user who used one of your services in the relevant quarter. This information will be included in your quarterly Management Information data collection.");
 
         // Section 4: Pre and Post Intervention Scores
-        var section4 = module.AddSection(4, "Intervention scores", "Tell us about outcome scores for a service user who used one of your services in the past 3 months. This information will be included in your quarterly Management Information data collection.");
+        var section4 = module.AddSection(4, "Intervention scores", "Tell us about outcome scores for a service user who used one of your services in the relevant quarter. This information will be included in your quarterly Management Information data collection.");
 
         // Section 5: Clarification Comments
-        var section5 = module.AddSection(5, "Clarification comments", "Tell us about outcome scores for a service user who used one of your services in the past 3 months. This information will be included in your quarterly Management Information data collection.");
+        var section5 = module.AddSection(5, "Clarification comments", "Tell us about outcome scores for a service user who used one of your services in the relevant quarter. This information will be included in your quarterly Management Information data collection.");
 
         // PPS01 - Service Selection (Step 1)
         var pps01 = module.AddField("PPS01", "What service does the outcome measure relate to?", FieldType.Select, 1, true, null, null);
@@ -832,33 +832,33 @@ public static class DataCollectionFormModuleSeeder
             DataCollectionFormModuleCodes.BreastfeedingRates,
             5,
             "Breastfeeding rates",
-            "Tell us about breastfeeding rates in your local authority over the past 3 months. This information will be included in your quarterly Management Information data collection.",
+            "Tell us about breastfeeding rates in your local authority in the relevant quarter. This information will be included in your quarterly Management Information data collection.",
             lastChangedOn,
             type: DataCollectionType.ManagementInformation);
 
         // Step 1: Breastfeeding rates data
-        var section1 = module.AddSection(1, "Breastfeeding Rates", "Tell us about breastfeeding rates in your local authority over the past 3 months. This information will be included in your quarterly Management Information data collection.");
+        var section1 = module.AddSection(1, "Breastfeeding Rates", "Tell us about breastfeeding rates in your local authority in the relevant quarter. This information will be included in your quarterly Management Information data collection.");
 
         // BR01 - Do you have data on average breastfeeding rates at initiation
-        var br01 = module.AddField("BR01", "Do you have data on average breastfeeding rates at initiation over the last quarter?", FieldType.Radio, 1, true, null, null);
+        var br01 = module.AddField("BR01", "Do you have data on average breastfeeding rates at initiation over the relevant quarter?", FieldType.Radio, 1, true, null, null);
         br01.SetSection(section1.Id);
         br01.AddOption("yes", "Yes", 1);
         br01.AddOption("no", "No", 2);
 
         // BR01a - Conditional number field (inline under Yes option)
-        var br01a = module.AddField("BR01a", "What were the average breastfeeding rates at initiation over the last quarter?", FieldType.Number, 2, false, null, "Give an overall figure for your local authority for the last 3 months, from 1 January to 31 March 2026. Enter a whole number between 0 and 100 without a percentage sign.");
+        var br01a = module.AddField("BR01a", "What were the average breastfeeding rates at initiation over the relevant quarter?", FieldType.Number, 2, false, null, "Give an overall figure for your local authority for the relevant quarter. Enter a whole number between 0 and 100 without a percentage sign.");
         br01a.SetSection(section1.Id);
         br01a.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"BR01\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
         br01a.SetConfiguration("{\"suffix\":\"%\",\"width\":\"3\",\"min\":0,\"max\":100}");
 
         // BR02 - Do you have data on average breastfeeding rates at 6-8 weeks
-        var br02 = module.AddField("BR02", "Do you have data on average breastfeeding rates at 6-8 weeks over the last quarter?", FieldType.Radio, 3, true, null, null);
+        var br02 = module.AddField("BR02", "Do you have data on average breastfeeding rates at 6-8 weeks over the relevant quarter?", FieldType.Radio, 3, true, null, null);
         br02.SetSection(section1.Id);
         br02.AddOption("yes", "Yes", 1);
         br02.AddOption("no", "No", 2);
 
         // BR02a - Conditional number field (inline under Yes option)
-        var br02a = module.AddField("BR02a", "What were the average breastfeeding rates at 6-8 weeks over the last quarter?", FieldType.Number, 4, false, null, "Give an overall figure for your local authority for the last 3 months, from 1 January to 31 March 2026. Enter a whole number between 0 and 100 without a percentage sign.");
+        var br02a = module.AddField("BR02a", "What were the average breastfeeding rates at 6-8 weeks over the relevant quarter?", FieldType.Number, 4, false, null, "Give an overall figure for your local authority for the relevant quarter. Enter a whole number between 0 and 100 without a percentage sign.");
         br02a.SetSection(section1.Id);
         br02a.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"BR02\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
         br02a.SetConfiguration("{\"suffix\":\"%\",\"width\":\"3\",\"min\":0,\"max\":100}");

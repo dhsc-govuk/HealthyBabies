@@ -2,16 +2,21 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from 'react-query';
 import { GeneralLayout } from '../../../../layouts';
-import { LoadingSpinner, GovUKButton, SummaryList, FormFieldRenderer } from '../../../../components/GovUKComponents';
+import { LoadingSpinner, GovUKButton, SummaryList, FormFieldRenderer, GovUKErrorSummary } from '../../../../components/GovUKComponents';
 import useErrorSummaryFocus from '../../../../hooks/useErrorSummaryFocus';
 import useFormTelemetry from '../../../../hooks/useFormTelemetry';
 import { getServiceForm, saveServiceForm, FormModuleFieldDto, FieldConfiguration } from '../queries';
 import { ValidationError } from '../validationUtils';
+import { resolveSnapshotLabel } from '../../../../helpers/answerSnapshot';
 import { encodeNullableForWaf } from '../../../../helpers/stringUtils';
 import { evaluateNumericOperators } from '../../../../helpers/conditionalOperators';
+import { groupFieldsForSummary, isInlineSubAnswer, sortFieldsForDisplay } from '../../../../helpers/formFieldOrdering';
 import { processError } from '../../../../helpers/axiosErrorFallback';
 import './styles.css';
 import usePageTitle from '../../../../hooks/usePageTitle';
+import useStepFocus from '../../../../hooks/useStepFocus';
+import focusErrorTarget from '../../../../helpers/focusErrorTarget';
+import { ROUTES } from '../../../../constants/routes';
 
 type ViewMode = 'form' | 'summary';
 
@@ -68,6 +73,7 @@ const ServiceForm = (): React.ReactElement => {
   const [submitAttempts, setSubmitAttempts] = useState(0);
   const [saveError, setSaveError] = useState<string | undefined>(undefined);
   usePageTitle('Provide service user data', Object.keys(fieldErrors).length > 0 || groupErrors.length > 0);
+  const stepFocusRef = useStepFocus<HTMLDivElement>(`${viewMode}-${currentStep}`);
   useErrorSummaryFocus(submitAttempts, Object.keys(fieldErrors).length > 0 || groupErrors.length > 0);
 
   const { data: formData, isLoading } = useQuery({
@@ -113,7 +119,7 @@ const ServiceForm = (): React.ReactElement => {
       queryClient.invalidateQueries(['service-users-module', submissionId, moduleId]);
       queryClient.invalidateQueries(['service-form', submissionId, moduleId, serviceId]);
       queryClient.invalidateQueries(['organisation-admin-submission', submissionId]);
-      navigate(`/organisation-admin/submissions/${submissionId}/modules/${moduleId}/services`, {
+      navigate(ROUTES.organisationAdmin.submissions.serviceUsers.list(submissionId, moduleId), {
         state: { savedServiceName: serviceForm?.serviceName },
       });
     },
@@ -121,6 +127,17 @@ const ServiceForm = (): React.ReactElement => {
       processError(error, setSaveError);
     },
   });
+
+  // BLUM-7520: reset() unmounts the save-error summary, which both clears a stale error before a
+  // fresh attempt and lets GovUKErrorSummary re-run its mount focus effect on a repeat failure.
+  // Skipped while a save is in flight: reset() drops currentMutation without detaching the
+  // observer, so that save would later set saveError while isError stayed false — the failure
+  // would be swallowed with no summary shown. Nothing to clear mid-flight anyway.
+  const clearSaveError = () => {
+    if (saveMutation.isLoading) return;
+    saveMutation.reset();
+    setSaveError(undefined);
+  };
 
   const serviceForm = formData?.data;
 
@@ -302,7 +319,7 @@ const ServiceForm = (): React.ReactElement => {
 
   const currentFields = useMemo(() => {
     if (!serviceForm) return [];
-    const fields = [...serviceForm.fields].sort((a, b) => a.displayOrder - b.displayOrder);
+    const fields = sortFieldsForDisplay(serviceForm.fields);
 
     if (sections.length === 0) return fields;
     if (!currentSection) return [];
@@ -384,6 +401,10 @@ const ServiceForm = (): React.ReactElement => {
   };
 
   const handleContinue = () => {
+    // Clear any previous save failure first — the summary now sits above the field-error summary,
+    // so leaving a stale one there would steal the focus that belongs to the validation errors
+    // raised just below (focusErrorSummary takes the first match).
+    clearSaveError();
     // Validate before continuing
     if (!validateCurrentStep()) {
       setSubmitAttempts((n) => n + 1);
@@ -422,6 +443,9 @@ const ServiceForm = (): React.ReactElement => {
   };
 
   const handleBack = () => {
+    // Leaving the step that failed — drop the summary, otherwise it renders at the top of the
+    // next step claiming a save failed there.
+    clearSaveError();
     if (viewMode === 'summary') {
       setViewMode('form');
       // If service not delivered, go back to step 1
@@ -447,11 +471,12 @@ const ServiceForm = (): React.ReactElement => {
       window.scrollTo(0, 0);
     } else {
       trackAbandoned();
-      navigate(`/organisation-admin/submissions/${submissionId}/modules/${moduleId}/services`);
+      navigate(ROUTES.organisationAdmin.submissions.serviceUsers.list(submissionId, moduleId));
     }
   };
 
   const handleSaveAsDraft = () => {
+    clearSaveError();
     if (!validateCurrentStep()) {
       setSubmitAttempts((n) => n + 1);
       return;
@@ -460,11 +485,13 @@ const ServiceForm = (): React.ReactElement => {
   };
 
   const handleConfirmAndSave = () => {
+    clearSaveError();
     trackSubmitAttempted();
     saveMutation.mutate(true);
   };
 
   const handleChangeAnswer = (stepNumber: number) => {
+    clearSaveError();
     setCurrentStep(stepNumber);
     setViewMode('form');
     window.scrollTo(0, 0);
@@ -535,14 +562,12 @@ const ServiceForm = (): React.ReactElement => {
       <GeneralLayout>
         <h1 className="govuk-heading-l">Service not found</h1>
         <p className="govuk-body">The service you are looking for does not exist.</p>
-        <GovUKButton onClick={() => navigate(`/organisation-admin/submissions/${submissionId}/modules/${moduleId}/services`)}>Back to services</GovUKButton>
+        <GovUKButton onClick={() => navigate(ROUTES.organisationAdmin.submissions.serviceUsers.list(submissionId, moduleId))}>Back to services</GovUKButton>
       </GeneralLayout>
     );
   }
 
   if (viewMode === 'summary') {
-    const allFields = [...serviceForm.fields].sort((a, b) => a.displayOrder - b.displayOrder);
-
     const hasFieldValue = (field: FormModuleFieldDto): boolean => {
       const value = fieldValues[field.code];
       if (value === null || value === undefined) return false;
@@ -550,20 +575,40 @@ const ServiceForm = (): React.ReactElement => {
       return value !== '';
     };
 
-    const isSubAnswerField = (field: FormModuleFieldDto): boolean => {
-      const rules = parseConditionalRules(field.conditionalRules);
-      const config = field.configuration ? JSON.parse(field.configuration) : null;
-      // A field is a sub-answer only if it has displayInline:true or is part of a group
-      return !!config?.group || !!rules?.displayInline;
-    };
-
-    const fieldsWithValues = allFields.filter((field) => hasFieldValue(field) && isFieldVisible(field));
-
     // Replace placeholders in field labels for summary display
     const processFieldLabel = (label: string) => label.replace(/\{serviceName\}/g, serviceForm.serviceName || '');
 
+    // One 'Change' per question: on the heading for a breakdown, which the wizard asks as a single
+    // fieldset, and on the row itself for a standalone question.
+    const summaryItems = groupFieldsForSummary(serviceForm.fields, (field) => hasFieldValue(field) && isFieldVisible(field)).flatMap((group) => {
+      const changeAction = { onAction: () => handleChangeAnswer(group.fields[0].stepNumber ?? 1), actionLabel: 'Change' };
+
+      return group.groupKey
+        ? [
+            { label: processFieldLabel(group.label), value: '', isGroupHeader: true, ...changeAction },
+            ...group.fields.map((field) => ({
+              label: processFieldLabel(resolveSnapshotLabel(field, fieldValues[field.code])),
+              value: getFieldDisplayValue(field),
+              isSubAnswer: true,
+            })),
+          ]
+        : [
+            {
+              label: processFieldLabel(resolveSnapshotLabel(group.fields[0], fieldValues[group.fields[0].code])),
+              value: getFieldDisplayValue(group.fields[0]),
+              isSubAnswer: isInlineSubAnswer(group.fields[0]),
+              ...changeAction,
+            },
+          ];
+    });
+
     return (
       <GeneralLayout backLink={{ href: '#', onClick: handleBack }}>
+        <div ref={stepFocusRef}>
+        {saveMutation.isError && (
+          <GovUKErrorSummary heading="There was a problem saving" errors={[{ text: saveError ?? 'Please try again or contact support if the problem persists.' }]} />
+        )}
+
         <span className="govuk-caption-l">
           Step {totalSteps} of {totalSteps}
         </span>
@@ -581,17 +626,7 @@ const ServiceForm = (): React.ReactElement => {
           </div>
         )}
 
-        <SummaryList
-          halfWidthColumns
-          noOuterBorder
-          items={fieldsWithValues.map((field) => ({
-            label: processFieldLabel(field.label),
-            value: getFieldDisplayValue(field),
-            onAction: () => handleChangeAnswer(field.stepNumber ?? 1),
-            actionLabel: 'Change',
-            isSubAnswer: isSubAnswerField(field),
-          }))}
-        />
+        <SummaryList halfWidthColumns noOuterBorder items={summaryItems} />
 
         <h2 className="govuk-heading-m">Now save your service users data</h2>
         <p className="govuk-body">
@@ -602,21 +637,18 @@ const ServiceForm = (): React.ReactElement => {
         <GovUKButton onClick={handleConfirmAndSave} isLoading={saveMutation.isLoading}>
           Confirm and save
         </GovUKButton>
-
-        {saveMutation.isError && (
-          <div className="govuk-error-summary" data-module="govuk-error-summary">
-            <h2 className="govuk-error-summary__title">There was a problem saving</h2>
-            <div className="govuk-error-summary__body">
-              <p>{saveError ?? 'Please try again or contact support if the problem persists.'}</p>
-            </div>
-          </div>
-        )}
+        </div>
       </GeneralLayout>
     );
   }
 
   return (
     <GeneralLayout backLink={{ href: '#', onClick: handleBack }}>
+      <div ref={stepFocusRef}>
+      {saveMutation.isError && Object.keys(fieldErrors).length === 0 && groupErrors.length === 0 && (
+        <GovUKErrorSummary heading="There was a problem saving" errors={[{ text: saveError ?? 'Please try again or contact support if the problem persists.' }]} />
+      )}
+
       <div className="service-form__content">
         <span className="govuk-caption-l">
           Step {currentStep} of {totalSteps}
@@ -624,7 +656,7 @@ const ServiceForm = (): React.ReactElement => {
         <h1 className="govuk-heading-l">Provide service user data for '{serviceForm.serviceName}'</h1>
 
         <p className="govuk-body">
-          Tell us about the users who accessed the service over the past 3 months. This information will be included in your quarterly Management Information data collection.
+          Tell us about the users who accessed the service in the relevant quarter. This information will be included in your quarterly Management Information data collection.
         </p>
       </div>
 
@@ -644,7 +676,7 @@ const ServiceForm = (): React.ReactElement => {
                   const summaryMessage = field ? `${field.label} – ${message}` : message;
                   return (
                     <li key={fieldCode}>
-                      <a href={`#${fieldCode}`}>{summaryMessage}</a>
+                      <a href={`#${fieldCode}`} onClick={(e) => focusErrorTarget(e, fieldCode)}>{summaryMessage}</a>
                     </li>
                   );
                 })}
@@ -715,15 +747,7 @@ const ServiceForm = (): React.ReactElement => {
             Save as draft and exit
           </button>
         </div>
-
-        {saveMutation.isError && (
-          <div className="govuk-error-summary" data-module="govuk-error-summary">
-            <h2 className="govuk-error-summary__title">There was a problem saving</h2>
-            <div className="govuk-error-summary__body">
-              <p>{saveError ?? 'Please try again or contact support if the problem persists.'}</p>
-            </div>
-          </div>
-        )}
+      </div>
       </div>
     </GeneralLayout>
   );

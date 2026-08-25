@@ -2,6 +2,8 @@ import React, { useEffect, useRef } from 'react';
 import { Details } from 'govuk-react';
 import GovUKButton from '../GovUKButton';
 import GovUKBackLink from '../GovUKBackLink';
+import usePageTitle from '../../../hooks/usePageTitle';
+import useStepFocus from '../../../hooks/useStepFocus';
 
 interface StepperStep {
   label: string;
@@ -23,6 +25,10 @@ interface GovUKStepperProps {
   onSaveAsDraft?: () => void;
   showSaveAsDraft?: boolean;
   onCancel?: () => void;
+  /** When provided, manages the document page title with step position (e.g. "Add a service - Step 1 of 3: Details"). */
+  pageTitle?: string;
+  /** Pass true when the current step has validation errors so the "Error: " prefix is applied. */
+  pageHasErrors?: boolean;
 }
 
 const GovUKStepper = ({
@@ -40,14 +46,29 @@ const GovUKStepper = ({
   onSaveAsDraft,
   showSaveAsDraft = true,
   onCancel,
+  pageTitle,
+  pageHasErrors = false,
 }: GovUKStepperProps): React.ReactElement => {
   const isLastStep = step === stepperSteps.length - 1;
-  const stepCaptionRef = useRef<HTMLParagraphElement>(null);
+  const headingRef = useRef<HTMLDivElement>(null);
+  // Focus lands on the first interactive element of the new step's content (WCAG 2.4.3);
+  // the aria-live page announcer reads the new "Step X of Y" title for orientation.
+  const stepContentRef = useStepFocus<HTMLDivElement>(step);
 
+  const stepLabel = pageTitle
+    ? `Step ${step + 1} of ${stepperSteps.length}: ${stepperSteps[step]?.label ?? ''}`
+    : undefined;
+  usePageTitle(pageTitle, pageHasErrors, stepLabel);
+
+  // Disabling the Continue button while it holds focus makes the browser drop focus to
+  // document.body, which restarts NVDA from the top of the page. Catch that and park focus
+  // on the step heading instead.
   useEffect(() => {
-    window.scrollTo(0, 0);
-    stepCaptionRef.current?.focus({ preventScroll: true });
-  }, [step]);
+    if (!isNextDisabled) return;
+    if (document.activeElement === document.body || document.activeElement === null) {
+      headingRef.current?.focus({ preventScroll: true });
+    }
+  }, [isNextDisabled]);
 
   const handleNext = () => {
     if (validate && validate(step)) {
@@ -72,8 +93,8 @@ const GovUKStepper = ({
         onCancel && <GovUKBackLink onClick={onCancel}>Back</GovUKBackLink>
       )}
 
-      <div>
-        <p ref={stepCaptionRef} tabIndex={-1} className="govuk-caption-l" style={{ outline: 'none' }}>
+      <div ref={headingRef} tabIndex={-1} style={{ outline: 'none' }}>
+        <p className="govuk-caption-l">
           Step {step + 1} of {stepperSteps.length}
         </p>
         {title && <h1 className="govuk-heading-l">{title}</h1>}
@@ -81,7 +102,7 @@ const GovUKStepper = ({
         {helpSummary && helpContent && <Details summary={helpSummary}>{helpContent}</Details>}
       </div>
 
-      <div>{stepperSteps[step].component}</div>
+      <div ref={stepContentRef}>{stepperSteps[step].component}</div>
 
       <div className="govuk-button-group govuk-!-margin-top-6">
         <GovUKButton className="govuk-button" disabled={isNextDisabled} onClick={handleNext}>

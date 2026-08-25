@@ -1,8 +1,10 @@
+using System.Text.Json;
 using Domain.DataCollections;
 using Domain.Organisations;
 using Domain.Users;
 using Infrastructure.Persistence.Converters;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Infrastructure.Persistence.Configurations;
@@ -55,6 +57,17 @@ public class DataCollectionSubmissionsConfiguration : IEntityTypeConfiguration<D
             .HasConstraintName("fk_data_collection_submissions_users_reviewed_by")
             .OnDelete(DeleteBehavior.SetNull);
         builder.Property(x => x.ReviewNotes).HasColumnType("varchar(2000)");
+
+        var sectionsToReviewComparer = new ValueComparer<IReadOnlyList<Guid>>(
+            (a, b) => (a ?? new List<Guid>()).SequenceEqual(b ?? new List<Guid>()),
+            v => v.Aggregate(0, (hash, x) => HashCode.Combine(hash, x)),
+            v => v.ToList());
+        builder.Property(x => x.SectionsToReview)
+            .HasConversion(
+                v => JsonSerializer.Serialize(v, (JsonSerializerOptions?)null),
+                v => JsonSerializer.Deserialize<List<Guid>>(v, (JsonSerializerOptions?)null) ?? new List<Guid>())
+            .HasColumnType("jsonb")
+            .Metadata.SetValueComparer(sectionsToReviewComparer);
 
         builder.Property(x => x.CreatedAt)
             .HasConversion(new DateTimeUtcConverter())

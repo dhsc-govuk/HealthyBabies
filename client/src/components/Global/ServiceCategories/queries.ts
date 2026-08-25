@@ -5,6 +5,7 @@ import {
   ServiceCategoryFormQuestionDto,
   WiderServiceCategoryLookup,
 } from './types';
+import { API_ROUTES } from '../../../constants/apiRoutes';
 
 export const serviceCategoriesCacheKey = () => ['service-categories'];
 export const serviceCategoryCacheKey = (id: string) => ['service-categories', id];
@@ -12,24 +13,24 @@ export const serviceCategoryFormQuestionsCacheKey = () => ['service-category-for
 export const widerServiceCategoriesLookupCacheKey = () => ['wider-service-categories-lookup'];
 
 export const getServiceCategories = () =>
-  axios.get<ServiceCategoryListDto[]>('service-categories');
+  axios.get<ServiceCategoryListDto[]>(API_ROUTES.serviceCategories.list);
 
 export const getServiceCategory = (id: string) =>
-  axios.get<ServiceCategoryDto>(`service-categories/${id}`);
+  axios.get<ServiceCategoryDto>(API_ROUTES.serviceCategories.byId(id));
 
 export const getServiceCategoryFormQuestions = () =>
-  axios.get<ServiceCategoryFormQuestionDto[]>('service-category-form-questions');
+  axios.get<ServiceCategoryFormQuestionDto[]>(API_ROUTES.serviceCategoryFormQuestions.list);
 
 export const getServiceCategoryFormQuestionsByStep = (step: number) =>
-  axios.get<ServiceCategoryFormQuestionDto[]>(`service-category-form-questions/step/${step}`);
+  axios.get<ServiceCategoryFormQuestionDto[]>(API_ROUTES.serviceCategoryFormQuestions.step(step));
 
 export const getWiderServiceCategoriesLookup = () =>
-  axios.get<WiderServiceCategoryLookup[]>('global-data/entity/WIDER_SERVICE_CATEGORIES');
+  axios.get<WiderServiceCategoryLookup[]>(API_ROUTES.globalData.entity('WIDER_SERVICE_CATEGORIES'));
 
 export type TemplateFormat = 'csv' | 'xlsx';
 
 export const downloadServiceCategoriesTemplate = (format: TemplateFormat = 'csv') =>
-  axios.get('/service-categories/bulk-upload/template', {
+  axios.get(API_ROUTES.serviceCategories.bulkUploadTemplate, {
     params: { format },
     responseType: 'blob',
   });

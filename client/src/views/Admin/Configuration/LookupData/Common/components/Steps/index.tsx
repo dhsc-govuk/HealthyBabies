@@ -63,6 +63,8 @@ const LookupDataSteps = ({ title, completeLabel, lookupData, dispatch, handleSav
       isNextDisabled={hasErrors}
       onCancel={onCancel}
       title={title}
+      pageTitle={title}
+      pageHasErrors={hasErrors}
     />
   );
 };

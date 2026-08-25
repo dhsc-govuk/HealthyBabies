@@ -24,4 +24,6 @@ public interface IDataCollectionSubmissionRepository
         DataCollectionSubmission entity,
         CancellationToken cancellationToken = default,
         bool saveChanges = true);
+
+    Task<int> SaveChangesAsync(CancellationToken cancellationToken);
 }

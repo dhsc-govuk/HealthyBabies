@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { API_ROUTES } from '../../../../constants/apiRoutes';
 
 export interface LocalAuthorityAssignment {
   id: string;
@@ -33,41 +34,41 @@ export interface DataCollectionResponse {
 }
 
 export const getDataCollections = () =>
-  axios.get<DataCollectionResponse[]>('/admin/data-collections');
+  axios.get<DataCollectionResponse[]>(API_ROUTES.admin.dataCollections.list);
 
 export const getDataCollection = (id: string) =>
-  axios.get<DataCollectionResponse>(`/admin/data-collections/${id}`);
+  axios.get<DataCollectionResponse>(API_ROUTES.admin.dataCollections.byId(id));
 
 export const getDataCollectionWithLocalAuthorities = (id: string) =>
-  axios.get<DataCollectionResponse>(`/admin/data-collections/${id}/local-authorities`);
+  axios.get<DataCollectionResponse>(API_ROUTES.admin.dataCollections.localAuthorities(id));
 
 export const updateDataCollectionLocalAuthorities = (id: string, localAuthorityIds: string[]) =>
-  axios.put<DataCollectionResponse>(`/admin/data-collections/${id}/local-authorities`, {
+  axios.put<DataCollectionResponse>(API_ROUTES.admin.dataCollections.localAuthorities(id), {
     localAuthorityIds,
   });
 
 export const removeLocalAuthorityFromDataCollection = (dataCollectionId: string, localAuthorityId: string) =>
-  axios.delete<DataCollectionResponse>(`/admin/data-collections/${dataCollectionId}/local-authorities/${localAuthorityId}`);
+  axios.delete<DataCollectionResponse>(API_ROUTES.admin.dataCollections.localAuthority(dataCollectionId, localAuthorityId));
 
 export const updateLocalAuthorityEndDate = (dataCollectionId: string, localAuthorityId: string, endDate: string | null) =>
-  axios.patch<DataCollectionResponse>(`/admin/data-collections/${dataCollectionId}/local-authorities/${localAuthorityId}/end-date`, {
+  axios.patch<DataCollectionResponse>(API_ROUTES.admin.dataCollections.localAuthorityEndDate(dataCollectionId, localAuthorityId), {
     endDate,
   });
 
 export const deleteDataCollection = (id: string) =>
-  axios.delete<DataCollectionResponse>(`/admin/data-collections/${id}`);
+  axios.delete<DataCollectionResponse>(API_ROUTES.admin.dataCollections.byId(id));
 
 export const getDataCollectionFull = (id: string) =>
-  axios.get<DataCollectionResponse>(`/admin/data-collections/${id}/full`);
+  axios.get<DataCollectionResponse>(API_ROUTES.admin.dataCollections.full(id));
 
 export const closeDataCollection = (id: string) =>
-  axios.post<DataCollectionResponse>(`/admin/data-collections/${id}/close`);
+  axios.post<DataCollectionResponse>(API_ROUTES.admin.dataCollections.close(id));
 
 export const revertDataCollectionToDraft = (id: string) =>
-  axios.post<DataCollectionResponse>(`/admin/data-collections/${id}/revert-to-draft`);
+  axios.post<DataCollectionResponse>(API_ROUTES.admin.dataCollections.revertToDraft(id));
 
 export const duplicateDataCollection = (id: string, newName?: string) =>
-  axios.post<DataCollectionResponse>(`/admin/data-collections/${id}/duplicate`, {
+  axios.post<DataCollectionResponse>(API_ROUTES.admin.dataCollections.duplicate(id), {
     newName,
   });
 
@@ -79,7 +80,7 @@ export interface FormDefinitionResponse {
 }
 
 export const getAvailableForms = () =>
-  axios.get<FormDefinitionResponse[]>('/admin/forms');
+  axios.get<FormDefinitionResponse[]>(API_ROUTES.admin.forms);
 
 export interface DataCollectionFormModuleResponse {
   id: string;
@@ -93,4 +94,4 @@ export interface DataCollectionFormModuleResponse {
 }
 
 export const getDataCollectionFormModules = () =>
-  axios.get<DataCollectionFormModuleResponse[]>('/admin/data-collections/form-modules');
+  axios.get<DataCollectionFormModuleResponse[]>(API_ROUTES.admin.dataCollections.formModules);

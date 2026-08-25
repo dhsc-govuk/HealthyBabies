@@ -2,6 +2,7 @@ using Application.Common.Interfaces.Queries;
 using Application.Common.Interfaces.Repositories;
 using Application.Common.Permissions;
 using Application.Submissions.Dtos;
+using Application.Submissions.Helpers;
 using Domain.DataCollections;
 using LanguageExt;
 using MediatR;
@@ -70,7 +71,8 @@ public class ProcessBulkUploadCommandHandler(
         var formModule = formModuleOption.Match(fm => fm, () => null!);
         var fields = formModule.Fields
             .Where(f => f.IsActive)
-            .OrderBy(f => f.DisplayOrder)
+            .OrderBy(f => formModule.Sections.FirstOrDefault(s => s.Id == f.FormSectionId)?.SectionNumber ?? 0)
+            .ThenBy(f => f.DisplayOrder)
             .ToList();
 
         var services = await serviceQueries.GetByOrganisationIdAsync(orgId, cancellationToken);
@@ -91,15 +93,10 @@ public class ProcessBulkUploadCommandHandler(
         var headers = rows[0];
         var dataRows = rows.Skip(1).ToList();
 
-        if (dataRows.Count > 0 && BulkUploadCsvHelper.IsLabelRow(dataRows[0], fields))
-        {
-            dataRows = dataRows.Skip(1).ToList();
-        }
-
-        if (dataRows.Count > 0 && BulkUploadCsvHelper.IsRequiredIndicatorsRow(dataRows[0]))
-        {
-            dataRows = dataRows.Skip(1).ToList();
-        }
+        // Detect the preamble against the template's columns, not the full field list above:
+        // validate split the file that way, and the client's row indices follow validate.
+        var preambleRows = BulkUploadCsvHelper.CountPreambleRows(dataRows, BulkUploadTemplateColumns.ForModule(formModule));
+        dataRows = dataRows.Skip(preambleRows).ToList();
 
         var processor = new BulkUploadRowProcessor(formSubmissionRepository);
         return await processor.ProcessAsync(
@@ -111,7 +108,7 @@ public class ProcessBulkUploadCommandHandler(
             dcId,
             headers,
             dataRows,
-            dataStartRowNumber: 2,
+            dataStartRowNumber: preambleRows + 2,
             cancellationToken);
     }
 }

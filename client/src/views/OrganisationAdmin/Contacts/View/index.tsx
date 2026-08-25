@@ -6,6 +6,7 @@ import { GeneralLayout } from '../../../../layouts';
 import { LoadingSpinner, SummaryList, Button } from '../../../../components/GovUKComponents';
 import { getContact } from '../Edit/queries';
 import { defaultStaleTime } from '../../../../helpers/queriesParams';
+import { ROUTES } from '../../../../constants/routes';
 
 type UrlParams = {
   contactId: string;
@@ -25,15 +26,15 @@ const ViewContact = (): React.ReactElement => {
   });
 
   const handleEdit = () => {
-    navigate(`/organisation-admin/contacts/${contactId}/edit`);
+    navigate(ROUTES.organisationAdmin.contacts.edit(contactId));
   };
 
   return (
     <LoadingSpinner loading={isLoading} label="Loading contact">
       <GeneralLayout
         breadcrumbs={[
-          { label: 'Home', link: '/organisation-admin/home' },
-          { label: 'Contacts', link: '/organisation-admin/contacts' },
+          { label: 'Home', link: ROUTES.organisationAdmin.home },
+          { label: 'Contacts', link: ROUTES.organisationAdmin.contacts.list },
         ]}
         currentPage={data?.data.name ?? 'Contact'}>
         {data && (

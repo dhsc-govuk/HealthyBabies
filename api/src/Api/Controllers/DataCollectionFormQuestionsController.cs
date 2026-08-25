@@ -207,7 +207,6 @@ public class DataCollectionFormQuestionsController(
     {
         var command = new CreateFormModuleCommand
         {
-            Code = Utility.HtmlDecodeField(dto.Code),
             Name = Utility.HtmlDecodeField(dto.Name),
             Description = Utility.HtmlDecodeNullableField(dto.Description),
             Type = dto.Type

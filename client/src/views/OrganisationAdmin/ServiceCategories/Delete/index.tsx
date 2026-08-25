@@ -7,6 +7,7 @@ import { Paragraph } from '../../../../components/GovUKComponents';
 import { getServiceCategory, serviceCategoryCacheKey, deleteServiceCategory, serviceCategoriesCacheKey } from '../../../../components/Global/ServiceCategories';
 import { WarningPanel, WarningPanelTitle, WarningPanelBody, WarningPanelActions, WarningPanelLink } from '../../../../styles/govuk-global';
 import usePageTitle from '../../../../hooks/usePageTitle';
+import { ROUTES } from '../../../../constants/routes';
 
 const DeleteServiceCategory = (): React.ReactElement => {
   usePageTitle('Delete wider services category');
@@ -32,7 +33,7 @@ const DeleteServiceCategory = (): React.ReactElement => {
       queryClient.invalidateQueries(serviceCategoriesCacheKey());
       queryClient.invalidateQueries(['organisation-admin-submission']);
       queryClient.invalidateQueries(['wider-service-users-module']);
-      navigate('/organisation-admin/core-data/wider-service-categories', {
+      navigate(ROUTES.organisationAdmin.widerServiceCategories.list, {
         state: {
           notification: {
             type: 'success',
@@ -49,7 +50,7 @@ const DeleteServiceCategory = (): React.ReactElement => {
   };
 
   const handleCancel = () => {
-    navigate(`/organisation-admin/core-data/wider-service-categories/${serviceCategoryId}`);
+    navigate(ROUTES.organisationAdmin.widerServiceCategories.view(serviceCategoryId));
   };
 
   const isLoading = isLoadingCategory || deleteMutation.isLoading;
@@ -68,7 +69,7 @@ const DeleteServiceCategory = (): React.ReactElement => {
     return (
       <GeneralLayout>
         <Paragraph>Service category not found.</Paragraph>
-        <Link to="/organisation-admin/core-data/wider-service-categories" className="govuk-link">
+        <Link to={ROUTES.organisationAdmin.widerServiceCategories.list} className="govuk-link">
           Back to categories
         </Link>
       </GeneralLayout>
@@ -77,7 +78,7 @@ const DeleteServiceCategory = (): React.ReactElement => {
 
   return (
     <LoadingBox loading={isLoading}>
-      <GeneralLayout backLink={{ href: `/organisation-admin/core-data/wider-service-categories/${serviceCategoryId}` }}>
+      <GeneralLayout backLink={{ href: ROUTES.organisationAdmin.widerServiceCategories.view(serviceCategoryId) }}>
         <WarningPanel>
           <WarningPanelTitle>Are you sure you want to delete the wider services category?</WarningPanelTitle>
           <WarningPanelBody>

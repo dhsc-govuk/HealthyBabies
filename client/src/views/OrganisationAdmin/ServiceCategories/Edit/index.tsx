@@ -25,6 +25,7 @@ import {
   mapServiceCategoryToFormState,
   replaceCategoryNamePlaceholder,
 } from '../Common';
+import { ROUTES } from '../../../../constants/routes';
 
 const EditServiceCategory = (): React.ReactElement => {
   const navigate = useNavigate();
@@ -37,7 +38,11 @@ const EditServiceCategory = (): React.ReactElement => {
   const [errors, setErrors] = useState<ValidationErrors>({});
   const [submitAttempts, setSubmitAttempts] = useState(0);
   useErrorSummaryFocus(submitAttempts, Object.values(errors).some(Boolean));
-  usePageTitle('Edit wider services category', Object.values(errors).some(Boolean));
+  const SC_EDIT_STEPS: Record<number, string> = {
+    1: 'Step 1 of 2: Edit details',
+    2: 'Step 2 of 2: Check your answers',
+  };
+  usePageTitle('Edit wider services category', Object.values(errors).some(Boolean), SC_EDIT_STEPS[currentStep]);
   const [isInitialized, setIsInitialized] = useState(false);
 
   const { data: serviceCategoryData, isLoading: isLoadingCategory } = useQuery({
@@ -83,7 +88,7 @@ const EditServiceCategory = (): React.ReactElement => {
       queryClient.invalidateQueries(serviceCategoryCacheKey(serviceCategoryId!));
       queryClient.invalidateQueries(['organisation-admin-submission']);
       queryClient.invalidateQueries(['wider-service-users-module']);
-      navigate('/organisation-admin/core-data/wider-service-categories', {
+      navigate(ROUTES.organisationAdmin.widerServiceCategories.list, {
         state: {
           notification: {
             type: 'success',
@@ -115,7 +120,7 @@ const EditServiceCategory = (): React.ReactElement => {
     if (currentStep === 2) {
       setCurrentStep(1);
     } else {
-      navigate('/organisation-admin/core-data/wider-service-categories');
+      navigate(ROUTES.organisationAdmin.widerServiceCategories.list);
     }
   };
 
@@ -144,7 +149,7 @@ const EditServiceCategory = (): React.ReactElement => {
     return (
       <GeneralLayout>
         <Paragraph>Service category not found.</Paragraph>
-        <Link to="/organisation-admin/core-data/wider-service-categories" className="govuk-link">
+        <Link to={ROUTES.organisationAdmin.widerServiceCategories.list} className="govuk-link">
           Back to categories
         </Link>
       </GeneralLayout>
@@ -178,7 +183,7 @@ const EditServiceCategory = (): React.ReactElement => {
         <GovUKButton onClick={handleContinue} disabled={isLoading}>
           Save and continue
         </GovUKButton>
-        <GovUKButton className="govuk-button govuk-button--secondary" onClick={() => navigate('/organisation-admin/core-data/wider-service-categories')} disabled={isLoading}>
+        <GovUKButton className="govuk-button govuk-button--secondary" onClick={() => navigate(ROUTES.organisationAdmin.widerServiceCategories.list)} disabled={isLoading}>
           Save as draft and exit
         </GovUKButton>
       </div>
@@ -248,7 +253,7 @@ const EditServiceCategory = (): React.ReactElement => {
     <LoadingBox loading={isLoading}>
       <GeneralLayout
         backLink={{
-          href: '/organisation-admin/core-data/wider-service-categories',
+          href: ROUTES.organisationAdmin.widerServiceCategories.list,
           onClick: handleBack,
         }}>
         <div ref={stepFocusRef}>{currentStep === 1 ? renderStepOne() : renderStepTwo()}</div>

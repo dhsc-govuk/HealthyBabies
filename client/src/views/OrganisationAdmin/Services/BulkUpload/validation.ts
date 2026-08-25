@@ -1,9 +1,9 @@
-import { evaluateConditionalRules } from '../../../../helpers/conditionalRules';
 import {
   ServiceFormQuestionDto,
   ServiceFormQuestionOptionDto,
   ServiceFormQuestionType,
 } from '../../../../components/Global/Services';
+import { getEffectiveServiceAnswers, isServiceQuestionVisible } from '../Common';
 import { CellError, RowData, ServiceMatchResult } from './types';
 
 /**
@@ -78,39 +78,19 @@ export const findOptionMatch = (
 };
 
 /**
- * Checks if a conditional question should be visible based on parent value
- * Supports multi-value conditionals (comma-separated) where any match triggers visibility
- */
-const isConditionalQuestionVisible = (
-  question: ServiceFormQuestionDto,
-  allAnswers: Record<string, string>
-): boolean => {
-  if (question.conditionalRules) {
-    return evaluateConditionalRules(question.conditionalRules, allAnswers);
-  }
-  if (!question.conditionalQuestionCode || !question.conditionalValue) {
-    return true;
-  }
-
-  const parentValue = allAnswers[question.conditionalQuestionCode] || '';
-  const conditionalValues = question.conditionalValue.split(',').map((v) => v.trim());
-
-  // For checkbox parent questions, check if any of the selected values match any conditional value
-  const parentSelectedValues = parentValue.split(',').map((v) => v.trim());
-  return conditionalValues.some((cv) => parentSelectedValues.includes(cv));
-};
-
-/**
- * Validates a single cell value against the question rules
+ * Validates a single cell value against the question rules.
+ *
+ * `allAnswers` must already be pruned by getEffectiveServiceAnswers so that a question whose own
+ * parent is hidden is treated as hidden too, rather than being kept alive by a stale parent cell.
  */
 export const validateCell = (
   value: string | undefined,
   question: ServiceFormQuestionDto,
-  allAnswers: Record<string, string>,
+  allAnswers: Record<string, string | undefined>,
   allQuestions?: ServiceFormQuestionDto[]
 ): string | null => {
   // Check if this is a conditional question
-  if (!isConditionalQuestionVisible(question, allAnswers)) {
+  if (!isServiceQuestionVisible(question, allAnswers)) {
     // Conditional not met — silently skip any provided value rather than blocking the row.
     // Users often leave conditional fields filled when they change a parent answer; we should
     // not penalise them for it.
@@ -204,6 +184,10 @@ export const validateRow = (
   // (CSV data may contain labels like "Planned for implementation" but conditionalValue stores values like "1")
   const normalizedAnswers = normalizeRowData(rowData, questions);
 
+  // Drop cells belonging to questions hidden by an ancestor, so a leftover parent value in the CSV
+  // cannot make its child column required (BLUM-7221).
+  const effectiveAnswers = getEffectiveServiceAnswers(questions, normalizedAnswers);
+
   // Check if service name is provided
   const serviceName = rowData['SMD01'];
   if (!serviceName || serviceName.trim() === '') {
@@ -220,7 +204,7 @@ export const validateRow = (
     if (!question.isActive) continue;
 
     const value = rowData[question.code];
-    const error = validateCell(value, question, normalizedAnswers, questions);
+    const error = validateCell(value, question, effectiveAnswers, questions);
 
     if (error) {
       const columnIndex = questions.findIndex((q) => q.code === question.code);

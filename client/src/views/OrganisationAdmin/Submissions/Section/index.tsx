@@ -2,12 +2,12 @@ import React, { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from 'react-query';
 import { GeneralLayout } from '../../../../layouts';
-import { LoadingSpinner, GovUKButton, GovUKFieldset } from '../../../../components/GovUKComponents';
-import useErrorSummaryFocus from '../../../../hooks/useErrorSummaryFocus';
+import { LoadingSpinner, GovUKButton, GovUKFieldset, GovUKErrorSummary } from '../../../../components/GovUKComponents';
 import useFormTelemetry from '../../../../hooks/useFormTelemetry';
 import usePageTitle from '../../../../hooks/usePageTitle';
 import { processError } from '../../../../helpers/axiosErrorFallback';
 import { getSection, getSubmission, saveSection, SectionFieldDto } from '../queries';
+import { ROUTES } from '../../../../constants/routes';
 
 const SectionForm = (): React.ReactElement => {
   const navigate = useNavigate();
@@ -19,7 +19,6 @@ const SectionForm = (): React.ReactElement => {
   }>();
 
   const [fieldValues, setFieldValues] = useState<Record<string, string | null>>({});
-  const [submitAttempts, setSubmitAttempts] = useState(0);
   const [saveError, setSaveError] = useState<string | undefined>(undefined);
 
   const { data: submissionData } = useQuery({
@@ -52,16 +51,26 @@ const SectionForm = (): React.ReactElement => {
       }
       queryClient.invalidateQueries(['organisation-admin-submission', submissionId]);
       queryClient.invalidateQueries(['organisation-admin-section', submissionId, sectionId]);
-      navigate(`/organisation-admin/submissions/${submissionId}/modules/${moduleId}`);
+      navigate(ROUTES.organisationAdmin.submissions.module.view(submissionId, moduleId));
     },
+    // BLUM-7520: the save error now renders as a GovUKErrorSummary above the content, which
+    // focuses itself on mount — the submitAttempts/useErrorSummaryFocus pairing this page used
+    // to drive that (it has no field-level validation) is redundant and has been removed.
     onError: (error) => {
-      setSubmitAttempts((n) => n + 1);
       processError(error, setSaveError);
     },
   });
 
+  // Skipped while a save is in flight: reset() drops currentMutation without detaching the
+  // observer, so that save would later set saveError while isError stayed false — the failure
+  // would be swallowed with no summary shown. Nothing to clear mid-flight anyway.
+  const clearSaveError = () => {
+    if (saveMutation.isLoading) return;
+    saveMutation.reset();
+    setSaveError(undefined);
+  };
+
   usePageTitle('Complete section', saveMutation.isError);
-  useErrorSummaryFocus(submitAttempts, saveMutation.isError);
 
   const { trackStarted, trackSubmitted, trackDraftSaved } = useFormTelemetry(
     'section_form',
@@ -77,10 +86,12 @@ const SectionForm = (): React.ReactElement => {
   };
 
   const handleSaveAndContinue = () => {
+    clearSaveError();
     saveMutation.mutate(true);
   };
 
   const handleSaveAsDraft = () => {
+    clearSaveError();
     saveMutation.mutate(false);
   };
 
@@ -166,7 +177,7 @@ const SectionForm = (): React.ReactElement => {
       <GeneralLayout>
         <h1 className="govuk-heading-l">Section not found</h1>
         <p className="govuk-body">The section you are looking for does not exist.</p>
-        <GovUKButton onClick={() => navigate(`/organisation-admin/submissions/${submissionId}/modules/${moduleId}`)}>Back to module</GovUKButton>
+        <GovUKButton onClick={() => navigate(ROUTES.organisationAdmin.submissions.module.view(submissionId, moduleId))}>Back to module</GovUKButton>
       </GeneralLayout>
     );
   }
@@ -176,23 +187,27 @@ const SectionForm = (): React.ReactElement => {
   return (
     <GeneralLayout
       breadcrumbs={[
-        { label: 'Home', link: '/organisation-admin/home' },
-        { label: 'Submissions', link: '/organisation-admin/submissions' },
+        { label: 'Home', link: ROUTES.organisationAdmin.home },
+        { label: 'Submissions', link: ROUTES.organisationAdmin.submissions.list },
         {
           label: submission?.name ?? 'Submission',
-          link: `/organisation-admin/submissions/${submissionId}`,
+          link: ROUTES.organisationAdmin.submissions.view(submissionId),
         },
         {
           label: formModule?.name ?? 'Module',
-          link: `/organisation-admin/submissions/${submissionId}/modules/${moduleId}`,
+          link: ROUTES.organisationAdmin.submissions.module.view(submissionId, moduleId),
         },
         {
           label: `Section ${section.number}`,
-          link: `/organisation-admin/submissions/${submissionId}/modules/${moduleId}/sections/${sectionId}`,
+          link: ROUTES.organisationAdmin.submissions.module.section(submissionId, moduleId, sectionId),
         },
       ]}
       currentPage=""
-      backLink={{ href: `/organisation-admin/submissions/${submissionId}/modules/${moduleId}` }}>
+      backLink={{ href: ROUTES.organisationAdmin.submissions.module.view(submissionId, moduleId) }}>
+      {saveMutation.isError && (
+        <GovUKErrorSummary heading="There was a problem saving" errors={[{ text: saveError ?? 'Please try again or contact support if the problem persists.' }]} />
+      )}
+
       <h1 className="govuk-heading-l">
         Section {section.number}: {section.title}
       </h1>
@@ -223,15 +238,6 @@ const SectionForm = (): React.ReactElement => {
           Save as draft
         </GovUKButton>
       </div>
-
-      {saveMutation.isError && (
-        <div className="govuk-error-summary" data-module="govuk-error-summary">
-          <h2 className="govuk-error-summary__title">There was a problem saving</h2>
-          <div className="govuk-error-summary__body">
-            <p>{saveError ?? 'Please try again or contact support if the problem persists.'}</p>
-          </div>
-        </div>
-      )}
     </GeneralLayout>
   );
 };

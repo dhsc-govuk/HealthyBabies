@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { ServiceFormQuestion, ServiceFormQuestionOption } from '../Common/types';
+import { API_ROUTES } from '../../../../../constants/apiRoutes';
 
 export interface UpdateServiceFormQuestionRequest {
   id: string;
@@ -21,4 +22,4 @@ export interface UpdateServiceFormQuestionRequest {
   options: ServiceFormQuestionOption[];
 }
 
-export const updateServiceFormQuestion = (data: UpdateServiceFormQuestionRequest) => axios.put<ServiceFormQuestion>(`/service-form-questions/${data.id}`, data);
+export const updateServiceFormQuestion = (data: UpdateServiceFormQuestionRequest) => axios.put<ServiceFormQuestion>(API_ROUTES.serviceFormQuestions.byId(data.id), data);

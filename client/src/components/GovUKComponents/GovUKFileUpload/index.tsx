@@ -72,7 +72,7 @@ const GovUKFileUpload: React.FC<GovUKFileUploadProps> = ({
   );
 
   const handleDrop = useCallback(
-    async (event: React.DragEvent<HTMLDivElement>) => {
+    async (event: React.DragEvent<HTMLButtonElement>) => {
       event.preventDefault();
       event.stopPropagation();
       setIsDragging(false);
@@ -96,13 +96,13 @@ const GovUKFileUpload: React.FC<GovUKFileUploadProps> = ({
     [onChange, runValidation]
   );
 
-  const handleDragOver = useCallback((event: React.DragEvent<HTMLDivElement>) => {
+  const handleDragOver = useCallback((event: React.DragEvent<HTMLButtonElement>) => {
     event.preventDefault();
     event.stopPropagation();
     setIsDragging(true);
   }, []);
 
-  const handleDragLeave = useCallback((event: React.DragEvent<HTMLDivElement>) => {
+  const handleDragLeave = useCallback((event: React.DragEvent<HTMLButtonElement>) => {
     event.preventDefault();
     event.stopPropagation();
     setIsDragging(false);
@@ -114,73 +114,54 @@ const GovUKFileUpload: React.FC<GovUKFileUploadProps> = ({
 
   return (
     <div className={`govuk-form-group ${displayError ? 'govuk-form-group--error' : ''}`}>
-      <label className="govuk-label govuk-label--s" htmlFor={id}>
-        {questionCode && <span className="govuk-visually-hidden">{questionCode}: </span>}
+      <label className="govuk-label govuk-label--s" htmlFor={id} id={`${id}-label`}>
+        {questionCode && <span className="govuk-visually-hidden">Question ID: {questionCode}: </span>}
         {label}
       </label>
-      {hint && <div className="govuk-hint">{hint}</div>}
+      {hint && (
+        <div className="govuk-hint" id={`${id}-hint`}>
+          {hint}
+        </div>
+      )}
 
       {displayError && (
-        <p className="govuk-error-message">
+        <p className="govuk-error-message" id={`${id}-error`}>
           <span className="govuk-visually-hidden">Error:</span> {displayError}
         </p>
       )}
 
-      <div
-        onDrop={handleDrop}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDragEnter={handleDragOver}
-        style={{
-          border: isDragging ? '2px dashed #1d70b8' : '2px dashed #b1b4b6',
-          backgroundColor: isDragging ? '#f3f2f1' : '#fff',
-          padding: '20px',
-          transition: 'border-color 0.2s, background-color 0.2s',
-        }}
-      >
-        <p
-          style={{
-            backgroundColor: hasFile ? '#cce2d8' : '#bbd4ea',
-            color: hasFile ? '#005a30' : '#0c2d4a',
-            padding: '15px 10px',
-            fontSize: '19px',
-            lineHeight: '25px',
-            marginBottom: '0',
-          }}
-        >
-          {isUploading ? 'Uploading...' : (displayFileName || 'No file chosen')}
-        </p>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: '15px', marginTop: '15px' }}>
-          <button
-            type="button"
-            disabled={isUploading}
-            style={{
-              backgroundColor: '#f3f2f1',
-              border: 'none',
-              borderBottom: '2px solid #929191',
-              color: '#0b0c0c',
-              fontSize: '19px',
-              lineHeight: '25px',
-              padding: '8px 12px 7px',
-              cursor: isUploading ? 'not-allowed' : 'pointer',
-              fontFamily: 'inherit',
-              opacity: isUploading ? 0.6 : 1,
-            }}
-            onClick={() => fileInputRef.current?.click()}
-          >
-            Choose file
-          </button>
-          <span style={{ fontSize: '19px', lineHeight: '25px', color: '#0b0c0c' }}>or drop file</span>
-        </div>
-        <input
-          ref={fileInputRef}
-          type="file"
+      {/* Official GOV.UK "enhanced" file upload: the entire area is one button that opens the
+          file picker, with the real <input type="file"> hidden alongside it. govuk-frontend
+          ships every state for this markup (--empty, --dragging, hover, focus, disabled), so
+          no bespoke styling is needed — and the focus state is the design system's own
+          black border plus yellow outline. */}
+      <div className="govuk-file-upload-wrapper">
+        <button
+          type="button"
           id={id}
-          name={name}
-          accept={accept}
-          onChange={handleFileChange}
-          style={{ display: 'none' }}
-        />
+          className={`govuk-file-upload-button${hasFile ? '' : ' govuk-file-upload-button--empty'}${isDragging ? ' govuk-file-upload-button--dragging' : ''}`}
+          disabled={isUploading}
+          // The status and the comma are part of the accessible name so it reads as
+          // "<label>, <file name or 'No file chosen'>", matching the design system.
+          aria-labelledby={`${id}-label ${id}-comma ${id}`}
+          aria-describedby={[hint ? `${id}-hint` : '', displayError ? `${id}-error` : ''].filter(Boolean).join(' ') || undefined}
+          onClick={() => fileInputRef.current?.click()}
+          onDrop={handleDrop}
+          onDragOver={handleDragOver}
+          onDragLeave={handleDragLeave}
+          onDragEnter={handleDragOver}>
+          <span className="govuk-body govuk-file-upload-button__status" aria-live="polite">
+            {isUploading ? 'Uploading...' : displayFileName || 'No file chosen'}
+          </span>
+          <span className="govuk-visually-hidden" id={`${id}-comma`}>
+            ,{' '}
+          </span>
+          <span className="govuk-file-upload-button__pseudo-button-container">
+            <span className="govuk-button govuk-button--secondary govuk-file-upload-button__pseudo-button">Choose file</span>{' '}
+            <span className="govuk-body govuk-file-upload-button__instruction">or drop file</span>
+          </span>
+        </button>
+        <input ref={fileInputRef} className="govuk-file-upload" id={`${id}-input`} name={name} type="file" accept={accept} onChange={handleFileChange} hidden />
       </div>
     </div>
   );

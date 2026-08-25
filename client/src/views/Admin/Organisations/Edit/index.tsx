@@ -9,6 +9,7 @@ import { useOrganisationQuery } from '../../../../components/Global/Queries/orga
 import { LoadingBox } from 'govuk-react';
 import { LocalAuthorityForm, LocalAuthorityFormData } from '../../../../components/Global/Organisations';
 import { useGovUKNotification } from '../../../../components/GovUKComponents';
+import { ROUTES } from '../../../../constants/routes';
 
 type UrlParams = {
   organisationId: string;
@@ -28,7 +29,7 @@ const OrganisationEdit = (): React.ReactElement => {
     onSuccess(data) {
       queryClient.removeQueries({ queryKey: viewOrganisationCacheKey(organisationId!) });
       queryClient.removeQueries({ queryKey: viewOrganisationHomeCacheKey(organisationId!) });
-      navigate(`/admin/organisations/${data.data.id}`);
+      navigate(ROUTES.admin.organisations.view(data.data.id));
     },
     onError(error) {
       processError(error, (e) => setNotification({ type: 'important', title: 'Error', message: e }));
@@ -60,7 +61,7 @@ const OrganisationEdit = (): React.ReactElement => {
             initialData={initialData}
             isSaving={saving}
             onSubmit={handleSubmit}
-            onCancel={() => navigate(`/admin/organisations/${organisationId}`)}
+            onCancel={() => navigate(ROUTES.admin.organisations.view(organisationId))}
             submitLabel="Save changes"
             isEdit={true}
           />

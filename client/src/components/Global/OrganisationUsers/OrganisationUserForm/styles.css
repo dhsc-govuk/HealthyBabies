@@ -79,13 +79,13 @@
   padding-top: 7px;
 }
 
-.govuk-summary-list {
+.org-user-form__summary.govuk-summary-list {
   font-family: "GDS Transport", arial, sans-serif;
   font-size: 19px;
   margin-bottom: 30px;
 }
 
-.govuk-summary-list--no-outer-border {
+.org-user-form__summary.govuk-summary-list--no-outer-border {
   border: none !important;
   border-left: none !important;
   border-right: none !important;
@@ -93,32 +93,32 @@
   border-bottom: none !important;
 }
 
-.govuk-summary-list--no-outer-border .govuk-summary-list__row {
+.org-user-form__summary.govuk-summary-list--no-outer-border .govuk-summary-list__row {
   border-left: none !important;
   border-right: none !important;
 }
 
-.govuk-summary-list--no-outer-border .govuk-summary-list__row:first-child {
+.org-user-form__summary.govuk-summary-list--no-outer-border .govuk-summary-list__row:first-child {
   border-top: none !important;
 }
 
-.govuk-summary-list--no-outer-border .govuk-summary-list__row:last-child {
+.org-user-form__summary.govuk-summary-list--no-outer-border .govuk-summary-list__row:last-child {
   border-bottom: none !important;
 }
 
-.govuk-summary-list__row {
+.org-user-form__summary .govuk-summary-list__row {
   display: flex;
   border-bottom: 1px solid #b1b4b6;
   padding: 0 0;
 }
 
-.govuk-summary-list__key {
+.org-user-form__summary .govuk-summary-list__key {
   font-weight: 700;
   width: 40%;
   padding-right: 5px;
 }
 
-.govuk-summary-list__value {
+.org-user-form__summary .govuk-summary-list__value {
   flex: 1;
 }
 
@@ -139,3 +139,14 @@
   margin-bottom: 15px;
 }
 
+
+@media (forced-colors: active) {
+  .govuk-select {
+    /* Windows High Contrast Mode does not paint background images, so the custom SVG chevron
+       set above disappears and the select has no visible dropdown arrow. Restoring the native
+       control makes the browser draw its own arrow — which is why the GOV.UK Select component
+       leaves the native appearance alone (DAC_Styles_and_Layout_Usability_06). */
+    appearance: auto;
+    background-image: none;
+  }
+}

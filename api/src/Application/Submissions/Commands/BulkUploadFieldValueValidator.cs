@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Application.Organisations.Helpers;
 using Domain.DataCollections.Forms;
 using Domain.DataCollections.Forms.ValueObjects;
 
@@ -28,7 +29,20 @@ public static class BulkUploadFieldValueValidator
         var fieldTypeValue = field.FieldType.ToString().ToLowerInvariant();
         var hasDynamicOptions = !string.IsNullOrEmpty(field.Configuration) && field.Configuration.Contains("dynamicOptions");
 
-        if (fieldTypeValue == FieldTypeConstants.Number)
+        if (fieldTypeValue == FieldTypeConstants.Date)
+        {
+            // Per-cell only: the cross-field "notBefore" rule needs the whole row, so it is applied
+            // by DeliveryPlanDateAnswerValidator at save time rather than here.
+            if (!DeliveryPlanDateAnswerValidator.TryParse(value, out var parsedDate))
+            {
+                errors.Add("Must be a valid date in DD/MM/YYYY format");
+            }
+            else if (ParseDateRule(field.Configuration) == "not_in_future" && parsedDate.Date > DateTime.UtcNow.Date)
+            {
+                errors.Add("Must not be a date in the future");
+            }
+        }
+        else if (fieldTypeValue == FieldTypeConstants.Number)
         {
             var trimmedValue = value.Trim();
             if (!decimal.TryParse(trimmedValue, out var numericValue))
@@ -69,7 +83,23 @@ public static class BulkUploadFieldValueValidator
         }
         else if (fieldTypeValue == FieldTypeConstants.Checkbox)
         {
-            if (field.Options.Any())
+            // A dynamic-options checkbox has no seeded Options, so it must be checked against the
+            // runtime list first — otherwise the Options.Any() guard below is false and every value,
+            // valid or not, passes straight through.
+            if (hasDynamicOptions && field.Configuration!.Contains("\"services\"") && serviceNames != null)
+            {
+                var selected = value.Split(',')
+                    .Select(v => v.Trim())
+                    .Where(v => !string.IsNullOrEmpty(v))
+                    .ToList();
+
+                var unknown = selected.Where(v => !serviceNames.Contains(v.ToLowerInvariant())).ToList();
+                if (unknown.Any())
+                {
+                    errors.Add($"Service(s) not found: {string.Join(", ", unknown)}");
+                }
+            }
+            else if (field.Options.Any())
             {
                 var values = value.Split(',').Select(v => v.Trim().ToLowerInvariant()).Where(v => !string.IsNullOrEmpty(v)).ToList();
                 var checkboxOptions = field.Options.Select(o => o.Value.ToLowerInvariant()).ToHashSet();
@@ -94,7 +124,8 @@ public static class BulkUploadFieldValueValidator
     // no sumGroup (e.g. QSU14) must not individually exceed it.
     public static List<(string FieldKey, string Message)> ValidateSumGroups(
         Dictionary<string, string> rowData,
-        IReadOnlyList<FormField> fields)
+        IReadOnlyList<FormField> fields,
+        Dictionary<string, string>? serviceAnswers = null)
     {
         var errors = new List<(string, string)>();
         var processedGroups = new HashSet<string>();
@@ -107,7 +138,7 @@ public static class BulkUploadFieldValueValidator
                 continue;
             }
 
-            if (!ConditionalRuleEvaluator.IsFieldVisible(field, rowData, fields.ToList(), null))
+            if (!ConditionalRuleEvaluator.IsFieldVisible(field, rowData, fields.ToList(), serviceAnswers))
             {
                 continue;
             }
@@ -155,6 +186,27 @@ public static class BulkUploadFieldValueValidator
         }
 
         return errors;
+    }
+
+    private static string? ParseDateRule(string? configuration)
+    {
+        if (string.IsNullOrWhiteSpace(configuration))
+        {
+            return null;
+        }
+
+        try
+        {
+            using var document = JsonDocument.Parse(configuration);
+            return document.RootElement.ValueKind == JsonValueKind.Object
+                && document.RootElement.TryGetProperty("dateRule", out var rule)
+                    ? rule.GetString()
+                    : null;
+        }
+        catch (JsonException)
+        {
+            return null;
+        }
     }
 
     private static readonly JsonSerializerOptions JsonOptions = new() { PropertyNameCaseInsensitive = true };

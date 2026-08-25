@@ -1,5 +1,43 @@
 import axios from 'axios';
-import { sanitizeCsvForUpload, zipCsvForUpload } from '../../../helpers/csvUpload';
+import { toBulkUploadFile } from '../../../helpers/csvUpload';
+import {
+  TemplateFormat,
+  BulkUploadFieldErrorDto,
+  BulkUploadRowValidationDto,
+  BulkUploadFieldOptionDto,
+  BulkUploadFieldMetadataDto,
+  BulkUploadValidationResultDto,
+  BulkUploadCellEditDto,
+  ProcessStagedBulkUploadRequestDto,
+  BulkUploadRowResultDto,
+  BulkUploadResultDto,
+  getBulkUploadTemplateFileName,
+  OutcomeScoreFieldValueCheckDto,
+  OutcomeScoreRowCheckDto,
+  OutcomeScoreDuplicateCheckItemDto,
+  ServiceUserRowCheckDto,
+  ServiceUserDuplicateCheckItemDto,
+} from '../../../components/Global/BulkUpload/dtos';
+import { API_ROUTES } from '../../../constants/apiRoutes';
+
+export type {
+  TemplateFormat,
+  BulkUploadFieldErrorDto,
+  BulkUploadRowValidationDto,
+  BulkUploadFieldOptionDto,
+  BulkUploadFieldMetadataDto,
+  BulkUploadValidationResultDto,
+  BulkUploadCellEditDto,
+  ProcessStagedBulkUploadRequestDto,
+  BulkUploadRowResultDto,
+  BulkUploadResultDto,
+  OutcomeScoreFieldValueCheckDto,
+  OutcomeScoreRowCheckDto,
+  OutcomeScoreDuplicateCheckItemDto,
+  ServiceUserRowCheckDto,
+  ServiceUserDuplicateCheckItemDto,
+};
+export { getBulkUploadTemplateFileName };
 
 export interface SubmissionDto {
   id: string;
@@ -10,6 +48,7 @@ export interface SubmissionDto {
   status: string;
   daysRemaining: number;
   isWindowClosed: boolean;
+  type: DataCollectionTypeValue;
 }
 
 export interface SubmissionSectionDto {
@@ -29,6 +68,19 @@ export interface SubmissionFormModuleDto {
   status: string;
   allowsMultipleActivities: boolean;
   sections: SubmissionSectionDto[];
+  /** True when DHSC flagged this section on the most recent reopen. Advisory only. */
+  isFlaggedForReview: boolean;
+}
+
+export type DataCollectionTypeValue = 'delivery-plan' | 'management-information';
+
+/** One reviewable section of a submitted Delivery Plan. Empty for management information. */
+export interface ReviewSectionSummary {
+  formModuleId: string;
+  code: string;
+  sectionNumber: number;
+  name: string;
+  allowsMultipleActivities: boolean;
 }
 
 export interface SubmissionDetailDto {
@@ -40,7 +92,21 @@ export interface SubmissionDetailDto {
   status: string;
   daysRemaining: number;
   isWindowClosed: boolean;
+  type: DataCollectionTypeValue;
   formModules: SubmissionFormModuleDto[];
+  /** Number of previous submissions DHSC has rejected. 0 means "View previous submissions" should not show. */
+  previousVersionCount: number;
+  /** Set when DHSC has accepted or reopened this plan. */
+  reviewedAt: string | null;
+  /** The reason DHSC gave for reopening. Null when the plan was accepted. */
+  reviewNotes: string | null;
+  /** Set once DHSC has made a decision - who accepted or reopened it. */
+  reviewedBy: string | null;
+  submittedBy: string | null;
+  submittedByEmail: string | null;
+  submittedAt: string | null;
+  /** The read-only section list shown once the plan is Accepted. Empty until then. */
+  sections: ReviewSectionSummary[];
 }
 
 export interface SectionFieldOptionDto {
@@ -78,23 +144,27 @@ export interface SaveSectionRequest {
   markComplete: boolean;
 }
 
-export const getSubmissions = () =>
-  axios.get<SubmissionDto[]>('organisation-admin/submissions');
+export const getSubmissions = () => axios.get<SubmissionDto[]>(API_ROUTES.organisationAdmin.submissions.list);
 
-export const getSubmission = (submissionId: string) =>
-  axios.get<SubmissionDetailDto>(`organisation-admin/submissions/${submissionId}`);
+export const getSubmission = (submissionId: string) => axios.get<SubmissionDetailDto>(API_ROUTES.organisationAdmin.submissions.byId(submissionId));
 
-export const getSection = (submissionId: string, sectionId: string) =>
-  axios.get<SectionDetailDto>(`organisation-admin/submissions/${submissionId}/sections/${sectionId}`);
+export const getSection = (submissionId: string, sectionId: string) => axios.get<SectionDetailDto>(API_ROUTES.organisationAdmin.submissions.section(submissionId, sectionId));
 
 export const saveSection = (submissionId: string, sectionId: string, request: SaveSectionRequest) =>
-  axios.post<SectionDetailDto>(`organisation-admin/submissions/${submissionId}/sections/${sectionId}`, request);
+  axios.post<SectionDetailDto>(API_ROUTES.organisationAdmin.submissions.section(submissionId, sectionId), request);
 
-export const submitSubmission = (submissionId: string) =>
-  axios.post<SubmissionDetailDto>(`organisation-admin/submissions/${submissionId}/submit`);
+export const submitSubmission = (submissionId: string) => axios.post<SubmissionDetailDto>(API_ROUTES.organisationAdmin.submissions.submit(submissionId));
 
-export const reopenSubmission = (submissionId: string) =>
-  axios.post<SubmissionDetailDto>(`organisation-admin/submissions/${submissionId}/reopen`);
+export const reopenSubmission = (submissionId: string) => axios.post<SubmissionDetailDto>(API_ROUTES.organisationAdmin.submissions.reopen(submissionId));
+
+export const downloadSubmission = async (submissionId: string): Promise<Blob> => {
+  const response = await axios.get(API_ROUTES.submissionDownload('organisation-admin', submissionId), {
+    responseType: 'blob',
+  });
+  return response.data;
+};
+
+export const getSubmissionDownloadFileName = (submissionId: string): string => `submission_${submissionId}.zip`;
 
 export interface ConditionalRule {
   showWhen?: {
@@ -134,6 +204,8 @@ export interface FieldConfiguration {
   mustEqualField?: string; // Field code whose value this group must equal
   formula?: string; // Arithmetic formula for calculation fields, e.g. "DG09+DG11"
   warnIfNegative?: boolean; // Show overspend warning when calculated value is negative
+  dateRule?: 'not_in_future' | 'not_in_past'; // Date fields: constrain relative to today
+  notBefore?: string; // Date fields: this date must not fall before the named field's date
 }
 
 export interface FormModuleFieldDto {
@@ -147,6 +219,8 @@ export interface FormModuleFieldDto {
   stepNumber: number | null;
   value: string | null;
   displayValue?: string | null;
+  /** The question label captured when this answer was saved; absent for rows with no snapshot. */
+  questionLabel?: string | null;
   conditionalRules: string | null;
   configuration: string | null;
   placeholder: string | null;
@@ -186,14 +260,12 @@ export interface SaveFormModuleRequest {
   currentStep?: number;
 }
 
-export const getFormModule = (submissionId: string, moduleId: string) =>
-  axios.get<FormModuleDetailDto>(`organisation-admin/submissions/${submissionId}/modules/${moduleId}`);
+export const getFormModule = (submissionId: string, moduleId: string) => axios.get<FormModuleDetailDto>(API_ROUTES.organisationAdmin.submissions.module(submissionId, moduleId));
 
 export const saveFormModule = (submissionId: string, moduleId: string, request: SaveFormModuleRequest) =>
-  axios.post<FormModuleDetailDto>(`organisation-admin/submissions/${submissionId}/modules/${moduleId}`, request);
+  axios.post<FormModuleDetailDto>(API_ROUTES.organisationAdmin.submissions.module(submissionId, moduleId), request);
 
-export const deleteFormModule = (submissionId: string, moduleId: string) =>
-  axios.delete(`organisation-admin/submissions/${submissionId}/modules/${moduleId}`);
+export const deleteFormModule = (submissionId: string, moduleId: string) => axios.delete(API_ROUTES.organisationAdmin.submissions.module(submissionId, moduleId));
 
 export interface FileUploadResultDto {
   fileName: string;
@@ -203,15 +275,11 @@ export interface FileUploadResultDto {
 export const uploadFile = (submissionId: string, moduleId: string, file: File) => {
   const formData = new FormData();
   formData.append('file', file);
-  return axios.post<FileUploadResultDto>(
-    `organisation-admin/submissions/${submissionId}/modules/${moduleId}/upload`,
-    formData,
-    {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    }
-  );
+  return axios.post<FileUploadResultDto>(API_ROUTES.organisationAdmin.submissions.moduleUpload(submissionId, moduleId), formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
 };
 
 // Service Users Module Types
@@ -253,34 +321,16 @@ export interface SaveServiceFormRequest {
 }
 
 export const getServiceUsersModule = (submissionId: string, moduleId: string) =>
-  axios.get<ServiceUsersModuleDetailDto>(
-    `organisation-admin/submissions/${submissionId}/modules/${moduleId}/services`
-  );
+  axios.get<ServiceUsersModuleDetailDto>(API_ROUTES.organisationAdmin.submissions.services(submissionId, moduleId));
 
 export const getServiceForm = (submissionId: string, moduleId: string, serviceId: string) =>
-  axios.get<ServiceFormDetailDto>(
-    `organisation-admin/submissions/${submissionId}/modules/${moduleId}/services/${serviceId}`
-  );
+  axios.get<ServiceFormDetailDto>(API_ROUTES.organisationAdmin.submissions.service(submissionId, moduleId, serviceId));
 
-export const saveServiceForm = (
-  submissionId: string,
-  moduleId: string,
-  serviceId: string,
-  request: SaveServiceFormRequest
-) =>
-  axios.post<ServiceFormDetailDto>(
-    `organisation-admin/submissions/${submissionId}/modules/${moduleId}/services/${serviceId}`,
-    request
-  );
+export const saveServiceForm = (submissionId: string, moduleId: string, serviceId: string, request: SaveServiceFormRequest) =>
+  axios.post<ServiceFormDetailDto>(API_ROUTES.organisationAdmin.submissions.service(submissionId, moduleId, serviceId), request);
 
-export const deleteServiceForm = (
-  submissionId: string,
-  moduleId: string,
-  serviceId: string
-) =>
-  axios.delete(
-    `organisation-admin/submissions/${submissionId}/modules/${moduleId}/services/${serviceId}`
-  );
+export const deleteServiceForm = (submissionId: string, moduleId: string, serviceId: string) =>
+  axios.delete(API_ROUTES.organisationAdmin.submissions.service(submissionId, moduleId, serviceId));
 
 // Wider Service Users Module Types
 export interface WiderServiceCategoryStatusDto {
@@ -322,29 +372,13 @@ export interface SaveWiderServiceCategoryFormRequest {
 }
 
 export const getWiderServiceUsersModule = (submissionId: string, moduleId: string) =>
-  axios.get<WiderServiceUsersModuleDetailDto>(
-    `organisation-admin/submissions/${submissionId}/modules/${moduleId}/wider-services`
-  );
+  axios.get<WiderServiceUsersModuleDetailDto>(API_ROUTES.organisationAdmin.submissions.widerServices(submissionId, moduleId));
 
-export const getWiderServiceCategoryForm = (
-  submissionId: string,
-  moduleId: string,
-  categoryId: string
-) =>
-  axios.get<WiderServiceCategoryFormDto>(
-    `organisation-admin/submissions/${submissionId}/modules/${moduleId}/wider-services/${categoryId}`
-  );
+export const getWiderServiceCategoryForm = (submissionId: string, moduleId: string, categoryId: string) =>
+  axios.get<WiderServiceCategoryFormDto>(API_ROUTES.organisationAdmin.submissions.widerService(submissionId, moduleId, categoryId));
 
-export const saveWiderServiceCategoryForm = (
-  submissionId: string,
-  moduleId: string,
-  categoryId: string,
-  request: SaveWiderServiceCategoryFormRequest
-) =>
-  axios.post<WiderServiceCategoryFormDto>(
-    `organisation-admin/submissions/${submissionId}/modules/${moduleId}/wider-services/${categoryId}`,
-    request
-  );
+export const saveWiderServiceCategoryForm = (submissionId: string, moduleId: string, categoryId: string, request: SaveWiderServiceCategoryFormRequest) =>
+  axios.post<WiderServiceCategoryFormDto>(API_ROUTES.organisationAdmin.submissions.widerService(submissionId, moduleId, categoryId), request);
 
 // Outcome Scores Module Types
 export interface OutcomeScoreRecordDto {
@@ -403,236 +437,64 @@ export interface SaveOutcomeScoreFormRequest {
 }
 
 export const getOutcomeScoresModule = (submissionId: string, moduleId: string) =>
-  axios.get<OutcomeScoresModuleDetailDto>(
-    `organisation-admin/submissions/${submissionId}/modules/${moduleId}/outcome-scores`
-  );
+  axios.get<OutcomeScoresModuleDetailDto>(API_ROUTES.organisationAdmin.submissions.outcomeScores(submissionId, moduleId));
 
 export const createOutcomeScoreRecord = (submissionId: string, moduleId: string) =>
-  axios.post<OutcomeScoreFormDetailDto>(
-    `organisation-admin/submissions/${submissionId}/modules/${moduleId}/outcome-scores`
-  );
+  axios.post<OutcomeScoreFormDetailDto>(API_ROUTES.organisationAdmin.submissions.outcomeScores(submissionId, moduleId));
 
 export const getOutcomeScoreRecord = (submissionId: string, moduleId: string, recordId: string) =>
-  axios.get<OutcomeScoreFormDetailDto>(
-    `organisation-admin/submissions/${submissionId}/modules/${moduleId}/outcome-scores/${recordId}`
-  );
+  axios.get<OutcomeScoreFormDetailDto>(API_ROUTES.organisationAdmin.submissions.outcomeScore(submissionId, moduleId, recordId));
 
-export const saveOutcomeScoreRecord = (
-  submissionId: string,
-  moduleId: string,
-  recordId: string,
-  request: SaveOutcomeScoreFormRequest
-) =>
-  axios.post<OutcomeScoreFormDetailDto>(
-    `organisation-admin/submissions/${submissionId}/modules/${moduleId}/outcome-scores/${recordId}`,
-    request
-  );
+export const saveOutcomeScoreRecord = (submissionId: string, moduleId: string, recordId: string, request: SaveOutcomeScoreFormRequest) =>
+  axios.post<OutcomeScoreFormDetailDto>(API_ROUTES.organisationAdmin.submissions.outcomeScore(submissionId, moduleId, recordId), request);
 
 export const deleteOutcomeScoreRecord = (submissionId: string, moduleId: string, recordId: string) =>
-  axios.delete(
-    `organisation-admin/submissions/${submissionId}/modules/${moduleId}/outcome-scores/${recordId}`
-  );
+  axios.delete(API_ROUTES.organisationAdmin.submissions.outcomeScore(submissionId, moduleId, recordId));
 
-// Bulk Upload Types
-export type TemplateFormat = 'csv' | 'xlsx';
-
-export interface BulkUploadFieldErrorDto {
-  fieldCode: string;
-  fieldLabel: string;
-  errorMessage: string;
-}
-
-export interface BulkUploadRowValidationDto {
-  rowNumber: number;
-  serviceName: string | null;
-  isValid: boolean;
-  errors: BulkUploadFieldErrorDto[];
-}
-
-export interface BulkUploadFieldOptionDto {
-  value: string;
-  label: string;
-}
-
-export interface BulkUploadFieldMetadataDto {
-  fieldCode: string;
-  fieldType: string;
-  isRequired: boolean;
-  options: BulkUploadFieldOptionDto[];
-  conditionalRules: string | null;
-  configuration: string | null;
-}
-
-export interface BulkUploadValidationResultDto {
-  isValid: boolean;
-  totalRows: number;
-  validRows: number;
-  invalidRows: number;
-  rowValidations: BulkUploadRowValidationDto[];
-  fieldMetadata: BulkUploadFieldMetadataDto[];
-  stagingId: string;
-  moduleError?: string;
-  // Per-service SMD answers (keyed by lower-cased service name) for the fields referenced by
-  // serviceFieldKey conditions, so client-side validation can evaluate service-scoped rules.
-  serviceAnswersByName?: Record<string, Record<string, string>>;
-}
-
-export interface BulkUploadCellEditDto {
-  rowIndex: number;
-  columnIndex: number;
-  value: string;
-}
-
-export interface ProcessStagedBulkUploadRequestDto {
-  stagingId: string;
-  selectedRowIndices: number[];
-  cellEdits: BulkUploadCellEditDto[];
-}
-
-export interface BulkUploadRowResultDto {
-  rowNumber: number;
-  serviceName: string | null;
-  success: boolean;
-  errorMessage: string | null;
-}
-
-export interface BulkUploadResultDto {
-  success: boolean;
-  totalRows: number;
-  successfulRows: number;
-  failedRows: number;
-  rowResults: BulkUploadRowResultDto[];
-}
-
-// Bulk Upload API Functions
-export const downloadBulkUploadTemplate = async (
-  submissionId: string,
-  moduleId: string,
-  format: TemplateFormat = 'csv'
-): Promise<Blob> => {
-  const response = await axios.get(
-    `organisation-admin/submissions/${submissionId}/modules/${moduleId}/bulk-upload/template`,
-    {
-      params: { format },
-      responseType: 'blob',
-    }
-  );
+// Exports the module's actual submitted records as CSV (BLUM-7361) - distinct from
+// downloadBulkUploadTemplate below, which generates a blank/incomplete-rows-only upload template.
+export const downloadModuleExportCsv = async (submissionId: string, moduleId: string): Promise<Blob> => {
+  const response = await axios.get(API_ROUTES.organisationAdmin.submissions.exportCsv(submissionId, moduleId), {
+    responseType: 'blob',
+  });
   return response.data;
 };
 
-export const getBulkUploadTemplateFileName = (format: TemplateFormat, moduleType: string): string => {
-  const baseName = moduleType.replace(/-/g, '_');
-  return format === 'xlsx' ? `${baseName}_template.xlsx` : `${baseName}_template.csv`;
+// Bulk Upload API Functions
+export const downloadBulkUploadTemplate = async (submissionId: string, moduleId: string, format: TemplateFormat = 'csv'): Promise<Blob> => {
+  const response = await axios.get(API_ROUTES.organisationAdmin.submissions.bulkUploadTemplate(submissionId, moduleId), {
+    params: { format },
+    responseType: 'blob',
+  });
+  return response.data;
 };
 
-export const getBulkUploadTemplateMimeType = (format: TemplateFormat): string => {
-  return format === 'xlsx'
-    ? 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-    : 'text/csv';
-};
-
-const toUploadFile = async (file: File): Promise<File> => {
-  if (!file.name.toLowerCase().endsWith('.csv')) {
-    return file;
-  }
-
-  const sanitizedContent = sanitizeCsvForUpload(await file.text());
-  const zippedContent = zipCsvForUpload(sanitizedContent, file.name);
-  const zipFileName = `${file.name.slice(0, -'.csv'.length)}.zip`;
-  return new File([zippedContent], zipFileName, { type: 'application/zip' });
-};
-
-export const validateBulkUpload = async (
-  submissionId: string,
-  moduleId: string,
-  file: File
-) => {
+export const validateBulkUpload = async (submissionId: string, moduleId: string, file: File) => {
   const formData = new FormData();
-  formData.append('file', await toUploadFile(file));
-  return axios.post<BulkUploadValidationResultDto>(
-    `organisation-admin/submissions/${submissionId}/modules/${moduleId}/bulk-upload/validate`,
-    formData,
-    {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    }
-  );
+  formData.append('file', await toBulkUploadFile(file));
+  return axios.post<BulkUploadValidationResultDto>(API_ROUTES.organisationAdmin.submissions.bulkUploadValidate(submissionId, moduleId), formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
 };
 
-export const processBulkUpload = async (
-  submissionId: string,
-  moduleId: string,
-  file: File
-) => {
+export const processBulkUpload = async (submissionId: string, moduleId: string, file: File) => {
   const formData = new FormData();
-  formData.append('file', await toUploadFile(file));
-  return axios.post<BulkUploadResultDto>(
-    `organisation-admin/submissions/${submissionId}/modules/${moduleId}/bulk-upload`,
-    formData,
-    {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    }
-  );
+  formData.append('file', await toBulkUploadFile(file));
+  return axios.post<BulkUploadResultDto>(API_ROUTES.organisationAdmin.submissions.bulkUpload(submissionId, moduleId), formData, {
+    headers: {
+      'Content-Type': 'multipart/form-data',
+    },
+  });
 };
 
-export interface OutcomeScoreFieldValueCheckDto {
-  fieldKey: string;
-  value: string;
-}
+export const checkServiceUserDuplicates = (submissionId: string, moduleId: string, rows: ServiceUserRowCheckDto[]) =>
+  axios.post<ServiceUserDuplicateCheckItemDto[]>(API_ROUTES.organisationAdmin.submissions.bulkUploadCheckServiceUserDuplicates(submissionId, moduleId), { rows });
 
-export interface OutcomeScoreRowCheckDto {
-  rowIndex: number;
-  serviceName: string;
-  fieldValues: OutcomeScoreFieldValueCheckDto[];
-}
+export const checkOutcomeScoreDuplicates = (submissionId: string, moduleId: string, rows: OutcomeScoreRowCheckDto[]) =>
+  axios.post<OutcomeScoreDuplicateCheckItemDto[]>(API_ROUTES.organisationAdmin.submissions.bulkUploadCheckOutcomeScoreDuplicates(submissionId, moduleId), { rows });
 
-export interface OutcomeScoreDuplicateCheckItemDto {
-  rowIndex: number;
-  serviceName: string;
-  hasExistingData: boolean;
-}
-
-export interface ServiceUserRowCheckDto {
-  rowIndex: number;
-  serviceName: string;
-}
-
-export interface ServiceUserDuplicateCheckItemDto {
-  rowIndex: number;
-  serviceName: string;
-  hasExistingData: boolean;
-}
-
-export const checkServiceUserDuplicates = (
-  submissionId: string,
-  moduleId: string,
-  rows: ServiceUserRowCheckDto[]
-) =>
-  axios.post<ServiceUserDuplicateCheckItemDto[]>(
-    `organisation-admin/submissions/${submissionId}/modules/${moduleId}/bulk-upload/check-service-user-duplicates`,
-    { rows }
-  );
-
-export const checkOutcomeScoreDuplicates = (
-  submissionId: string,
-  moduleId: string,
-  rows: OutcomeScoreRowCheckDto[]
-) =>
-  axios.post<OutcomeScoreDuplicateCheckItemDto[]>(
-    `organisation-admin/submissions/${submissionId}/modules/${moduleId}/bulk-upload/check-outcome-score-duplicates`,
-    { rows }
-  );
-
-export const processStagedBulkUpload = (
-  submissionId: string,
-  moduleId: string,
-  payload: ProcessStagedBulkUploadRequestDto
-) => {
-  return axios.post<BulkUploadResultDto>(
-    `organisation-admin/submissions/${submissionId}/modules/${moduleId}/bulk-upload/staged`,
-    payload
-  );
+export const processStagedBulkUpload = (submissionId: string, moduleId: string, payload: ProcessStagedBulkUploadRequestDto) => {
+  return axios.post<BulkUploadResultDto>(API_ROUTES.organisationAdmin.submissions.bulkUploadStaged(submissionId, moduleId), payload);
 };

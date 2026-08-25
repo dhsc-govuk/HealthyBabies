@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Application.Common;
 using Application.Services.Dtos;
 using Domain.ServiceForms;
 using Domain.Services;
@@ -18,16 +19,13 @@ public static class ServiceBulkUploadRecordHelper
         IReadOnlyList<ServiceFormQuestion> questions)
     {
         var errors = new List<BulkUploadRowValidationError>();
+        var effectiveRecord = BuildEffectiveRecord(record, questions);
 
         foreach (var question in questions)
         {
-            if (!string.IsNullOrEmpty(question.ConditionalQuestionCode))
+            if (!IsVisible(question, effectiveRecord))
             {
-                var parentValue = record.GetValueOrDefault(question.ConditionalQuestionCode, string.Empty);
-                if (parentValue != question.ConditionalValue)
-                {
-                    continue;
-                }
+                continue;
             }
 
             var value = record.GetValueOrDefault(question.Code, string.Empty);
@@ -45,9 +43,9 @@ public static class ServiceBulkUploadRecordHelper
 
             if (question.QuestionType == ServiceFormQuestionType.Date)
             {
-                if (!DateTime.TryParse(value, out var date))
+                if (!FormDateParser.TryParse(value, out var date))
                 {
-                    errors.Add(new BulkUploadRowValidationError(question.Code, "Invalid date format. Expected: YYYY-MM-DD"));
+                    errors.Add(new BulkUploadRowValidationError(question.Code, "Invalid date format. Expected: YYYY-MM-DD or DD/MM/YYYY"));
                     continue;
                 }
 
@@ -96,7 +94,9 @@ public static class ServiceBulkUploadRecordHelper
             }
         }
 
-        var ageRangeError = ValidateAgeRange(record, questions);
+        // Against the pruned record, so an age pair left behind by an abandoned branch cannot fail a row
+        // over values ApplyAnswers is about to discard.
+        var ageRangeError = ValidateAgeRange(effectiveRecord, questions);
         if (ageRangeError != null)
         {
             errors.Add(ageRangeError);
@@ -144,6 +144,66 @@ public static class ServiceBulkUploadRecordHelper
         return null;
     }
 
+    // Mirrors the client's getEffectiveServiceAnswers. A question whose own parent is hidden must not
+    // be kept alive by that parent's leftover cell: with SMD08 set to infant_feeding, a stale
+    // SMD10 = "Exemption (other)" column would otherwise make SMD10a required (BLUM-7221).
+    // Ordered by step then display order so parents resolve first, and repeated until nothing more
+    // drops, because the legacy "indent under" configuration permits forward and mutual references.
+    // Each pass only ever removes keys, so it always terminates.
+    private static Dictionary<string, string> BuildEffectiveRecord(
+        Dictionary<string, string> record,
+        IReadOnlyList<ServiceFormQuestion> questions)
+    {
+        var effective = new Dictionary<string, string>(record);
+        var ordered = questions.OrderBy(q => q.Step).ThenBy(q => q.DisplayOrder).ToList();
+
+        for (var pass = 0; pass < ordered.Count; pass++)
+        {
+            var dropped = false;
+            foreach (var question in ordered)
+            {
+                if (!effective.ContainsKey(question.Code) || IsVisible(question, effective))
+                {
+                    continue;
+                }
+
+                effective.Remove(question.Code);
+                dropped = true;
+            }
+
+            if (!dropped)
+            {
+                break;
+            }
+        }
+
+        return effective;
+    }
+
+    // ConditionalRules is deliberately not evaluated here: the rich rule evaluator is bound to the
+    // data collections FormField type and every service question currently ships with it unset.
+    private static bool IsVisible(ServiceFormQuestion question, Dictionary<string, string> answers)
+    {
+        if (string.IsNullOrEmpty(question.ConditionalQuestionCode) || string.IsNullOrEmpty(question.ConditionalValue))
+        {
+            return true;
+        }
+
+        var parentSelected = SplitValues(answers.GetValueOrDefault(question.ConditionalQuestionCode, string.Empty));
+        return SplitValues(question.ConditionalValue).Any(parentSelected.Contains);
+    }
+
+    // Checkbox answers and multi-value conditionals are both stored comma separated, so compare the
+    // selected sets rather than the raw strings. Case insensitive to match the option validation above:
+    // a cell of "Parenting" is accepted as the option "parenting", so it has to satisfy the conditional
+    // too, or its children would be silently dropped by ApplyAnswers.
+    private static HashSet<string> SplitValues(string value)
+    {
+        return value
+            .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+    }
+
     public static void ApplyAnswers(
         Service service,
         Dictionary<string, string> record,
@@ -152,8 +212,17 @@ public static class ServiceBulkUploadRecordHelper
         service.ClearAnswersForStep(1);
         service.ClearAnswersForStep(2);
 
+        var effectiveRecord = BuildEffectiveRecord(record, questions);
+
         foreach (var question in questions)
         {
+            // Skipping hidden questions keeps the persisted answers consistent with what the form
+            // would have accepted, instead of storing cells the uploader left behind.
+            if (!IsVisible(question, effectiveRecord))
+            {
+                continue;
+            }
+
             var value = record.GetValueOrDefault(question.Code, string.Empty);
             if (string.IsNullOrWhiteSpace(value))
             {

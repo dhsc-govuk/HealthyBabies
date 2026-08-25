@@ -14,6 +14,8 @@ import { getAllModules } from '../List/queries';
 import { createFormField, CreateFormFieldRequest } from './mutations';
 import axios from 'axios';
 import usePageTitle from '../../../../../hooks/usePageTitle';
+import { ROUTES } from '../../../../../constants/routes';
+import { API_ROUTES } from '../../../../../constants/apiRoutes';
 
 const DataCollectionFormQuestionsCreate = (): React.ReactElement => {
   const navigate = useNavigate();
@@ -44,7 +46,7 @@ const DataCollectionFormQuestionsCreate = (): React.ReactElement => {
     const fetchModuleData = async () => {
       if (formState.formModuleId) {
         try {
-          const response = await axios.get(`/data-collection-form-questions/modules/${formState.formModuleId}`);
+          const response = await axios.get(API_ROUTES.dataCollectionFormQuestions.modules.byId(formState.formModuleId));
           setAllSections(response.data.sections || []);
           setAvailableFields(response.data.fields || []);
         } catch (error) {
@@ -59,7 +61,7 @@ const DataCollectionFormQuestionsCreate = (): React.ReactElement => {
     mutationFn: createFormField,
     onSuccess: () => {
       setNotification({ type: 'success', title: 'Success', message: 'Question created successfully' });
-      navigate('/admin/configuration/data-collection-form-questions');
+      navigate(ROUTES.admin.configuration.dataCollectionFormQuestions.list);
     },
     onError: (error: any) => {
       setNotification({ type: 'important', title: 'Error', message: error.response?.data || 'Failed to create question' });
@@ -106,16 +108,16 @@ const DataCollectionFormQuestionsCreate = (): React.ReactElement => {
   }, [formState, validateForm, createMutation]);
 
   const handleCancel = () => {
-    navigate('/admin/configuration/data-collection-form-questions');
+    navigate(ROUTES.admin.configuration.dataCollectionFormQuestions.list);
   };
 
   return (
     <LoadingSpinner loading={modulesLoading || createMutation.isLoading} label="Loading...">
       <SettingsLayout
         breadcrumbs={[
-          { label: 'Home', link: '/admin/home' },
-          { label: 'Settings', link: '/admin/settings' },
-          { label: 'Data Collection Form Questions', link: '/admin/configuration/data-collection-form-questions' },
+          { label: 'Home', link: ROUTES.admin.home },
+          { label: 'Settings', link: ROUTES.admin.settings },
+          { label: 'Data Collection Form Questions', link: ROUTES.admin.configuration.dataCollectionFormQuestions.list },
         ]}>
         <PageHeaderContainer>
           <PageTitle>Add Question</PageTitle>

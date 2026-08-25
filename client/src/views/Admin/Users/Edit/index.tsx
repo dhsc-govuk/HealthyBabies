@@ -9,6 +9,7 @@ import { OrganisationUserForm, OrganisationUserFormData } from '../../../../comp
 import { getOrganisations } from '../Create/queries';
 import { LoadingBox } from 'govuk-react';
 import { useGovUKNotification } from '../../../../components/GovUKComponents';
+import { ROUTES } from '../../../../constants/routes';
 
 type UrlParams = {
   userId: string;
@@ -35,7 +36,7 @@ const EditAdmin = (): React.ReactElement => {
     mutationKey: ['la-users-edit'],
     mutationFn: updateAdmin,
     onSuccess(data) {
-      navigate(`/admin/la-users/${data.data.id}`);
+      navigate(ROUTES.admin.laUsers.view(data.data.id));
     },
     onError(error) {
       processError(error, (e) => setNotification({ type: 'important', title: 'Error', message: e }));
@@ -68,7 +69,8 @@ const EditAdmin = (): React.ReactElement => {
   return (
     <SettingsLayout
       currentPage="Edit LA user"
-      backLink={{ href: `/admin/la-users/${userId}`, onClick: () => navigate(`/admin/la-users/${userId}`) }}>
+      manageTitle={false}
+      backLink={{ href: ROUTES.admin.laUsers.view(userId), onClick: () => navigate(ROUTES.admin.laUsers.view(userId)) }}>
       <LoadingBox loading={isLoading || loadingOrganisations}>
         {dataReady && (
           <OrganisationUserForm
@@ -77,11 +79,12 @@ const EditAdmin = (): React.ReactElement => {
             isLoading={false}
             isSaving={saving}
             onSubmit={handleSubmit}
-            onCancel={() => navigate(`/admin/la-users/${userId}`)}
+            onCancel={() => navigate(ROUTES.admin.laUsers.view(userId))}
             submitLabel="Save changes"
             isEdit={true}
             emailReadOnly={true}
             hideBackLink={true}
+            pageTitle="Edit LA user"
           />
         )}
       </LoadingBox>

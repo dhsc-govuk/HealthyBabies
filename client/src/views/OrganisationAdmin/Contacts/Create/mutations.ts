@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { API_ROUTES } from '../../../../constants/apiRoutes';
 
 export interface CreateOrganisationContactDto {
   organisationId: string;
@@ -8,4 +9,4 @@ export interface CreateOrganisationContactDto {
 }
 
 export const createContact = (contact: CreateOrganisationContactDto) =>
-  axios.post(`/organisations/${contact.organisationId}/contacts`, contact);
+  axios.post(API_ROUTES.organisations.contacts.create(contact.organisationId), contact);

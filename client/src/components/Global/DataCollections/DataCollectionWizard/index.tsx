@@ -262,7 +262,7 @@ const DataCollectionWizard = ({
         ) : (
           <>
             <div className="govuk-hint">This determines which forms you can include in the collection.</div>
-            <div className="govuk-radios" data-module="govuk-radios">
+            <div className="govuk-radios govuk-radios--small" data-module="govuk-radios">
               <div className="govuk-radios__item">
                 <input
                   className="govuk-radios__input"
@@ -396,7 +396,7 @@ const DataCollectionWizard = ({
       <fieldset className="govuk-fieldset" id="la-fieldset">
         <legend className="govuk-fieldset__legend govuk-fieldset__legend--m">Is this data collection submitted by all local authorities?</legend>
 
-        <div className="govuk-radios" data-module="govuk-radios">
+        <div className="govuk-radios govuk-radios--small" data-module="govuk-radios">
           <div className="govuk-radios__item">
             <input
               className="govuk-radios__input"

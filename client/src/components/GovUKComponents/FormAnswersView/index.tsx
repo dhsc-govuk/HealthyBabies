@@ -62,6 +62,7 @@ function FormAnswersView({
         </div>
 
         <table className="govuk-table form-answers-view__table">
+          <caption className="govuk-visually-hidden">{title} answers</caption>
           <tbody className="govuk-table__body">
             {items.map((item, index, arr) => (
               <tr key={index} className="govuk-table__row">

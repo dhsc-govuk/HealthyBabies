@@ -2,14 +2,19 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from 'react-query';
 import { GeneralLayout } from '../../../../layouts';
-import { LoadingSpinner, GovUKButton, SummaryList, FormFieldRenderer, GovUKSummaryCard } from '../../../../components/GovUKComponents';
+import { LoadingSpinner, GovUKButton, SummaryList, FormFieldRenderer, GovUKSummaryCard, GovUKErrorSummary } from '../../../../components/GovUKComponents';
 import useErrorSummaryFocus from '../../../../hooks/useErrorSummaryFocus';
 import useFormTelemetry from '../../../../hooks/useFormTelemetry';
 import usePageTitle from '../../../../hooks/usePageTitle';
+import useStepFocus from '../../../../hooks/useStepFocus';
 import { getFormModule, saveFormModule, uploadFile, FormModuleFieldDto, ConditionalRule, FieldConfiguration } from '../queries';
 import { validateBreastfeedingRate } from '../validationUtils';
 import { encodeNullableForWaf } from '../../../../helpers/stringUtils';
+import { isStoredAnswer, resolveSnapshotLabel } from '../../../../helpers/answerSnapshot';
+import { sortFieldsForDisplay } from '../../../../helpers/formFieldOrdering';
 import { processError } from '../../../../helpers/axiosErrorFallback';
+import focusErrorTarget from '../../../../helpers/focusErrorTarget';
+import { ROUTES } from '../../../../constants/routes';
 
 type ViewMode = 'form' | 'summary' | 'view';
 
@@ -78,14 +83,19 @@ const ViewModule = (): React.ReactElement => {
       queryClient.invalidateQueries(['organisation-admin-submission', submissionId]);
       queryClient.invalidateQueries(['organisation-admin-module', submissionId, moduleId]);
       if (markComplete) {
-        navigate(`/organisation-admin/submissions/${submissionId}`, {
+        navigate(ROUTES.organisationAdmin.submissions.view(submissionId), {
           state: {
             successTitle: `${formModule?.name} data saved`,
             successMessage: `${formModule?.name} data has been successfully saved.`,
           },
         });
       } else {
-        navigate(`/organisation-admin/submissions/${submissionId}`);
+        navigate(ROUTES.organisationAdmin.submissions.view(submissionId), {
+          state: {
+            successTitle: `${formModule?.name} draft saved`,
+            successMessage: `Your progress on ${formModule?.name} has been saved as a draft.`,
+          },
+        });
       }
     },
     onError: (error) => {
@@ -93,12 +103,21 @@ const ViewModule = (): React.ReactElement => {
     },
   });
 
+  // BLUM-7520: reset() unmounts the save-error summary, which both clears a stale error before a
+  // fresh attempt and lets GovUKErrorSummary re-run its mount focus effect on a repeat failure.
+  // Skipped while a save is in flight: reset() drops currentMutation without detaching the
+  // observer, so that save would later set saveError while isError stayed false — the failure
+  // would be swallowed with no summary shown. Nothing to clear mid-flight anyway.
+  const clearSaveError = () => {
+    if (saveMutation.isLoading) return;
+    saveMutation.reset();
+    setSaveError(undefined);
+  };
+
   const formModule = moduleData?.data;
 
   const { trackStarted, trackSectionCompleted, trackReviewReached, trackSubmitAttempted, trackSubmitted, trackAbandoned, trackDraftSaved, trackValidationFailed } =
     useFormTelemetry('module_form', formModule?.name);
-
-  usePageTitle(formModule?.name ?? 'View module', Object.keys(fieldErrors).length > 0);
 
   const sections = useMemo(() => {
     if (!formModule) return [];
@@ -107,6 +126,20 @@ const ViewModule = (): React.ReactElement => {
 
   const totalSteps = sections.length > 0 ? sections.length + 1 : 1;
 
+  // Step count is dynamic (one per section, plus the check-answers step), so derive the
+  // caption from totalSteps rather than hard-coding it.
+  const stepLabel =
+    viewMode === 'view'
+      ? undefined
+      : viewMode === 'summary'
+        ? `Step ${totalSteps} of ${totalSteps}: Check your answers`
+        : `Step ${currentStep} of ${totalSteps}`;
+  usePageTitle(formModule?.name ?? 'View module', Object.keys(fieldErrors).length > 0, stepLabel);
+
+  // Keyed on viewMode too, so moving from the last section to the check-answers step also
+  // moves focus (WCAG 2.4.3).
+  const stepFocusRef = useStepFocus<HTMLDivElement>(`${viewMode}-${currentStep}`);
+
   const currentSection = useMemo(() => {
     if (currentStep > sections.length) return null;
     return sections[currentStep - 1];
@@ -114,7 +147,7 @@ const ViewModule = (): React.ReactElement => {
 
   const currentFields = useMemo(() => {
     if (!formModule) return [];
-    const fields = [...formModule.fields].sort((a, b) => a.displayOrder - b.displayOrder);
+    const fields = sortFieldsForDisplay(formModule.fields);
     if (sections.length === 0) return fields;
     if (!currentSection) return [];
     return fields.filter((f) => f.stepNumber === currentSection.sectionNumber);
@@ -338,6 +371,10 @@ const ViewModule = (): React.ReactElement => {
   }, [formModule, currentFields, fieldValues, isFieldVisible, trackValidationFailed]);
 
   const handleContinue = () => {
+    // Clear any previous save failure first — the summary now sits above the field-error summary,
+    // so leaving a stale one there would steal the focus that belongs to the validation errors
+    // raised just below (focusErrorSummary takes the first match).
+    clearSaveError();
     // Validate before continuing
     if (!validateCurrentStep()) {
       setSubmitAttempts((n) => n + 1);
@@ -355,8 +392,11 @@ const ViewModule = (): React.ReactElement => {
   };
 
   const handleBack = () => {
+    // Leaving the step that failed — drop the summary, otherwise it renders at the top of the
+    // next step claiming a save failed there.
+    clearSaveError();
     if (viewMode === 'view') {
-      navigate(`/organisation-admin/submissions/${submissionId}`);
+      navigate(ROUTES.organisationAdmin.submissions.view(submissionId));
     } else if (viewMode === 'summary') {
       setViewMode('form');
       setCurrentStep(sections.length);
@@ -365,11 +405,12 @@ const ViewModule = (): React.ReactElement => {
       window.scrollTo(0, 0);
     } else {
       trackAbandoned();
-      navigate(`/organisation-admin/submissions/${submissionId}`);
+      navigate(ROUTES.organisationAdmin.submissions.view(submissionId));
     }
   };
 
   const handleSaveAsDraft = () => {
+    clearSaveError();
     if (!validateCurrentStep()) {
       setSubmitAttempts((n) => n + 1);
       return;
@@ -381,7 +422,7 @@ const ViewModule = (): React.ReactElement => {
   const validateAllFields = useCallback((): boolean => {
     if (!formModule) return true;
     const errors: Record<string, string> = {};
-    const allFields = formModule.fields.sort((a, b) => a.displayOrder - b.displayOrder);
+    const allFields = sortFieldsForDisplay(formModule.fields);
     const visibleFields = allFields.filter(isFieldVisible);
     const processedSumGroups = new Set<string>();
 
@@ -456,6 +497,7 @@ const ViewModule = (): React.ReactElement => {
   }, [formModule, fieldValues, isFieldVisible]);
 
   const handleConfirmAndSave = () => {
+    clearSaveError();
     // Validate all fields before saving
     if (!validateAllFields()) {
       setSubmitAttempts((n) => n + 1);
@@ -466,12 +508,14 @@ const ViewModule = (): React.ReactElement => {
   };
 
   const handleChangeAnswer = (stepNumber: number) => {
+    clearSaveError();
     setCurrentStep(stepNumber);
     setViewMode('form');
     window.scrollTo(0, 0);
   };
 
   const handleChangeFromView = () => {
+    clearSaveError();
     setCurrentStep(1);
     setViewMode('form');
     window.scrollTo(0, 0);
@@ -492,9 +536,7 @@ const ViewModule = (): React.ReactElement => {
 
     // Prefer the server's snapshot-resolved display, but only when rendering the stored answer
     // (not an in-progress edit), so historic answers survive later form/option changes.
-    const storedValue = field.value ?? '';
-    const currentAsString = Array.isArray(value) ? value.join(',') : (value ?? '');
-    if (field.displayValue && currentAsString === storedValue) {
+    if (field.displayValue && isStoredAnswer(field, value)) {
       return field.displayValue;
     }
 
@@ -539,12 +581,12 @@ const ViewModule = (): React.ReactElement => {
       <GeneralLayout>
         <h1 className="govuk-heading-l">Form not found</h1>
         <p className="govuk-body">The form you are looking for does not exist.</p>
-        <GovUKButton onClick={() => navigate(`/organisation-admin/submissions/${submissionId}`)}>Back to submission</GovUKButton>
+        <GovUKButton onClick={() => navigate(ROUTES.organisationAdmin.submissions.view(submissionId))}>Back to submission</GovUKButton>
       </GeneralLayout>
     );
   }
 
-  const allFields = [...formModule.fields].sort((a, b) => a.displayOrder - b.displayOrder);
+  const allFields = sortFieldsForDisplay(formModule.fields);
 
   const hasFieldValue = (field: FormModuleFieldDto): boolean => {
     const value = fieldValues[field.code];
@@ -565,16 +607,17 @@ const ViewModule = (): React.ReactElement => {
     return (
       <GeneralLayout
         breadcrumbs={[
-          { label: 'Home', link: '/organisation-admin/home' },
-          { label: 'Submissions', link: '/organisation-admin/submissions' },
-          { label: formModule.submissionName || 'Submission', link: `/organisation-admin/submissions/${submissionId}` },
+          { label: 'Home', link: ROUTES.organisationAdmin.home },
+          { label: 'Submissions', link: ROUTES.organisationAdmin.submissions.list },
+          { label: formModule.submissionName || 'Submission', link: ROUTES.organisationAdmin.submissions.view(submissionId) },
         ]}
         currentPage={formModule.name}
+        manageTitle={false}
         backLink={{ href: '#', onClick: handleBack }}>
         <span className="govuk-caption-l">Section {formModule.sectionNumber}</span>
 
         <p className="govuk-body">
-          This page shows saved information you've provided about {formModule.name.toLowerCase()} from {formatDate(formModule.startDate)} to {formatDate(formModule.endDate)}.
+          This page shows saved information you've provided about {formModule.name.toLowerCase()} in the relevant quarter.
         </p>
         <p className="govuk-body">
           You can update {formModule.name.toLowerCase()} data at any time before submitting the quarterly Management Information data collection. To update the information, select
@@ -589,13 +632,13 @@ const ViewModule = (): React.ReactElement => {
           }
           actions={[
             { label: 'Change', onClick: handleChangeFromView },
-            { label: 'Delete', onClick: () => navigate(`/organisation-admin/submissions/${submissionId}/modules/${moduleId}/delete`) },
+            { label: 'Delete', onClick: () => navigate(ROUTES.organisationAdmin.submissions.module.delete(submissionId, moduleId)) },
           ]}>
           <SummaryList
             noOuterBorder
             halfWidthColumns
             items={fieldsWithValues.map((field) => ({
-              label: field.label,
+              label: resolveSnapshotLabel(field, fieldValues[field.code]),
               value: getFieldDisplayValue(field),
               isSubAnswer: isSubAnswerField(field),
             }))}
@@ -609,12 +652,16 @@ const ViewModule = (): React.ReactElement => {
     return (
       <GeneralLayout
         breadcrumbs={[
-          { label: 'Home', link: '/organisation-admin/home' },
-          { label: 'Submissions', link: '/organisation-admin/submissions' },
-          { label: formModule.submissionName || 'Submission', link: `/organisation-admin/submissions/${submissionId}` },
+          { label: 'Home', link: ROUTES.organisationAdmin.home },
+          { label: 'Submissions', link: ROUTES.organisationAdmin.submissions.list },
+          { label: formModule.submissionName || 'Submission', link: ROUTES.organisationAdmin.submissions.view(submissionId) },
         ]}
-        currentPage={formModule.name}
         backLink={{ href: '#', onClick: handleBack }}>
+        <div ref={stepFocusRef}>
+        {saveMutation.isError && Object.keys(fieldErrors).length === 0 && (
+          <GovUKErrorSummary heading="There was a problem saving" errors={[{ text: saveError ?? 'Please try again or contact support if the problem persists.' }]} />
+        )}
+
         {/* Validation Error Summary */}
         {Object.keys(fieldErrors).length > 0 && (
           <div className="govuk-error-summary" data-module="govuk-error-summary">
@@ -627,7 +674,7 @@ const ViewModule = (): React.ReactElement => {
                   return (
                     <li key={fieldCode}>
                       <a
-                        href="#"
+                        href={`#${fieldCode.toLowerCase()}`}
                         onClick={(e) => {
                           e.preventDefault();
                           handleChangeAnswer(field?.stepNumber ?? 1);
@@ -657,7 +704,7 @@ const ViewModule = (): React.ReactElement => {
           noOuterBorder
           halfWidthColumns
           items={fieldsWithValues.map((field) => ({
-            label: field.label,
+            label: resolveSnapshotLabel(field, fieldValues[field.code]),
             value: getFieldDisplayValue(field),
             onAction: () => handleChangeAnswer(field.stepNumber ?? 1),
             actionLabel: 'Change',
@@ -674,15 +721,7 @@ const ViewModule = (): React.ReactElement => {
         <GovUKButton onClick={handleConfirmAndSave} isLoading={saveMutation.isLoading}>
           Confirm and save
         </GovUKButton>
-
-        {saveMutation.isError && (
-          <div className="govuk-error-summary" data-module="govuk-error-summary">
-            <h2 className="govuk-error-summary__title">There was a problem saving</h2>
-            <div className="govuk-error-summary__body">
-              <p>{saveError ?? 'Please try again or contact support if the problem persists.'}</p>
-            </div>
-          </div>
-        )}
+        </div>
       </GeneralLayout>
     );
   }
@@ -690,12 +729,18 @@ const ViewModule = (): React.ReactElement => {
   return (
     <GeneralLayout
       breadcrumbs={[
-        { label: 'Home', link: '/organisation-admin/home' },
-        { label: 'Submissions', link: '/organisation-admin/submissions' },
-        { label: formModule.submissionName || 'Submission', link: `/organisation-admin/submissions/${submissionId}` },
+        { label: 'Home', link: ROUTES.organisationAdmin.home },
+        { label: 'Submissions', link: ROUTES.organisationAdmin.submissions.list },
+        { label: formModule.submissionName || 'Submission', link: ROUTES.organisationAdmin.submissions.view(submissionId) },
       ]}
       currentPage={formModule.name}
+      manageTitle={false}
       backLink={{ href: '#', onClick: handleBack }}>
+      <div ref={stepFocusRef}>
+      {saveMutation.isError && Object.keys(fieldErrors).length === 0 && (
+        <GovUKErrorSummary heading="There was a problem saving" errors={[{ text: saveError ?? 'Please try again or contact support if the problem persists.' }]} />
+      )}
+
       <span className="govuk-caption-l">
         Step {currentStep} of {totalSteps}
       </span>
@@ -714,7 +759,7 @@ const ViewModule = (): React.ReactElement => {
             <ul className="govuk-list govuk-error-summary__list">
               {Object.entries(fieldErrors).map(([fieldCode, message]) => (
                 <li key={fieldCode}>
-                  <a href={`#${fieldCode}`}>{message}</a>
+                  <a href={`#${fieldCode}`} onClick={(e) => focusErrorTarget(e, fieldCode)}>{message}</a>
                 </li>
               ))}
             </ul>
@@ -772,15 +817,7 @@ const ViewModule = (): React.ReactElement => {
           Save as draft and exit
         </GovUKButton>
       </div>
-
-      {saveMutation.isError && (
-        <div className="govuk-error-summary" data-module="govuk-error-summary">
-          <h2 className="govuk-error-summary__title">There was a problem saving</h2>
-          <div className="govuk-error-summary__body">
-            <p>{saveError ?? 'Please try again or contact support if the problem persists.'}</p>
-          </div>
-        </div>
-      )}
+      </div>
     </GeneralLayout>
   );
 };

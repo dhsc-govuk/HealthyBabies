@@ -580,7 +580,7 @@ const ConditionalRulesBuilder = ({
                                   <div className="govuk-hint" style={{ marginBottom: '0.5rem' }}>
                                     Select which answer triggers this question to appear.
                                   </div>
-                                  <div className="govuk-radios" data-module="govuk-radios">
+                                  <div className="govuk-radios govuk-radios--small" data-module="govuk-radios">
                                     {answerOptions.map((o) => {
                                       const optionId = `conditional-answer-${index}-${o.value}`;
                                       return (

@@ -5,6 +5,7 @@ import { GeneralLayout } from '../../../../layouts';
 import { LoadingSpinner, SummaryList, GovUKSummaryCard } from '../../../../components/GovUKComponents';
 import { getService, serviceCacheKey, ServiceDto } from '../../../../components/Global/Services';
 import usePageTitle from '../../../../hooks/usePageTitle';
+import { ROUTES } from '../../../../constants/routes';
 
 const ViewService = (): React.ReactElement => {
   usePageTitle('View service');
@@ -22,11 +23,11 @@ const ViewService = (): React.ReactElement => {
   usePageTitle(service?.name ?? 'View service');
 
   const handleChange = () => {
-    navigate(`/organisation-admin/core-data/services/${serviceId}/edit`);
+    navigate(ROUTES.organisationAdmin.services.edit(serviceId));
   };
 
   const handleDelete = () => {
-    navigate(`/organisation-admin/core-data/services/${serviceId}/delete`);
+    navigate(ROUTES.organisationAdmin.services.delete(serviceId));
   };
 
   // Build summary items from service answers
@@ -61,8 +62,8 @@ const ViewService = (): React.ReactElement => {
     <LoadingSpinner loading={isLoading} label="Loading service">
       <GeneralLayout
         breadcrumbs={[
-          { label: 'Home', link: '/organisation-admin/home' },
-          { label: 'Services', link: '/organisation-admin/core-data/services' },
+          { label: 'Home', link: ROUTES.organisationAdmin.home },
+          { label: 'Services', link: ROUTES.organisationAdmin.services.list },
         ]}>
         <span className="govuk-caption-l">Service</span>
         <h1 className="govuk-heading-l">{service?.name ?? 'Loading...'}</h1>

@@ -8,7 +8,7 @@
             "position": { "x": 0, "y": 0, "colSpan": 2, "rowSpan": 1 },
             "metadata": {
               "inputs": [
-                { "name": "id", "value": "/subscriptions/YOUR_SUBSCRIPTION_ID/resourceGroups/YOUR_RESOURCE_GROUP/providers/Microsoft.Insights/components/YOUR_APP_INSIGHTS_NAME" },
+                { "name": "id", "value": "/subscriptions/<PRD_SUBSCRIPTION_ID>/resourceGroups/rg-hby-rtl-prd-uks-01/providers/Microsoft.Insights/components/appi-hby-prd-uks-01" },
                 { "name": "Version", "value": "1.0" }
               ],
               "type": "Extension/AppInsightsExtension/PartType/AspNetOverviewPinnedPart",
@@ -22,7 +22,7 @@
               "inputs": [
                 {
                   "name": "ComponentId",
-                  "value": { "Name": "YOUR_APP_INSIGHTS_NAME", "SubscriptionId": "YOUR_SUBSCRIPTION_ID", "ResourceGroup": "YOUR_RESOURCE_GROUP" }
+                  "value": { "Name": "appi-hby-prd-uks-01", "SubscriptionId": "<PRD_SUBSCRIPTION_ID>", "ResourceGroup": "rg-hby-rtl-prd-uks-01" }
                 },
                 {
                   "name": "TimeContext",
@@ -59,7 +59,7 @@
                     "chart": {
                       "metrics": [
                         {
-                          "resourceMetadata": { "id": "/subscriptions/YOUR_SUBSCRIPTION_ID/resourceGroups/YOUR_RESOURCE_GROUP/providers/Microsoft.Insights/components/YOUR_APP_INSIGHTS_NAME" },
+                          "resourceMetadata": { "id": "/subscriptions/<PRD_SUBSCRIPTION_ID>/resourceGroups/rg-hby-rtl-prd-uks-01/providers/Microsoft.Insights/components/appi-hby-prd-uks-01" },
                           "name": "sessions/count",
                           "aggregationType": 5,
                           "namespace": "microsoft.insights/components/kusto",
@@ -80,7 +80,7 @@
                     "chart": {
                       "metrics": [
                         {
-                          "resourceMetadata": { "id": "/subscriptions/YOUR_SUBSCRIPTION_ID/resourceGroups/YOUR_RESOURCE_GROUP/providers/Microsoft.Insights/components/YOUR_APP_INSIGHTS_NAME" },
+                          "resourceMetadata": { "id": "/subscriptions/<PRD_SUBSCRIPTION_ID>/resourceGroups/rg-hby-rtl-prd-uks-01/providers/Microsoft.Insights/components/appi-hby-prd-uks-01" },
                           "name": "sessions/count",
                           "aggregationType": 5,
                           "namespace": "microsoft.insights/components/kusto",
@@ -105,7 +105,7 @@
                     "chart": {
                       "metrics": [
                         {
-                          "resourceMetadata": { "id": "/subscriptions/YOUR_SUBSCRIPTION_ID/resourceGroups/YOUR_RESOURCE_GROUP/providers/Microsoft.Insights/components/YOUR_APP_INSIGHTS_NAME" },
+                          "resourceMetadata": { "id": "/subscriptions/<PRD_SUBSCRIPTION_ID>/resourceGroups/rg-hby-rtl-prd-uks-01/providers/Microsoft.Insights/components/appi-hby-prd-uks-01" },
                           "name": "users/count",
                           "aggregationType": 5,
                           "namespace": "microsoft.insights/components/kusto",
@@ -126,7 +126,7 @@
                     "chart": {
                       "metrics": [
                         {
-                          "resourceMetadata": { "id": "/subscriptions/YOUR_SUBSCRIPTION_ID/resourceGroups/YOUR_RESOURCE_GROUP/providers/Microsoft.Insights/components/YOUR_APP_INSIGHTS_NAME" },
+                          "resourceMetadata": { "id": "/subscriptions/<PRD_SUBSCRIPTION_ID>/resourceGroups/rg-hby-rtl-prd-uks-01/providers/Microsoft.Insights/components/appi-hby-prd-uks-01" },
                           "name": "users/count",
                           "aggregationType": 5,
                           "namespace": "microsoft.insights/components/kusto",
@@ -151,7 +151,7 @@
                     "chart": {
                       "metrics": [
                         {
-                          "resourceMetadata": { "id": "/subscriptions/YOUR_SUBSCRIPTION_ID/resourceGroups/YOUR_RESOURCE_GROUP/providers/Microsoft.Insights/components/YOUR_APP_INSIGHTS_NAME" },
+                          "resourceMetadata": { "id": "/subscriptions/<PRD_SUBSCRIPTION_ID>/resourceGroups/rg-hby-rtl-prd-uks-01/providers/Microsoft.Insights/components/appi-hby-prd-uks-01" },
                           "name": "pageViews/count",
                           "aggregationType": 7,
                           "namespace": "microsoft.insights/components",
@@ -172,7 +172,7 @@
                     "chart": {
                       "metrics": [
                         {
-                          "resourceMetadata": { "id": "/subscriptions/YOUR_SUBSCRIPTION_ID/resourceGroups/YOUR_RESOURCE_GROUP/providers/Microsoft.Insights/components/YOUR_APP_INSIGHTS_NAME" },
+                          "resourceMetadata": { "id": "/subscriptions/<PRD_SUBSCRIPTION_ID>/resourceGroups/rg-hby-rtl-prd-uks-01/providers/Microsoft.Insights/components/appi-hby-prd-uks-01" },
                           "name": "pageViews/count",
                           "aggregationType": 7,
                           "namespace": "microsoft.insights/components",
@@ -197,7 +197,7 @@
                     "chart": {
                       "metrics": [
                         {
-                          "resourceMetadata": { "id": "/subscriptions/YOUR_SUBSCRIPTION_ID/resourceGroups/YOUR_RESOURCE_GROUP/providers/Microsoft.Insights/components/YOUR_APP_INSIGHTS_NAME" },
+                          "resourceMetadata": { "id": "/subscriptions/<PRD_SUBSCRIPTION_ID>/resourceGroups/rg-hby-rtl-prd-uks-01/providers/Microsoft.Insights/components/appi-hby-prd-uks-01" },
                           "name": "browserTimings/totalDuration",
                           "aggregationType": 4,
                           "namespace": "microsoft.insights/components",
@@ -218,7 +218,7 @@
                     "chart": {
                       "metrics": [
                         {
-                          "resourceMetadata": { "id": "/subscriptions/YOUR_SUBSCRIPTION_ID/resourceGroups/YOUR_RESOURCE_GROUP/providers/Microsoft.Insights/components/YOUR_APP_INSIGHTS_NAME" },
+                          "resourceMetadata": { "id": "/subscriptions/<PRD_SUBSCRIPTION_ID>/resourceGroups/rg-hby-rtl-prd-uks-01/providers/Microsoft.Insights/components/appi-hby-prd-uks-01" },
                           "name": "browserTimings/totalDuration",
                           "aggregationType": 4,
                           "namespace": "microsoft.insights/components",
@@ -238,7 +238,7 @@
             "metadata": {
               "inputs": [],
               "type": "Extension/HubsExtension/PartType/MarkdownPart",
-              "settings": { "content": { "settings": { "content": "# Form Analytics — save the Business Dashboard workbook, then replace REPLACE_WITH_BUSINESS_WORKBOOK_ID below and re-upload this dashboard", "title": "", "subtitle": "" } } }
+              "settings": { "content": { "settings": { "content": "# Form Analytics", "title": "", "subtitle": "" } } }
             }
           },
           {
@@ -248,25 +248,25 @@
                 {
                   "name": "ComponentId",
                   "value": {
-                    "SubscriptionId": "YOUR_SUBSCRIPTION_ID",
-                    "ResourceGroup": "YOUR_RESOURCE_GROUP",
-                    "Name": "YOUR_APP_INSIGHTS_NAME",
+                    "SubscriptionId": "<PRD_SUBSCRIPTION_ID>",
+                    "ResourceGroup": "rg-hby-rtl-prd-uks-01",
+                    "Name": "appi-hby-prd-uks-01",
                     "LinkedApplicationType": 0,
-                    "ResourceId": "/subscriptions/YOUR_SUBSCRIPTION_ID/resourceGroups/YOUR_RESOURCE_GROUP/providers/Microsoft.Insights/components/YOUR_APP_INSIGHTS_NAME",
+                    "ResourceId": "/subscriptions/<PRD_SUBSCRIPTION_ID>/resourceGroups/rg-hby-rtl-prd-uks-01/providers/Microsoft.Insights/components/appi-hby-prd-uks-01",
                     "ResourceType": "microsoft.insights/components",
                     "IsAzureFirst": false
                   }
                 },
                 {
                   "name": "ResourceIds",
-                  "value": ["/subscriptions/YOUR_SUBSCRIPTION_ID/resourceGroups/YOUR_RESOURCE_GROUP/providers/Microsoft.Insights/components/YOUR_APP_INSIGHTS_NAME"],
+                  "value": ["/subscriptions/<PRD_SUBSCRIPTION_ID>/resourceGroups/rg-hby-rtl-prd-uks-01/providers/Microsoft.Insights/components/appi-hby-prd-uks-01"],
                   "isOptional": true
                 },
                 { "name": "Type", "value": "workbook", "isOptional": true },
                 { "name": "TimeContext", "isOptional": true },
                 {
                   "name": "ConfigurationId",
-                  "value": "/subscriptions/YOUR_SUBSCRIPTION_ID/resourcegroups/YOUR_RESOURCE_GROUP/providers/microsoft.insights/workbooks/b4c0e420-3a3a-4730-bb26-7a15f5fb4472",
+                  "value": "/subscriptions/<PRD_SUBSCRIPTION_ID>/resourcegroups/rg-hby-rtl-prd-uks-01/providers/microsoft.insights/workbooks/<PRD_WORKBOOK_ID>",
                   "isOptional": true
                 },
                 { "name": "ViewerMode", "value": false, "isOptional": true },
@@ -278,7 +278,7 @@
               "type": "Extension/AppInsightsExtension/PartType/NotebookPinnedPart",
               "viewState": {
                 "content": {
-                  "configurationId": "/subscriptions/YOUR_SUBSCRIPTION_ID/resourcegroups/YOUR_RESOURCE_GROUP/providers/microsoft.insights/workbooks/b4c0e420-3a3a-4730-bb26-7a15f5fb4472"
+                  "configurationId": "/subscriptions/<PRD_SUBSCRIPTION_ID>/resourcegroups/rg-hby-rtl-prd-uks-01/providers/microsoft.insights/workbooks/<PRD_WORKBOOK_ID>"
                 }
               }
             }
@@ -307,7 +307,7 @@
   },
   "name": "Family Hubs — Business Dashboard",
   "type": "Microsoft.Portal/dashboards",
-  "location": "INSERT LOCATION",
+  "location": "uksouth",
   "tags": { "hidden-title": "Family Hubs — Business Dashboard" },
   "apiVersion": "2022-12-01-preview"
 }

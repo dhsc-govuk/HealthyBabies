@@ -12,9 +12,10 @@ interface Props {
   handleSave: () => void;
   emailReadOnly?: boolean;
   onCancel?: () => void;
+  pageTitle?: string;
 }
 
-const UserSteps = ({ completeLabel, user, dispatch, handleSave, emailReadOnly = false, onCancel }: Props): React.ReactElement => {
+const UserSteps = ({ completeLabel, user, dispatch, handleSave, emailReadOnly = false, onCancel, pageTitle }: Props): React.ReactElement => {
   const [step, setStep] = useState<number>(0);
 
   const [errors, setErrors] = useState<ValidationErrors>({
@@ -63,6 +64,8 @@ const UserSteps = ({ completeLabel, user, dispatch, handleSave, emailReadOnly = 
       validate={validate}
       isNextDisabled={hasErrors}
       onCancel={onCancel}
+      pageTitle={pageTitle}
+      pageHasErrors={hasErrors}
     />
   );
 };

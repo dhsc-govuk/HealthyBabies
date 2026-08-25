@@ -43,3 +43,37 @@
 .govuk-summary-table-card .govuk-table__row:last-child .govuk-table__cell {
   border-bottom: none;
 }
+
+/* Reflow: this is a two-column key/value table, so below the tablet breakpoint it stacks
+   vertically like the GOV.UK summary list rather than scrolling. Prevents horizontal
+   scrolling at 320px / 400% zoom (WCAG 1.4.10). */
+@media (max-width: 640px) {
+  .govuk-summary-table,
+  .govuk-summary-table .govuk-table__body,
+  .govuk-summary-table .govuk-table__row,
+  .govuk-summary-table .govuk-table__header,
+  .govuk-summary-table .govuk-table__cell {
+    display: block;
+    width: auto;
+  }
+
+  .govuk-summary-table .govuk-table__row {
+    border-bottom: 1px solid #b1b4b6;
+    padding: 10px 0;
+  }
+
+  .govuk-summary-table .govuk-table__header,
+  .govuk-summary-table .govuk-table__cell {
+    border: 0;
+    padding: 0;
+  }
+
+  .govuk-summary-table .govuk-table__header {
+    margin-bottom: 5px;
+  }
+
+  /* Right-aligned numeric cells read better left-aligned once stacked. */
+  .govuk-summary-table .govuk-table__cell--numeric {
+    text-align: left;
+  }
+}

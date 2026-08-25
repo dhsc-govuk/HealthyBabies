@@ -13,9 +13,10 @@ interface Props {
   showRoleSelect?: boolean;
   isEdit?: boolean;
   onCancel?: () => void;
+  pageTitle?: string;
 }
 
-const UserSteps = ({ completeLabel, user, dispatch, handleSave, showRoleSelect = true, isEdit = false, onCancel }: Props): React.ReactElement => {
+const UserSteps = ({ completeLabel, user, dispatch, handleSave, showRoleSelect = true, isEdit = false, onCancel, pageTitle }: Props): React.ReactElement => {
   const [step, setStep] = useState<number>(0);
 
   const [errors, setErrors] = useState<ValidationErrors>({
@@ -64,6 +65,8 @@ const UserSteps = ({ completeLabel, user, dispatch, handleSave, showRoleSelect =
       validate={validate}
       isNextDisabled={hasErrors}
       onCancel={onCancel}
+      pageTitle={pageTitle}
+      pageHasErrors={hasErrors}
     />
   );
 };

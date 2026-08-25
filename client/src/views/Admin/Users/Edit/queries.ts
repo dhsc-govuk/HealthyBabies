@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { API_ROUTES } from '../../../../constants/apiRoutes';
 
 export interface GetAdminResponse {
   firstName: string;
@@ -9,4 +10,4 @@ export interface GetAdminResponse {
   role?: string;
 }
 
-export const getAdmin = (userId: string) => axios.get<GetAdminResponse>(`admin/users/organisation-users/${userId}`);
+export const getAdmin = (userId: string) => axios.get<GetAdminResponse>(API_ROUTES.admin.users.organisationUsers.byId(userId));

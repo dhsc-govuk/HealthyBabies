@@ -1,7 +1,8 @@
 import axios from 'axios';
+import { API_ROUTES } from '../../../../../constants/apiRoutes';
 
 export const deleteFormField = async (id: string): Promise<void> => {
-  await axios.delete(`/data-collection-form-questions/${id}`);
+  await axios.delete(API_ROUTES.dataCollectionFormQuestions.byId(id));
 };
 
 export interface ReorderRequest {
@@ -10,5 +11,5 @@ export interface ReorderRequest {
 }
 
 export const reorderFormFields = async (request: ReorderRequest): Promise<void> => {
-  await axios.post('/data-collection-form-questions/reorder', request);
+  await axios.post(API_ROUTES.dataCollectionFormQuestions.reorder, request);
 };

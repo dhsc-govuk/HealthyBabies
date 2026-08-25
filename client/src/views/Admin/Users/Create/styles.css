@@ -116,3 +116,14 @@
   text-decoration: underline;
 }
 
+
+@media (forced-colors: active) {
+  .govuk-select {
+    /* Windows High Contrast Mode does not paint background images, so the custom SVG chevron
+       set above disappears and the select has no visible dropdown arrow. Restoring the native
+       control makes the browser draw its own arrow — which is why the GOV.UK Select component
+       leaves the native appearance alone (DAC_Styles_and_Layout_Usability_06). */
+    appearance: auto;
+    background-image: none;
+  }
+}

@@ -219,6 +219,99 @@ public class ServicesControllerTests(OrganisationAdminIntegrationTestWebFactory 
         service.Answers.Should().NotContain(a => a.QuestionCode == "SMD06");
     }
 
+    // BLUM-7221: the client stops sending answers for questions a changed parent has hidden, so the
+    // handler has to delete what is now orphaned. Otherwise the stale answer keeps showing on the
+    // service View page and in the core data export.
+    [Fact]
+    public async Task ShouldUpdateStepTwo_RemovesAnswersOmittedFromPayload()
+    {
+        // Arrange - a service whose strand (SMD09) selects the category question (SMD10)
+        var createdService = await CreateServiceAtStepTwo("Service With Conditional Answer");
+
+        await Client.PutAsJsonAsync(
+            $"services/{createdService.Id}/step-two",
+            new UpdateServiceStepTwoRequest(
+                Answers: [new("SMD09", B64("1")), new("SMD10", B64("2"))],
+                AdvanceStep: false));
+
+        // Act - the strand changes, so SMD10 no longer applies and is left out of the payload
+        var response = await Client.PutAsJsonAsync(
+            $"services/{createdService.Id}/step-two",
+            new UpdateServiceStepTwoRequest(
+                Answers: [new("SMD09", B64("0"))],
+                AdvanceStep: false));
+
+        // Assert
+        response.IsSuccessStatusCode.Should().BeTrue();
+        var service = await response.ToResponseModel<ServiceDto>();
+        service.Answers.Should().NotContain(a => a.QuestionCode == "SMD10");
+        service.Answers.Should().Contain(a => a.QuestionCode == "SMD09" && a.Value == "0");
+    }
+
+    [Fact]
+    public async Task ShouldUpdateStepTwo_KeepsAnswersStillPresentInPayload()
+    {
+        // Arrange
+        var createdService = await CreateServiceAtStepTwo("Service Keeping Its Answers");
+
+        await Client.PutAsJsonAsync(
+            $"services/{createdService.Id}/step-two",
+            new UpdateServiceStepTwoRequest(
+                Answers: [new("SMD05", B64("1")), new("SMD09", B64("1")), new("SMD10", B64("2"))],
+                AdvanceStep: false));
+
+        // Act - resend everything unchanged
+        var response = await Client.PutAsJsonAsync(
+            $"services/{createdService.Id}/step-two",
+            new UpdateServiceStepTwoRequest(
+                Answers: [new("SMD05", B64("1")), new("SMD09", B64("1")), new("SMD10", B64("2"))],
+                AdvanceStep: false));
+
+        // Assert - removing orphans must not touch answers the client still sends
+        response.IsSuccessStatusCode.Should().BeTrue();
+        var service = await response.ToResponseModel<ServiceDto>();
+        service.Answers.Should().Contain(a => a.QuestionCode == "SMD05" && a.Value == "1");
+        service.Answers.Should().Contain(a => a.QuestionCode == "SMD09" && a.Value == "1");
+        service.Answers.Should().Contain(a => a.QuestionCode == "SMD10" && a.Value == "2");
+    }
+
+    // The client never sends SMD01 - the name is handled separately - but bulk upload stores it as an
+    // answer, and the core data export builds its SMD01 column from that row. Removing orphans must
+    // not treat it as one.
+    [Fact]
+    public async Task ShouldUpdateStepOne_PreservesServiceNameAnswerFromBulkUpload()
+    {
+        // Arrange
+        var bulkUploadedService = ServicesData.BulkUploadedService(OrganisationAdminUsersData.OrganisationId);
+        Context.Services.Add(bulkUploadedService);
+        await SaveChangesAsync();
+
+        // Act
+        var response = await Client.PutAsJsonAsync(
+            $"services/{bulkUploadedService.Id.Value}/step-one",
+            new UpdateServiceStepOneRequest(
+                Name: B64("Bulk Uploaded Service"),
+                Answers: [new("SMD02", B64("0"))],
+                AdvanceStep: false));
+
+        // Assert
+        response.IsSuccessStatusCode.Should().BeTrue();
+        var service = await response.ToResponseModel<ServiceDto>();
+        service.Answers.Should().Contain(a => a.QuestionCode == "SMD01");
+    }
+
+    private async Task<ServiceDto> CreateServiceAtStepTwo(string name)
+    {
+        var createResponse = await Client.PostAsJsonAsync("services/create", new CreateServiceRequest(B64(name)));
+        var createdService = await createResponse.ToResponseModel<ServiceDto>();
+
+        await Client.PutAsJsonAsync(
+            $"services/{createdService.Id}/step-one",
+            new UpdateServiceStepOneRequest(Name: B64(name), Answers: [], AdvanceStep: true));
+
+        return createdService;
+    }
+
     [Fact]
     public async Task ShouldDeleteService_ReturnsNoContent()
     {
@@ -236,6 +329,11 @@ public class ServicesControllerTests(OrganisationAdminIntegrationTestWebFactory 
 
     public async Task InitializeAsync()
     {
+        // DisposeAsync truncates ServiceFormQuestions, and other classes in this assembly do the same,
+        // so the seed has to be put back per test. Without it the update handlers skip every answer as
+        // an unknown question code and nothing is ever persisted.
+        await SeedApplicationDataAsync();
+
         // Create organisation with ID from OrganisationAdminUsersData
         var organisation = Organisation.New(
             id: OrganisationAdminUsersData.OrganisationId,

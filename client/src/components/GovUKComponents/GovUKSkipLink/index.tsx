@@ -1,5 +1,4 @@
 import React from 'react';
-import './styles.css';
 
 interface GovUKSkipLinkProps {
   href?: string;
@@ -13,12 +12,16 @@ const GovUKSkipLink: React.FC<GovUKSkipLinkProps> = ({
   const handleClick = (e: React.MouseEvent<HTMLAnchorElement>) => {
     e.preventDefault();
     const targetId = href.replace('#', '');
-    const targetElement = document.getElementById(targetId);
-    if (targetElement) {
-      targetElement.setAttribute('tabindex', '-1');
-      targetElement.focus();
-      targetElement.scrollIntoView({ behavior: 'smooth' });
-    }
+    const region = document.getElementById(targetId);
+    if (!region) return;
+
+    // Land on the region's first heading rather than the region itself, so a screen reader
+    // announces what the page is about ("Manage services, heading level 1") instead of an
+    // unnamed region. Falls back to the region when a page has no heading.
+    const target = region.querySelector<HTMLElement>('h1, h2, h3, h4, h5, h6') ?? region;
+    target.setAttribute('tabindex', '-1');
+    target.focus();
+    target.scrollIntoView({ behavior: 'smooth' });
   };
 
   return (

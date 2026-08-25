@@ -7,6 +7,7 @@ import { useQuery } from 'react-query';
 import { defaultStaleTime, organisationUserStaleTime, viewOrganisationCacheKey, viewOrganisationUsersCacheKey } from '../../../../../helpers/queriesParams';
 import EditOrganisationUsersComponent from '../../../../../components/Global/Organisations/Users/Edit';
 import { GeneralLayout } from '../../../../../layouts';
+import { ROUTES } from '../../../../../constants/routes';
 
 type UrlParams = {
   organisationId: string;
@@ -30,25 +31,25 @@ const EditOrganisationUsers = (): React.ReactElement => {
   });
 
   const handleFinish = (organisationId: string, userId: string) => {
-    navigate(`/admin/organisations/${organisationId}/users/${userId}`);
+    navigate(ROUTES.admin.organisations.users.view(organisationId, userId));
   };
 
   return (
     <LoadingSpinner loading={orgLoading || userLoading} label="Loading">
       <GeneralLayout
         breadcrumbs={[
-          { label: 'Home', link: '/admin/home' },
-          { label: 'Local Authorities', link: '/admin/organisations' },
-          { label: orgData?.data.name ?? '', link: `/admin/organisations/${organisationId}` },
-          { label: 'Local Authority Users', link: `/admin/organisations/${organisationId}/users` },
+          { label: 'Home', link: ROUTES.admin.home },
+          { label: 'Local Authorities', link: ROUTES.admin.organisations.list },
+          { label: orgData?.data.name ?? '', link: ROUTES.admin.organisations.view(organisationId) },
+          { label: 'Local Authority Users', link: ROUTES.admin.organisations.users.list(organisationId) },
           {
             label: stringFromArray([userData?.data.firstName ?? '', userData?.data.lastName ?? '']),
-            link: `/admin/organisations/${organisationId}/users/${userId}`,
+            link: ROUTES.admin.organisations.users.view(organisationId, userId),
           },
           { label: 'Edit', link: '' },
         ]}
         currentPage="Edit">
-        <EditOrganisationUsersComponent organisationId={organisationId!} userId={userId!} handleFinish={handleFinish} onCancel={() => navigate(`/admin/organisations/${organisationId}/users/${userId}`)} />
+        <EditOrganisationUsersComponent organisationId={organisationId!} userId={userId!} handleFinish={handleFinish} onCancel={() => navigate(ROUTES.admin.organisations.users.view(organisationId, userId))} />
       </GeneralLayout>
     </LoadingSpinner>
   );

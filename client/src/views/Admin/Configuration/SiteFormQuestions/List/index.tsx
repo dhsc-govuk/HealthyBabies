@@ -21,6 +21,7 @@ import { useMutation, useQuery, useQueryClient } from 'react-query';
 import { SettingsLayout } from '../../../../../layouts';
 import { processError } from '../../../../../helpers/axiosErrorFallback';
 import { SiteFormQuestion, questionTypeLabels } from '../Common/types';
+import { ROUTES } from '../../../../../constants/routes';
 
 const SiteFormQuestionsList = (): React.ReactElement => {
   const navigate = useNavigate();
@@ -68,11 +69,11 @@ const SiteFormQuestionsList = (): React.ReactElement => {
   }, [data]);
 
   const handleEdit = (id: string) => {
-    navigate(`/admin/configuration/site-form-questions/${id}/edit`);
+    navigate(ROUTES.admin.configuration.siteFormQuestions.edit(id));
   };
 
   const handleCreate = () => {
-    navigate('/admin/configuration/site-form-questions/create');
+    navigate(ROUTES.admin.configuration.siteFormQuestions.create);
   };
 
   const handleDeleteClick = (item: SiteFormQuestion) => {
@@ -172,7 +173,7 @@ const SiteFormQuestionsList = (): React.ReactElement => {
         <DragIndicatorIcon sx={{ color: 'grey.500' }} />
         <Box sx={{ flex: 1 }}>
           <Stack direction="row" spacing={1} alignItems="center" sx={{ mb: 0.5 }}>
-            <Typography variant="subtitle1" fontWeight={600}>
+            <Typography variant="subtitle1" component="h3" fontWeight={600}>
               {question.code}
             </Typography>
             <Chip size="small" label={questionTypeLabels[question.questionType]} color="primary" variant="outlined" />
@@ -185,11 +186,14 @@ const SiteFormQuestionsList = (): React.ReactElement => {
         </Box>
         <Stack direction="row" spacing={1}>
           <Button size="small" onClick={() => handleEdit(question.id)}>
-            Edit
+            {/* Every row repeats "Edit"/"Delete", so on their own a screen reader has no way to
+                tell which question the button acts on — the question name is only plain text.
+                Naming it here gives each button a unique accessible name (WCAG 2.4.4). */}
+            Edit<span className="govuk-visually-hidden"> {question.label}</span>
           </Button>
           {!question.isPredefined && (
             <Button size="small" color="error" onClick={() => handleDeleteClick(question)}>
-              Delete
+              Delete<span className="govuk-visually-hidden"> {question.label}</span>
             </Button>
           )}
         </Stack>
@@ -201,12 +205,12 @@ const SiteFormQuestionsList = (): React.ReactElement => {
     <>
       <SettingsLayout
         breadcrumbs={[
-          { label: 'Admin', link: '/admin/home' },
-          { label: 'Configuration', link: '/admin/configuration' },
+          { label: 'Admin', link: ROUTES.admin.home },
+          { label: 'Configuration', link: ROUTES.admin.configuration.root },
         ]}
         currentPage="Delivery Location Form Questions">
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-          <Typography variant="h6">
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Typography variant="h6" component="h2">
             Site Form Questions ({sortedQuestions.length})
           </Typography>
           <Button onClick={handleCreate} variant="secondary">

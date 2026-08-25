@@ -6,6 +6,7 @@ import { LoadingSpinner, SummaryList } from '../../../../../components/GovUKComp
 import { getContact } from './queries';
 import { defaultStaleTime, viewOrganisationCacheKey } from '../../../../../helpers/queriesParams';
 import { getOrganisation } from '../../Users/List/queries';
+import { ROUTES } from '../../../../../constants/routes';
 
 type UrlParams = {
   organisationId: string;
@@ -32,10 +33,10 @@ const ViewOrganisationContact = (): React.ReactElement => {
     <LoadingSpinner loading={isLoading} label="Loading contact">
       <GeneralLayout
         breadcrumbs={[
-          { label: 'Home', link: '/admin/home' },
-          { label: 'Local Authorities', link: '/admin/organisations' },
-          { label: orgData?.data.name ?? '', link: `/admin/organisations/${organisationId}` },
-          { label: 'Contacts', link: `/admin/organisations/${organisationId}/contacts` },
+          { label: 'Home', link: ROUTES.admin.home },
+          { label: 'Local Authorities', link: ROUTES.admin.organisations.list },
+          { label: orgData?.data.name ?? '', link: ROUTES.admin.organisations.view(organisationId) },
+          { label: 'Contacts', link: ROUTES.admin.organisations.contacts.list(organisationId) },
         ]}
         currentPage={data?.data.name ?? 'Contact'}>
         {data && (

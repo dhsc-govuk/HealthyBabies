@@ -23,6 +23,8 @@ import { getFormFieldById } from './queries';
 import { updateFormField, UpdateFormFieldRequest } from './mutations';
 import axios from 'axios';
 import usePageTitle from '../../../../../hooks/usePageTitle';
+import { ROUTES } from '../../../../../constants/routes';
+import { API_ROUTES } from '../../../../../constants/apiRoutes';
 
 const DeliveryPlanFormQuestionsEdit = (): React.ReactElement => {
   const { id } = useParams<{ id: string }>();
@@ -94,7 +96,7 @@ const DeliveryPlanFormQuestionsEdit = (): React.ReactElement => {
     const fetchModuleData = async () => {
       if (formState.formModuleId) {
         try {
-          const response = await axios.get(`/data-collection-form-questions/modules/${formState.formModuleId}`);
+          const response = await axios.get(API_ROUTES.dataCollectionFormQuestions.modules.byId(formState.formModuleId));
           setAllSections(response.data.sections || []);
           setAvailableFields(response.data.fields || []);
         } catch (error) {
@@ -109,7 +111,7 @@ const DeliveryPlanFormQuestionsEdit = (): React.ReactElement => {
     mutationFn: (request: UpdateFormFieldRequest) => updateFormField(id!, request),
     onSuccess: () => {
       setNotification({ type: 'success', title: 'Success', message: 'Question updated successfully' });
-      navigate('/admin/configuration/delivery-plan-form-questions');
+      navigate(ROUTES.admin.configuration.deliveryPlanFormQuestions.list);
     },
     onError: (error: any) => {
       setNotification({ type: 'important', title: 'Error', message: error.response?.data || 'Failed to update question' });
@@ -162,7 +164,7 @@ const DeliveryPlanFormQuestionsEdit = (): React.ReactElement => {
   }, [formState, validateForm, updateMutation]);
 
   const handleCancel = () => {
-    navigate('/admin/configuration/delivery-plan-form-questions');
+    navigate(ROUTES.admin.configuration.deliveryPlanFormQuestions.list);
   };
 
   const isLoading = modulesLoading || fieldLoading || updateMutation.isLoading;
@@ -171,9 +173,9 @@ const DeliveryPlanFormQuestionsEdit = (): React.ReactElement => {
     <LoadingSpinner loading={isLoading} label="Loading...">
       <SettingsLayout
         breadcrumbs={[
-          { label: 'Home', link: '/admin/home' },
-          { label: 'Settings', link: '/admin/settings' },
-          { label: 'Delivery Plan Form Questions', link: '/admin/configuration/delivery-plan-form-questions' },
+          { label: 'Home', link: ROUTES.admin.home },
+          { label: 'Settings', link: ROUTES.admin.settings },
+          { label: 'Delivery Plan Form Questions', link: ROUTES.admin.configuration.deliveryPlanFormQuestions.list },
         ]}>
         <PageHeaderContainer>
           <PageTitle>Edit Question</PageTitle>

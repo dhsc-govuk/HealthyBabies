@@ -3,7 +3,7 @@ import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useQuery, useMutation } from 'react-query';
 import { LoadingBox } from 'govuk-react';
 import { GeneralLayout } from '../../../../layouts';
-import { GovUKNotificationBanner, GovUKButton, H1, H2, H4, Paragraph, UnorderedList, ListItem, useGovUKNotification } from '../../../../components/GovUKComponents';
+import { GovUKNotificationBanner, GovUKButton, GovUKLinkButton, H1, H2, Paragraph, UnorderedList, ListItem, useGovUKNotification } from '../../../../components/GovUKComponents';
 import GovUKTable, { Column } from '../../../../components/GovUKComponents/GovUKTable';
 import { SpreadsheetIcon } from '../../../../components/Icons';
 import {
@@ -12,6 +12,7 @@ import {
   ServiceStatus,
   ServiceListDto,
   downloadServicesTemplate,
+  downloadServicesExport,
   getServicesTemplateFileName,
   getServicesTemplateMimeType,
   TemplateFormat,
@@ -19,6 +20,7 @@ import {
 import { processError } from '../../../../helpers/axiosErrorFallback';
 import './styles.css';
 import usePageTitle from '../../../../hooks/usePageTitle';
+import { ROUTES } from '../../../../constants/routes';
 
 interface LocationState {
   notification?: {
@@ -50,16 +52,16 @@ const ListServices = (): React.ReactElement => {
   const services = data?.data ?? [];
 
   const handleCreate = () => {
-    navigate('/organisation-admin/core-data/services/create');
+    navigate(ROUTES.organisationAdmin.services.create);
   };
 
   const handleBulkUpload = () => {
-    navigate('/organisation-admin/core-data/services/bulk-upload');
+    navigate(ROUTES.organisationAdmin.services.bulkUpload);
   };
 
   const { setNotification } = useGovUKNotification();
 
-  const { mutate: downloadTemplate, isLoading: downloadingTemplate } = useMutation({
+  const { mutate: downloadTemplate } = useMutation({
     mutationKey: ['download-services-template'],
     mutationFn: (format: TemplateFormat) => downloadServicesTemplate(format),
     onSuccess: (data, format) => {
@@ -78,37 +80,76 @@ const ListServices = (): React.ReactElement => {
     },
   });
 
+  // BLUM-7251: "Download copy in CSV" exports the LA's actual submitted services data - distinct
+  // from downloadTemplate above, which generates a blank/re-upload template.
+  const { mutate: downloadExport, isLoading: downloadingExport } = useMutation({
+    mutationKey: ['download-services-export'],
+    mutationFn: downloadServicesExport,
+    onSuccess: (blob) => {
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'services.csv';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    },
+    onError: (error) => {
+      processError(error, (message) => setNotification({ type: 'important', title: 'Error', message }));
+    },
+  });
+
   const columns: Column<ServiceListDto>[] = [
     {
       key: 'name',
       header: 'Service name',
-      render: (service) => <span style={{ fontWeight: 700, fontSize: '19px', color: service.status === ServiceStatus.Draft ? '#505a5f' : '#0b0c0c' }}>{service.name}</span>,
+      // The service name is the row's primary identifier, so it must be an interactive element
+      // carrying that name — as on the delivery locations and contacts lists. Rendered as a
+      // plain span it was never announced as a list item, leaving only the three identical
+      // View/Change/Delete links, which a screen reader can only tell apart by reading their
+      // href — i.e. the service id.
+      render: (service) => (
+        <Link
+          to={ROUTES.organisationAdmin.services.view(service.id)}
+          className="govuk-link govuk-link--no-visited-state"
+          style={{ fontWeight: 700, fontSize: '19px', color: service.status === ServiceStatus.Draft ? '#505a5f' : undefined }}>
+          {service.name}
+        </Link>
+      ),
     },
     {
       key: 'status',
-      header: '',
+      header: 'Status',
+      headerVisuallyHidden: true,
       render: (service) => (service.status === ServiceStatus.Draft ? <span style={{ fontSize: '19px', color: '#505a5f' }}>Draft</span> : null),
     },
     {
       key: 'actions',
-      header: '',
+      header: 'Actions',
+      headerVisuallyHidden: true,
       align: 'right',
       render: (service) => (
+        // Each row repeats the same three link texts, so on their own they give a screen
+        // reader nothing to tell them apart and it falls back to reading the href — which is
+        // the service's id. Naming the service in visually hidden text gives every link a
+        // unique, meaningful accessible name (WCAG 2.4.4), matching the delivery locations
+        // and wider service categories lists.
         <span className="services-actions">
-          <Link to={`/organisation-admin/core-data/services/${service.id}`} className="govuk-link govuk-link--no-visited-state services-actions__link">
-            View
+          <Link to={ROUTES.organisationAdmin.services.view(service.id)} className="govuk-link govuk-link--no-visited-state services-actions__link">
+            View<span className="govuk-visually-hidden"> {service.name}</span>
           </Link>
           <span className="services-actions__divider" aria-hidden="true">
             |
           </span>
-          <Link to={`/organisation-admin/core-data/services/${service.id}/edit`} className="govuk-link govuk-link--no-visited-state services-actions__link">
-            Change
+          <Link to={ROUTES.organisationAdmin.services.edit(service.id)} className="govuk-link govuk-link--no-visited-state services-actions__link">
+            Change<span className="govuk-visually-hidden"> {service.name}</span>
           </Link>
           <span className="services-actions__divider" aria-hidden="true">
             |
           </span>
-          <Link to={`/organisation-admin/core-data/services/${service.id}/delete`} className="govuk-link govuk-link--no-visited-state services-actions__link">
-            Delete
+          <Link to={ROUTES.organisationAdmin.services.delete(service.id)} className="govuk-link govuk-link--no-visited-state services-actions__link">
+            Delete<span className="govuk-visually-hidden"> {service.name}</span>
           </Link>
         </span>
       ),
@@ -123,7 +164,7 @@ const ListServices = (): React.ReactElement => {
 
   return (
     <LoadingBox loading={isLoading}>
-      <GeneralLayout breadcrumbs={[{ label: 'Home', link: '/organisation-admin/home' }]}>
+      <GeneralLayout breadcrumbs={[{ label: 'Home', link: ROUTES.organisationAdmin.home }]}>
         {notification && (
           <GovUKNotificationBanner type={notification.type} title={notification.title}>
             <p className="govuk-body">{notification.message}</p>
@@ -140,14 +181,16 @@ const ListServices = (): React.ReactElement => {
         </UnorderedList>
         <Paragraph>You can also remove a service at any time to keep your information accurate.</Paragraph>
 
-        <H4>How to add or update a service using the guided form</H4>
+        {/* Peer sections of "Services" below, so h2 — the small heading class keeps the
+            existing visual weight without skipping from h1 straight to h4. */}
+        <h2 className="govuk-heading-s">How to add or update a service using the guided form</h2>
         <Paragraph>
           Select &apos;Add service&apos; to add or update a single service to your list. The guided form will take you through the data you need to enter, provide relevant guidance
           and check for errors as you go.
         </Paragraph>
         <Paragraph>You can save your progress at any time and return later to complete adding a new service.</Paragraph>
 
-        <H4>How to add or update services using a CSV</H4>
+        <h2 className="govuk-heading-s">How to add or update services using a CSV</h2>
         <Paragraph>If you want to add or update multiple services at once, you can upload a service list using a Comma Separated Values file (CSV).</Paragraph>
         <Paragraph>
           Download the service list template as a CSV or a macro-enabled Excel file (XLSM) from this page. Open the template in a spreadsheet editor and add the details for one or
@@ -161,24 +204,12 @@ const ListServices = (): React.ReactElement => {
             <p className="govuk-body govuk-!-font-weight-bold govuk-!-margin-bottom-0">Service list</p>
             <p className="govuk-body-s govuk-!-margin-bottom-2">Template</p>
             <div className="services-template__downloads">
-              <a
-                href="#"
-                className="govuk-link"
-                onClick={(e) => {
-                  e.preventDefault();
-                  downloadTemplate('csv');
-                }}>
+              <GovUKLinkButton onClick={() => downloadTemplate('csv')}>
                 Download in CSV
-              </a>
-              <a
-                href="#"
-                className="govuk-link"
-                onClick={(e) => {
-                  e.preventDefault();
-                  downloadTemplate('xlsx');
-                }}>
+              </GovUKLinkButton>
+              <GovUKLinkButton onClick={() => downloadTemplate('xlsx')}>
                 Download in XLSM
-              </a>
+              </GovUKLinkButton>
             </div>
           </div>
         </div>
@@ -194,13 +225,14 @@ const ListServices = (): React.ReactElement => {
             <GovUKButton className="govuk-button govuk-button--secondary govuk-!-margin-bottom-0" onClick={handleBulkUpload}>
               Upload with CSV
             </GovUKButton>
-            <GovUKButton className="govuk-button govuk-button--secondary govuk-!-margin-bottom-0" onClick={() => downloadTemplate('csv')} disabled={downloadingTemplate}>
+            <GovUKButton className="govuk-button govuk-button--secondary govuk-!-margin-bottom-0" onClick={() => downloadExport()} disabled={downloadingExport}>
               Download copy in CSV
             </GovUKButton>
           </div>
         </div>
 
         <GovUKTable
+          caption="Services"
           data={services}
           columns={columns}
           keyExtractor={(service) => service.id}

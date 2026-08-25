@@ -4,11 +4,18 @@ import { Button, Table, Link, Tag, Select } from 'govuk-react';
 import { H2 } from '../GovUKTypography';
 import { PageHeaderContainer, PageHeaderActions } from '../../../styles/govuk-global';
 import SearchIcon from '../../Logos/SearchIcon';
+import GovUKTableScroll from '../GovUKTableScroll';
 import './styles.css';
 
 export interface Column<T> {
   key: keyof T | string;
   header: string;
+  /**
+   * Keeps `header` out of the visual layout but still in the accessible name. Use for
+   * action or status columns that read as blank: an empty `<th>` is a WAVE error and
+   * leaves screen reader users without a column name when navigating cell by cell.
+   */
+  headerVisuallyHidden?: boolean;
   render?: (item: T) => React.ReactNode;
   sortable?: boolean;
   align?: 'left' | 'right' | 'center';
@@ -20,6 +27,7 @@ export interface FilterOption {
 }
 
 export interface GovUKTableProps<T> {
+  caption: string;
   data: T[];
   columns: Column<T>[];
   title?: string;
@@ -43,6 +51,7 @@ export interface GovUKTableProps<T> {
 }
 
 function GovUKTableComponent<T>({
+  caption,
   data,
   columns,
   title,
@@ -256,12 +265,14 @@ function GovUKTableComponent<T>({
           );
         })()}
 
+      <GovUKTableScroll label={title ? `${title} table` : 'Table'}>
       <Table>
+        <caption className="govuk-visually-hidden">{caption}</caption>
         {!hideHeader && (
           <Table.Row>
             {columns.map((column) => (
               <Table.CellHeader key={String(column.key)} style={column.align ? { textAlign: column.align } : undefined}>
-                {column.header}
+                {column.headerVisuallyHidden ? <span className="govuk-visually-hidden">{column.header}</span> : column.header}
               </Table.CellHeader>
             ))}
           </Table.Row>
@@ -297,6 +308,7 @@ function GovUKTableComponent<T>({
           ))
         )}
       </Table>
+      </GovUKTableScroll>
     </div>
   );
 }

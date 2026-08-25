@@ -15,6 +15,8 @@ import { getFormFieldById } from './queries';
 import { updateFormField, UpdateFormFieldRequest } from './mutations';
 import axios from 'axios';
 import usePageTitle from '../../../../../hooks/usePageTitle';
+import { ROUTES } from '../../../../../constants/routes';
+import { API_ROUTES } from '../../../../../constants/apiRoutes';
 
 const DataCollectionFormQuestionsEdit = (): React.ReactElement => {
   const { id } = useParams<{ id: string }>();
@@ -86,7 +88,7 @@ const DataCollectionFormQuestionsEdit = (): React.ReactElement => {
     const fetchModuleData = async () => {
       if (formState.formModuleId) {
         try {
-          const response = await axios.get(`/data-collection-form-questions/modules/${formState.formModuleId}`);
+          const response = await axios.get(API_ROUTES.dataCollectionFormQuestions.modules.byId(formState.formModuleId));
           setAllSections(response.data.sections || []);
           setAvailableFields(response.data.fields || []);
         } catch (error) {
@@ -101,7 +103,7 @@ const DataCollectionFormQuestionsEdit = (): React.ReactElement => {
     mutationFn: (request: UpdateFormFieldRequest) => updateFormField(id!, request),
     onSuccess: () => {
       setNotification({ type: 'success', title: 'Success', message: 'Question updated successfully' });
-      navigate('/admin/configuration/data-collection-form-questions');
+      navigate(ROUTES.admin.configuration.dataCollectionFormQuestions.list);
     },
     onError: (error: any) => {
       setNotification({ type: 'important', title: 'Error', message: error.response?.data || 'Failed to update question' });
@@ -154,7 +156,7 @@ const DataCollectionFormQuestionsEdit = (): React.ReactElement => {
   }, [formState, validateForm, updateMutation]);
 
   const handleCancel = () => {
-    navigate('/admin/configuration/data-collection-form-questions');
+    navigate(ROUTES.admin.configuration.dataCollectionFormQuestions.list);
   };
 
   const isLoading = modulesLoading || fieldLoading || updateMutation.isLoading;
@@ -163,9 +165,9 @@ const DataCollectionFormQuestionsEdit = (): React.ReactElement => {
     <LoadingSpinner loading={isLoading} label="Loading...">
       <SettingsLayout
         breadcrumbs={[
-          { label: 'Home', link: '/admin/home' },
-          { label: 'Settings', link: '/admin/settings' },
-          { label: 'Data Collection Form Questions', link: '/admin/configuration/data-collection-form-questions' },
+          { label: 'Home', link: ROUTES.admin.home },
+          { label: 'Settings', link: ROUTES.admin.settings },
+          { label: 'Data Collection Form Questions', link: ROUTES.admin.configuration.dataCollectionFormQuestions.list },
         ]}>
         <PageHeaderContainer>
           <PageTitle>Edit Question</PageTitle>

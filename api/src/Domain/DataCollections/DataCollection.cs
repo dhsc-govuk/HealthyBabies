@@ -71,6 +71,7 @@ public class DataCollection : SoftDeletableEntity<DataCollectionId>
         Guard.NotNullOrEmpty(name, nameof(name));
         Guard.Ensure(startDate < endDate, "Start date must be before end date");
 
+        var previousEndDate = EndDate;
         Name = name;
         Description = description;
         StartDate = startDate;
@@ -79,6 +80,7 @@ public class DataCollection : SoftDeletableEntity<DataCollectionId>
         IsDraft = true;
         Type = type ?? DataCollectionType.DeliveryPlan;
         UpdatedAt = DateTime.UtcNow;
+        CascadeEndDateToLocalAuthorities(previousEndDate, endDate);
     }
 
     public void UpdateAndPublish(
@@ -92,6 +94,7 @@ public class DataCollection : SoftDeletableEntity<DataCollectionId>
         Guard.NotNullOrEmpty(name, nameof(name));
         Guard.Ensure(startDate < endDate, "Start date must be before end date");
 
+        var previousEndDate = EndDate;
         Name = name;
         Description = description;
         StartDate = startDate;
@@ -100,6 +103,7 @@ public class DataCollection : SoftDeletableEntity<DataCollectionId>
         IsDraft = false;
         Type = type ?? DataCollectionType.DeliveryPlan;
         UpdatedAt = DateTime.UtcNow;
+        CascadeEndDateToLocalAuthorities(previousEndDate, endDate);
     }
 
     public void AssignLocalAuthority(OrganisationId localAuthorityId, UserId? assignedById = null)
@@ -122,17 +126,7 @@ public class DataCollection : SoftDeletableEntity<DataCollectionId>
         return assignment?.EndDate ?? EndDate;
     }
 
-    private static readonly TimeZoneInfo UkTimeZone = TimeZoneInfo.FindSystemTimeZoneById("Europe/London");
-
-    // EndDate values represent a UK calendar date - the last day submissions are accepted - not a
-    // precise instant. Postgres round-trips them as UTC, and UTC vs UK local time (BST) disagree on
-    // the calendar date for the last hour of each UK day, so callers must compare via UK local time
-    // rather than taking .Date on the raw UTC value, or the deadline silently loses a day near midnight.
-    private static DateTime ToUkDate(DateTime value)
-    {
-        var utc = value.Kind == DateTimeKind.Utc ? value : DateTime.SpecifyKind(value, DateTimeKind.Utc);
-        return TimeZoneInfo.ConvertTimeFromUtc(utc, UkTimeZone).Date;
-    }
+    private static DateTime ToUkDate(DateTime value) => UkCalendar.ToUkDate(value);
 
     // Number of whole UK calendar days remaining before the deadline; 0 means today is the last day.
     public int GetDaysRemaining(OrganisationId localAuthorityId) =>
@@ -142,14 +136,55 @@ public class DataCollection : SoftDeletableEntity<DataCollectionId>
     public bool IsClosedFor(OrganisationId localAuthorityId) =>
         ToUkDate(DateTime.UtcNow) > ToUkDate(GetEffectiveEndDate(localAuthorityId));
 
+    // Changes only the dates - deliberately leaves IsDraft and IsClosed alone, unlike
+    // UpdateAndSaveAsDraft/UpdateAndPublish. Either date may be null to leave it unchanged.
+    public void UpdateDates(DateTime? startDate, DateTime? endDate)
+    {
+        var newStartDate = startDate ?? StartDate;
+        var newEndDate = endDate ?? EndDate;
+        Guard.Ensure(newStartDate < newEndDate, "Start date must be before end date");
+
+        var previousEndDate = EndDate;
+        StartDate = newStartDate;
+        EndDate = newEndDate;
+        UpdatedAt = DateTime.UtcNow;
+        CascadeEndDateToLocalAuthorities(previousEndDate, newEndDate);
+    }
+
+    // Local authority assignments snapshot the collection end date at assign time (see
+    // AssignLocalAuthority) and GetEffectiveEndDate prefers that snapshot, so roll forward the ones
+    // still sitting on the old value - otherwise an end date change is invisible to every assigned
+    // local authority. Assignments extended individually keep their own date, and null ones already
+    // track the collection through the GetEffectiveEndDate fallback. Every path that moves EndDate
+    // must call this, or the assignment snapshots drift and stop matching for good.
+    private void CascadeEndDateToLocalAuthorities(DateTime previousEndDate, DateTime newEndDate)
+    {
+        if (newEndDate == previousEndDate)
+        {
+            return;
+        }
+
+        foreach (var assignment in _localAuthorities.Where(la => la.EndDate == previousEndDate))
+        {
+            assignment.UpdateEndDate(newEndDate);
+        }
+    }
+
+    // A collection open to all local authorities (IsSubmittedByAllLocalAuthorities) has no
+    // DataCollectionLocalAuthority rows at all - everyone falls back to the collection-wide EndDate
+    // via GetEffectiveEndDate. Giving one authority its own deadline (e.g. on reopen) therefore has
+    // to create that authority's assignment on demand rather than silently no-op when it's missing.
     public void UpdateLocalAuthorityEndDate(OrganisationId localAuthorityId, DateTime? endDate)
     {
         var assignment = _localAuthorities.FirstOrDefault(la => la.LocalAuthorityId == localAuthorityId);
-        if (assignment != null)
+        if (assignment == null)
         {
-            assignment.UpdateEndDate(endDate);
-            UpdatedAt = DateTime.UtcNow;
+            assignment = DataCollectionLocalAuthority.Create(Id, localAuthorityId, assignedById: null, EndDate);
+            _localAuthorities.Add(assignment);
         }
+
+        assignment.UpdateEndDate(endDate);
+        UpdatedAt = DateTime.UtcNow;
     }
 
     public void RemoveLocalAuthority(OrganisationId localAuthorityId)
@@ -162,9 +197,21 @@ public class DataCollection : SoftDeletableEntity<DataCollectionId>
         }
     }
 
-    public void ClearLocalAuthorities()
+    // Drops the collection's local authority scope, used when it is switched to "submitted by all
+    // local authorities". Assignments double as the store for a single authority's own deadline
+    // (see UpdateLocalAuthorityEndDate), and those must survive: clearing the lot silently reverted
+    // every due date extension - and every resubmit-by date set by a reopen - to the collection-wide
+    // EndDate on the next edit.
+    //
+    // Only a date past EndDate is an extension. Anything on or before it is either an untouched
+    // assignment snapshot or a stale one left on a date the collection has since moved past -
+    // snapshots only started rolling forward when CascadeEndDateToLocalAuthorities arrived, and
+    // nothing backfilled the rows written before that. Keeping a stale one would pin its authority
+    // to a deadline earlier than everybody else's, locking it out of a collection that is still
+    // open (IsClosedFor reads the same snapshot) with nothing in the UI to explain why.
+    public void ClearLocalAuthorityAssignments()
     {
-        _localAuthorities.Clear();
+        _localAuthorities.RemoveAll(la => la.EndDate == null || la.EndDate <= EndDate);
         UpdatedAt = DateTime.UtcNow;
     }
 

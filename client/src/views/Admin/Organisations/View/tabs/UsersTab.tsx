@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Link, LoadingBox } from 'govuk-react';
 import { GovUKTable } from '../../../../../components/GovUKComponents';
 import type { Column } from '../../../../../components/GovUKComponents';
+import { ROUTES } from '../../../../../constants/routes';
 
 export interface UserRow {
   id: string;
@@ -26,10 +27,10 @@ const UsersTab = ({ users, isLoading, organisationId }: UsersTabProps): React.Re
       header: 'Name',
       render: (user) => (
         <Link
-          href={`/admin/la-users/${user.id}`}
+          href={ROUTES.admin.laUsers.view(user.id)}
           onClick={(e: React.MouseEvent) => {
             e.preventDefault();
-            navigate(`/admin/la-users/${user.id}`);
+            navigate(ROUTES.admin.laUsers.view(user.id));
           }}>
           {user.name}
         </Link>
@@ -50,12 +51,13 @@ const UsersTab = ({ users, isLoading, organisationId }: UsersTabProps): React.Re
         <button
           type="button"
           className="govuk-button govuk-button--secondary"
-          onClick={() => navigate(`/admin/la-users/create?organisationId=${organisationId}`)}>
+          onClick={() => navigate(ROUTES.admin.laUsers.createForOrganisation(organisationId))}>
           Add LA user
         </button>
       </div>
       <LoadingBox loading={isLoading}>
         <GovUKTable<UserRow>
+          caption="Local authority users"
           data={users}
           columns={columns}
           searchPlaceholder="Search LA user by name"
@@ -65,7 +67,7 @@ const UsersTab = ({ users, isLoading, organisationId }: UsersTabProps): React.Re
             { value: 'name', label: 'By name' },
           ]}
           keyExtractor={(user) => user.id}
-          getRowHref={(user) => `/admin/la-users/${user.id}`}
+          getRowHref={(user) => ROUTES.admin.laUsers.view(user.id)}
         />
       </LoadingBox>
     </>

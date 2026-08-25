@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { SiteFormQuestionDto, SiteFormQuestionOptionDto } from './types';
+import { API_ROUTES } from '../../../constants/apiRoutes';
 
 export interface CreateSiteFormQuestionRequest {
   code: string;
@@ -31,17 +32,17 @@ export interface UpdateSiteFormQuestionRequest {
 }
 
 export const createSiteFormQuestion = (data: CreateSiteFormQuestionRequest) =>
-  axios.post<SiteFormQuestionDto>('/site-form-questions', data);
+  axios.post<SiteFormQuestionDto>(API_ROUTES.siteFormQuestions.create, data);
 
 export const updateSiteFormQuestion = (id: string, data: UpdateSiteFormQuestionRequest) =>
-  axios.put<SiteFormQuestionDto>(`/site-form-questions/${id}`, data);
+  axios.put<SiteFormQuestionDto>(API_ROUTES.siteFormQuestions.byId(id), data);
 
 export const deleteSiteFormQuestion = (id: string) =>
-  axios.delete(`/site-form-questions/${id}`);
+  axios.delete(API_ROUTES.siteFormQuestions.byId(id));
 
 export interface ReorderSiteFormQuestionsRequest {
   questions: { id: string; displayOrder: number }[];
 }
 
 export const reorderSiteFormQuestions = (data: ReorderSiteFormQuestionsRequest) =>
-  axios.post('/site-form-questions/reorder', data);
+  axios.post(API_ROUTES.siteFormQuestions.reorder, data);

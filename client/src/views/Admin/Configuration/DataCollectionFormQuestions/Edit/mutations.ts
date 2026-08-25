@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { FormField, FormFieldOption } from '../Common/types';
+import { API_ROUTES } from '../../../../../constants/apiRoutes';
 
 export interface UpdateFormFieldRequest {
   formSectionId: string | null;
@@ -18,6 +19,6 @@ export interface UpdateFormFieldRequest {
 }
 
 export const updateFormField = async (id: string, request: UpdateFormFieldRequest): Promise<FormField> => {
-  const response = await axios.put<FormField>(`/data-collection-form-questions/${id}`, request);
+  const response = await axios.put<FormField>(API_ROUTES.dataCollectionFormQuestions.byId(id), request);
   return response.data;
 };

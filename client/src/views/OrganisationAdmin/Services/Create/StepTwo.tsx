@@ -6,6 +6,7 @@ import { ServiceFormQuestionDto } from '../../../../components/Global/Services';
 import { ServiceFormState, ServiceReducerAction, ValidationErrors } from '../Common';
 import DynamicQuestionRenderer from './DynamicQuestionRenderer';
 import { useAuthProvider } from '../../../../components/AuthProvider';
+import { API_ROUTES } from '../../../../constants/apiRoutes';
 
 interface LocationDto {
   id: string;
@@ -26,14 +27,14 @@ const StepTwo = ({ state, dispatch, errors, questions }: StepTwoProps): React.Re
   // Fetch locations for SMD19 - always fetch so they're ready when needed
   const { data: locationsData } = useQuery(
     ['locations', organisationId],
-    () => axios.get<LocationDto[]>(`/organisations/${organisationId}/locations`),
+    () => axios.get<LocationDto[]>(API_ROUTES.organisations.locations.list(organisationId)),
     {
       enabled: !!organisationId,
       staleTime: 5 * 60 * 1000,
     }
   );
 
-  const locations = locationsData?.data ?? [];
+  const locations = useMemo(() => locationsData?.data ?? [], [locationsData?.data]);
 
   // Filter questions for step 2 only and inject location options for SMD19
   const stepTwoQuestions = useMemo(() => {
@@ -71,6 +72,7 @@ const StepTwo = ({ state, dispatch, errors, questions }: StepTwoProps): React.Re
     <Box>
       <DynamicQuestionRenderer
         questions={stepTwoQuestions}
+        allFormQuestions={questions}
         state={state}
         dispatch={dispatch}
         errors={errors}

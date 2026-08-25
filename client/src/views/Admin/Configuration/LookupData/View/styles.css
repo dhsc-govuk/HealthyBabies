@@ -1,4 +1,4 @@
-.govuk-summary-list {
+.lookup-data-view__summary .govuk-summary-list {
   font-family: "GDS Transport", arial, sans-serif;
   font-size: 19px;
   margin-bottom: 30px;
@@ -7,22 +7,22 @@
   padding: 15px 30px;
 }
 
-.govuk-summary-list__row {
+.lookup-data-view__summary .govuk-summary-list__row {
   display: flex;
   border-bottom: 1px solid #b1b4b6;
   padding: 0 20px;
 }
 
-.govuk-summary-list__row:last-child {
+.lookup-data-view__summary .govuk-summary-list__row:last-child {
   border-bottom: none;
 }
 
-.govuk-summary-list__key {
+.lookup-data-view__summary .govuk-summary-list__key {
   font-weight: 700;
   width: 30%;
   padding-right: 20px;
 }
 
-.govuk-summary-list__value {
+.lookup-data-view__summary .govuk-summary-list__value {
   flex: 1;
 }

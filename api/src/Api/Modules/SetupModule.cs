@@ -191,6 +191,7 @@ internal static class SetupModule
         services.AddScoped<IOrganisationManagerHomeControllerService, OrganisationManagerHomeControllerService>();
         services.AddScoped<IOrganisationsControllerService, OrganisationsControllerService>();
         services.AddScoped<IOrganisationAnalyticsControllerService, OrganisationAnalyticsControllerService>();
+        services.AddScoped<IDeliveryOverviewControllerService, DeliveryOverviewControllerService>();
         services.AddScoped<IOrganisationContactsControllerService, OrganisationContactsControllerService>();
         services.AddScoped<IOrganisationUsersControllerService, OrganisationUsersControllerService>();
         services.AddScoped<IProfileControllerService, ProfileControllerService>();
@@ -199,6 +200,7 @@ internal static class SetupModule
         services.AddScoped<IServiceCategoriesControllerService, ServiceCategoriesControllerService>();
         services.AddScoped<IDataCollectionsControllerService, DataCollectionsControllerService>();
         services.AddScoped<ISubmissionsControllerService, SubmissionsControllerService>();
+        services.AddScoped<IDeliveryPlanReviewService, DeliveryPlanReviewService>();
         services.AddScoped<ISubmissionExportService, SubmissionExportService>();
         services.AddScoped<ICoreDataExportService, CoreDataExportService>();
         services.AddScoped<IBulkUploadTemplateService, BulkUploadTemplateService>();

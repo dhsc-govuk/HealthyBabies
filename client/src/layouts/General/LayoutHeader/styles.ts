@@ -16,7 +16,7 @@ export const Header = styled(Box)(() => ({
 }));
 
 export const HeaderContainer = styled(Box)(() => ({
-  maxWidth: '960px',
+  maxWidth: '1080px',
   margin: '0 auto',
   padding: '0 15px',
 }));

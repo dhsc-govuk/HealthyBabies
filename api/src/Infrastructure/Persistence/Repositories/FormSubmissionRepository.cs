@@ -283,6 +283,19 @@ public class FormSubmissionRepository(ApplicationDbContext dbContext)
             .ToListAsync(cancellationToken);
     }
 
+    public async Task<IReadOnlyList<FormSubmission>> GetByOrganisationAndModulesAsync(
+        OrganisationId organisationId,
+        IReadOnlyCollection<DataCollectionFormModuleId> formModuleIds,
+        CancellationToken cancellationToken = default)
+    {
+        return await Context.FormSubmissions
+            .AsNoTracking()
+            .Include(x => x.FieldValues)
+            .Where(x => x.OrganisationId == organisationId && formModuleIds.Contains(x.FormModuleId))
+            .OrderByDescending(x => x.CreatedAt)
+            .ToListAsync(cancellationToken);
+    }
+
     public async Task<IReadOnlyList<FormSubmission>> GetAllAsync(CancellationToken cancellationToken = default)
     {
         return await Context.FormSubmissions

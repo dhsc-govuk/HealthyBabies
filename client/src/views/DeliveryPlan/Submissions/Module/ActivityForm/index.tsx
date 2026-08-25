@@ -2,17 +2,49 @@ import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from 'react-query';
 import { GeneralLayout } from '../../../../../layouts';
-import { LoadingSpinner, GovUKButton, GovUKNotificationBanner, SummaryList, FormFieldRenderer, GovUKSummaryCard } from '../../../../../components/GovUKComponents';
+import {
+  LoadingSpinner,
+  GovUKButton,
+  GovUKNotificationBanner,
+  SummaryList,
+  FormFieldRenderer,
+  GovUKSummaryCard,
+  GovUKErrorSummary,
+} from '../../../../../components/GovUKComponents';
 import { computeFormula } from '../../../../../components/GovUKComponents/FormFieldRenderer';
 import useErrorSummaryFocus from '../../../../../hooks/useErrorSummaryFocus';
 import usePageTitle from '../../../../../hooks/usePageTitle';
-import { getActivityForm, getActivityTemplate, createActivity, saveActivityForm, ActivityFormDetailDto, DeliveryPlanFieldDto, DeliveryPlanFieldOptionDto } from '../../queries';
+import useStepFocus from '../../../../../hooks/useStepFocus';
+import { getActivityForm, getActivityTemplate, createActivity, saveActivityForm, ActivityFormDetailDto, DeliveryPlanFieldDto, DeliveryPlanFieldOptionDto, StrandSpendSummaryDto } from '../../queries';
+import { resolveSnapshotLabel } from '../../../../../helpers/answerSnapshot';
+import { withServiceOptions } from '../../../../../helpers/dynamicServiceOptions';
 import { encodeNullableForWaf, decodeFromWaf } from '../../../../../helpers/stringUtils';
 import { evaluateNumericOperators } from '../../../../../helpers/conditionalOperators';
 import { ConditionalRule, FieldConfiguration } from '../../../../OrganisationAdmin/Submissions/queries';
 import { getModuleContent } from '../moduleContent';
+import focusErrorTarget from '../../../../../helpers/focusErrorTarget';
+import { processError } from '../../../../../helpers/axiosErrorFallback';
+import { ROUTES } from '../../../../../constants/routes';
 
 type ViewMode = 'form' | 'summary' | 'view';
+
+const formatMoney = (value: number): string =>
+  `£${value.toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+// Parses the DD/MM/YYYY string the date field emits (ISO is tolerated for rows that predate it).
+const parseFormDate = (value: string): Date | null => {
+  if (!value) return null;
+  const dateOnly = value.split(' ')[0];
+  const slash = dateOnly.split('/');
+  if (slash.length === 3) {
+    const [d, m, y] = slash.map((n) => parseInt(n, 10));
+    if ([d, m, y].some(isNaN)) return null;
+    const parsed = new Date(y, m - 1, d);
+    return parsed.getFullYear() === y && parsed.getMonth() === m - 1 && parsed.getDate() === d ? parsed : null;
+  }
+  const iso = new Date(dateOnly);
+  return isNaN(iso.getTime()) ? null : iso;
+};
 
 const ActivityFormView = (): React.ReactElement => {
   const navigate = useNavigate();
@@ -25,8 +57,7 @@ const ActivityFormView = (): React.ReactElement => {
   }>();
 
   const isViewOnly = routerLocation.pathname.endsWith('/view');
-  const apiBase = routerLocation.pathname.startsWith('/organisation-admin') ? 'organisation-admin' : 'delivery-plan';
-  const basePath = `/${apiBase}`;
+  const apiBase = routerLocation.pathname.startsWith(ROUTES.organisationAdmin.root) ? 'organisation-admin' : 'delivery-plan';
   const isNew = activityId === 'new';
 
   const [currentStep, setCurrentStep] = useState(1);
@@ -34,6 +65,7 @@ const ActivityFormView = (): React.ReactElement => {
   const [fieldValues, setFieldValues] = useState<Record<string, string | string[] | null>>({});
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [submitAttempts, setSubmitAttempts] = useState(0);
+  const [saveError, setSaveError] = useState<string | undefined>(undefined);
   useErrorSummaryFocus(submitAttempts, Object.keys(fieldErrors).length > 0);
 
   const onDataLoaded = (data: { data: ActivityFormDetailDto }) => {
@@ -48,7 +80,10 @@ const ActivityFormView = (): React.ReactElement => {
     });
     setFieldValues(initialValues);
 
-    if (isViewOnly || data.data.status.toLowerCase() === 'completed') {
+    // A submitted round is a record, not a form — never open it in edit mode, however it was
+    // reached. Otherwise the route decides: /view is the read-only summary and the bare activity
+    // route is the update steps, so 'Change' on the list lands straight on step 1 (BLUM-7562).
+    if (data.data.isReadOnly || isViewOnly) {
       setViewMode('view');
     } else {
       setViewMode('form');
@@ -96,7 +131,11 @@ const ActivityFormView = (): React.ReactElement => {
 
       return saveActivityForm(submissionId!, moduleId!, activityId!, { fieldValues: encodedValues, markComplete }, apiBase);
     },
+    onError: (error) => {
+      processError(error, setSaveError);
+    },
     onSuccess: (response, markComplete) => {
+      setSaveError(undefined);
       queryClient.invalidateQueries(['activities-module', submissionId, moduleId]);
       if (!isNew) {
         queryClient.invalidateQueries(['activity-form', submissionId, moduleId, activityId]);
@@ -104,25 +143,42 @@ const ActivityFormView = (): React.ReactElement => {
       const savedActivity = response?.data;
       const noun = getModuleContent(savedActivity?.moduleCode ?? activityData_?.data?.moduleCode).activityNoun;
       const capitalisedNoun = noun.charAt(0).toUpperCase() + noun.slice(1);
-      navigate(`${basePath}/submissions/${submissionId}/modules/${moduleId}/activities`, {
-        state: markComplete
-          ? {
-              notification: {
+      const savedActivityName = decodeFromWaf(savedActivity?.activityName) ?? capitalisedNoun;
+      navigate(ROUTES.areaSubmissions.activities.list(apiBase, submissionId, moduleId), {
+        state: {
+          notification: markComplete
+            ? {
                 type: 'success',
                 title: `${capitalisedNoun} saved`,
-                message: `${decodeFromWaf(savedActivity?.activityName) ?? capitalisedNoun} has been successfully saved.`,
+                message: `${savedActivityName} has been successfully saved.`,
+              }
+            : {
+                type: 'success',
+                title: `${capitalisedNoun} draft saved`,
+                message: `${savedActivityName} has been saved as a draft.`,
               },
-            }
-          : undefined,
+        },
       });
     },
   });
+
+  // BLUM-7520: reset() unmounts the save-error summary, which both clears a stale error before a
+  // fresh attempt and lets GovUKErrorSummary re-run its mount focus effect on a repeat failure.
+  // Skipped while a save is in flight: reset() drops currentMutation without detaching the
+  // observer, so that save would later set saveError while isError stayed false — the failure
+  // would be swallowed with no summary shown. Nothing to clear mid-flight anyway.
+  const clearSaveError = () => {
+    if (saveMutation.isLoading) return;
+    saveMutation.reset();
+    setSaveError(undefined);
+  };
 
   const activity = activityData_?.data;
   const content = getModuleContent(activity?.moduleCode);
   const activityDisplayName = decodeFromWaf(activity?.activityName) || content.addButtonText;
 
   usePageTitle(activity ? `${activityDisplayName} – ${activity.moduleName}` : content.activityNoun);
+  const stepFocusRef = useStepFocus<HTMLDivElement>(`${viewMode}-${currentStep}`);
 
   const sections = useMemo(() => {
     if (!activity) return [];
@@ -138,7 +194,11 @@ const ActivityFormView = (): React.ReactElement => {
 
   const currentFields = useMemo(() => {
     if (!activity) return [];
-    const fields = [...activity.fields].sort((a, b) => a.displayOrder - b.displayOrder);
+    // Service-backed fields carry no seeded options — their choices are the organisation's
+    // services, supplied alongside the form and swapped in here.
+    const fields = [...activity.fields]
+      .sort((a, b) => a.displayOrder - b.displayOrder)
+      .map((f) => withServiceOptions(f, activity.availableServices));
     if (sections.length === 0) return fields;
     if (!currentSection) return [];
     return fields.filter((f) => f.stepNumber === currentSection.sectionNumber);
@@ -225,13 +285,20 @@ const ActivityFormView = (): React.ReactElement => {
     });
   }, [activity, fieldValues]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const validateCurrentStep = useCallback((): boolean => {
-    if (!activity) return true;
+  // Shared by validateCurrentStep (per-step, on Continue) and validateAllFields (every field, on
+  // Confirm and save) so the two can't drift — validateAllFields used to only check sumGroup limits,
+  // missing required/date/strand-spend checks entirely.
+  //
+  // enforceLowerBound is off by default (used by "Save as draft and exit"): the backend only checks
+  // under-allocation at real completion (MarkComplete), not on a draft save, since a draft is
+  // explicitly not finished yet. Blocking a draft for being under-allocated would be stricter than
+  // the backend allows.
+  const validateFields = useCallback((fields: DeliveryPlanFieldDto[], enforceLowerBound = false): Record<string, string> => {
+    if (!activity) return {};
     const errors: Record<string, string> = {};
-    const visibleFields = currentFields.filter(isFieldVisible);
     const processedSumGroups = new Set<string>();
 
-    visibleFields.forEach((field) => {
+    fields.forEach((field) => {
       const fieldTypeLower = field.fieldType.toLowerCase();
       if (fieldTypeLower === 'calculation' || fieldTypeLower === 'read_only') return;
 
@@ -253,6 +320,52 @@ const ActivityFormView = (): React.ReactElement => {
 
       if (isEmpty) return;
 
+      // Forecast fields are cross-validated against the CFD allocation for the whole strand, so the
+      // figure being typed is added to the total already committed by the other activities. The
+      // under-allocation half doesn't apply to hard-capped fields (e.g. rollover), same as the backend.
+      const strandYear = (activity.strandSpend ?? []).find((s) => s.forecastFieldKey === field.code);
+      if (strandYear && stringValue) {
+        const entered = parseFloat(stringValue);
+        if (!isNaN(entered)) {
+          const strandTotal = strandYear.spentByOtherActivities + entered;
+          if (strandTotal > strandYear.upperBound) {
+            errors[field.code] = strandYear.isCap
+              ? `This would take the ${strandYear.yearRange} total to ${formatMoney(strandTotal)}, above the approved rollover of ${formatMoney(strandYear.allocation)}. Enter ${formatMoney(strandYear.remainingToUpperBound)} or less.`
+              : `This would take the ${strandYear.yearRange} total to ${formatMoney(strandTotal)}, more than 10% above the allocation of ${formatMoney(strandYear.allocation)}. Enter ${formatMoney(strandYear.remainingToUpperBound)} or less.`;
+            return;
+          }
+          if (enforceLowerBound && !strandYear.isCap && strandTotal < strandYear.lowerBound) {
+            const remainingToLowerBound = strandYear.lowerBound - strandYear.spentByOtherActivities;
+            errors[field.code] = `This would take the ${strandYear.yearRange} total to ${formatMoney(strandTotal)}, more than 10% below the allocation of ${formatMoney(strandYear.allocation)}. Enter ${formatMoney(remainingToLowerBound)} or more.`;
+            return;
+          }
+        }
+      }
+
+      if (fieldTypeLower === 'date' && stringValue) {
+        const parsed = parseFormDate(stringValue);
+        if (!parsed) { errors[field.code] = 'Enter a real date'; return; }
+        const config = parseConfiguration(field.configuration);
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        if (config?.dateRule === 'not_in_future' && parsed > today) {
+          errors[field.code] = 'Date must be today or in the past';
+          return;
+        }
+        if (config?.dateRule === 'not_in_past' && parsed < today) {
+          errors[field.code] = 'Date must be today or in the future';
+          return;
+        }
+        if (config?.notBefore) {
+          const other = parseFormDate((fieldValues[config.notBefore] as string) || '');
+          const otherLabel = activity.fields.find((f) => f.code === config.notBefore)?.label ?? config.notBefore;
+          if (other && parsed < other) {
+            errors[field.code] = `Date cannot be before '${otherLabel}'`;
+            return;
+          }
+        }
+      }
+
       if ((fieldTypeLower === 'number' || fieldTypeLower === 'currency') && stringValue) {
         const numValue = parseFloat(stringValue);
         if (isNaN(numValue)) { errors[field.code] = 'Enter a valid number'; return; }
@@ -264,38 +377,7 @@ const ActivityFormView = (): React.ReactElement => {
           processedSumGroups.add(config.sumGroup);
           const maxValue = parseFloat((fieldValues[config.maxSumField] as string) || '0');
           if (!isNaN(maxValue) && maxValue > 0) {
-            const groupFields = visibleFields.filter((f) => parseConfiguration(f.configuration)?.sumGroup === config.sumGroup);
-            const sum = groupFields.reduce((acc, f) => { const v = parseFloat((fieldValues[f.code] as string) || '0'); return acc + (isNaN(v) ? 0 : v); }, 0);
-            if (sum > maxValue) {
-              const groupLabel = config.groupLabel || config.sumGroup;
-              groupFields.forEach((f) => { const fv = parseFloat((fieldValues[f.code] as string) || '0'); if (fv > 0) errors[f.code] = `The total for '${groupLabel}' (${sum}) cannot exceed the total (${maxValue})`; });
-            }
-          }
-        }
-      }
-    });
-
-    setFieldErrors(errors);
-    return Object.keys(errors).length === 0;
-  }, [activity, currentFields, fieldValues, isFieldVisible]);
-
-  const validateAllFields = useCallback((): boolean => {
-    if (!activity) return true;
-    const errors: Record<string, string> = {};
-    const allFields = activity.fields.sort((a, b) => a.displayOrder - b.displayOrder);
-    const visibleFields = allFields.filter(isFieldVisible);
-    const processedSumGroups = new Set<string>();
-
-    visibleFields.forEach((field) => {
-      const value = fieldValues[field.code];
-      const stringValue = typeof value === 'string' ? value : '';
-      if (field.fieldType.toLowerCase() === 'number' && stringValue) {
-        const config = parseConfiguration(field.configuration);
-        if (config?.sumGroup && config?.maxSumField && !processedSumGroups.has(config.sumGroup)) {
-          processedSumGroups.add(config.sumGroup);
-          const maxValue = parseFloat((fieldValues[config.maxSumField] as string) || '0');
-          if (!isNaN(maxValue) && maxValue > 0) {
-            const groupFields = visibleFields.filter((f) => parseConfiguration(f.configuration)?.sumGroup === config.sumGroup);
+            const groupFields = fields.filter((f) => parseConfiguration(f.configuration)?.sumGroup === config.sumGroup);
             const sum = groupFields.reduce((acc, f) => { const v = parseFloat((fieldValues[f.code] as string) || '0'); return acc + (isNaN(v) ? 0 : v); }, 0);
             if (sum > maxValue) {
               const groupLabel = config.groupLabel || config.sumGroup;
@@ -303,19 +385,35 @@ const ActivityFormView = (): React.ReactElement => {
             }
           }
         } else if (config?.maxSumField && !config?.sumGroup) {
-          const numValue = parseFloat(stringValue);
           const maxValue = parseFloat((fieldValues[config.maxSumField] as string) || '0');
-          if (!isNaN(numValue) && !isNaN(maxValue) && maxValue > 0 && numValue > maxValue) errors[field.code] = `This value (${numValue}) cannot exceed the total (${maxValue})`;
+          if (!isNaN(maxValue) && maxValue > 0 && numValue > maxValue) { errors[field.code] = `This value (${numValue}) cannot exceed the total (${maxValue})`; return; }
         }
       }
     });
 
+    return errors;
+  }, [activity, fieldValues]);
+
+  const validateCurrentStep = useCallback((enforceLowerBound = false): boolean => {
+    const errors = validateFields(currentFields.filter(isFieldVisible), enforceLowerBound);
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
-  }, [activity, fieldValues, isFieldVisible]);
+  }, [validateFields, currentFields, isFieldVisible]);
+
+  const validateAllFields = useCallback((): boolean => {
+    if (!activity) return true;
+    const allFields = [...activity.fields].sort((a, b) => a.displayOrder - b.displayOrder);
+    const errors = validateFields(allFields.filter(isFieldVisible), true);
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
+  }, [validateFields, activity, isFieldVisible]);
 
   const handleContinue = () => {
-    if (!validateCurrentStep()) { setSubmitAttempts((n) => n + 1); return; }
+    // Clear any previous save failure first — the summary now sits above the field-error summary,
+    // so leaving a stale one there would steal the focus that belongs to the validation errors
+    // raised just below (focusErrorSummary takes the first match).
+    clearSaveError();
+    if (!validateCurrentStep(true)) { setSubmitAttempts((n) => n + 1); return; }
     if (currentStep === totalSteps - 1) {
       setViewMode('summary');
     } else if (currentStep < totalSteps) {
@@ -325,12 +423,15 @@ const ActivityFormView = (): React.ReactElement => {
   };
 
   const handleBack = () => {
+    // Leaving the step that failed — drop the summary, otherwise it renders at the top of the
+    // next step claiming a save failed there.
+    clearSaveError();
     if (isNew && currentStep === 1) {
-      navigate(`${basePath}/submissions/${submissionId}/modules/${moduleId}/activities`);
+      navigate(ROUTES.areaSubmissions.activities.list(apiBase, submissionId, moduleId));
       return;
     }
     if (viewMode === 'view' || viewMode === null) {
-      navigate(`${basePath}/submissions/${submissionId}/modules/${moduleId}/activities`);
+      navigate(ROUTES.areaSubmissions.activities.list(apiBase, submissionId, moduleId));
     } else if (viewMode === 'summary') {
       setViewMode('form');
       setCurrentStep(sections.length);
@@ -338,34 +439,38 @@ const ActivityFormView = (): React.ReactElement => {
       setCurrentStep(currentStep - 1);
       window.scrollTo(0, 0);
     } else {
-      navigate(`${basePath}/submissions/${submissionId}/modules/${moduleId}/activities`);
+      navigate(ROUTES.areaSubmissions.activities.list(apiBase, submissionId, moduleId));
     }
   };
 
   const handleSaveAsDraft = () => {
+    clearSaveError();
     if (!validateCurrentStep()) { setSubmitAttempts((n) => n + 1); return; }
     saveMutation.mutate(false);
   };
 
   const handleConfirmAndSave = () => {
+    clearSaveError();
     if (!validateAllFields()) { setSubmitAttempts((n) => n + 1); return; }
     saveMutation.mutate(true);
   };
 
   const handleChangeAnswer = (stepNumber: number) => {
+    clearSaveError();
     setCurrentStep(stepNumber);
     setViewMode('form');
     window.scrollTo(0, 0);
   };
 
   const handleChangeFromView = () => {
+    clearSaveError();
     setCurrentStep(1);
     setViewMode('form');
     window.scrollTo(0, 0);
   };
 
   const handleDeleteFromView = () => {
-    navigate(`${basePath}/submissions/${submissionId}/modules/${moduleId}/activities/${activityId}/delete`, {
+    navigate(ROUTES.areaSubmissions.activities.delete(apiBase, submissionId, moduleId, activityId), {
       state: { activityName: activityDisplayName, moduleCode: activity?.moduleCode },
     });
   };
@@ -391,21 +496,44 @@ const ActivityFormView = (): React.ReactElement => {
 
   const isSubAnswerField = (field: DeliveryPlanFieldDto): boolean => parseConditionalRules(field.conditionalRules)?.displayInline === true;
 
+  // Shows what the rest of the strand has already committed, so the remaining allocation is visible
+  // before a figure is entered rather than only surfacing as an error afterwards.
+  const renderStrandSpendHint = (field: DeliveryPlanFieldDto) => {
+    const strandYear = (activity?.strandSpend ?? []).find((sp: StrandSpendSummaryDto) => sp.forecastFieldKey === field.code);
+    if (!strandYear) return null;
+
+    return (
+      <p className="govuk-hint" data-testid={`strand-spend-${field.code}`}>
+        {strandYear.isCap
+          ? `Approved rollover for ${strandYear.yearRange}: ${formatMoney(strandYear.allocation)}.`
+          : `Allocation for ${strandYear.yearRange}: ${formatMoney(strandYear.allocation)}.`}
+        {' '}
+        {strandYear.spentByOtherActivities > 0
+          ? `Other activities in this strand account for ${formatMoney(strandYear.spentByOtherActivities)}, leaving ${formatMoney(strandYear.remainingToUpperBound)}.`
+          : `You can enter up to ${formatMoney(strandYear.remainingToUpperBound)}.`}
+      </p>
+    );
+  };
+
   const renderField = (field: DeliveryPlanFieldDto, isConditionalChild = false) => (
-    <FormFieldRenderer
-      field={field}
-      value={fieldValues[field.code] ?? null}
-      allFields={activity?.fields || []}
-      allValues={fieldValues}
-      allErrors={fieldErrors}
-      showQuestionCode
-      isConditionalChild={isConditionalChild}
-      onChange={(code, value) => setFieldValues((prev) => ({ ...prev, [code]: value }))}
-      onFileUpload={() => Promise.resolve()}
-    />
+    <>
+      {renderStrandSpendHint(field)}
+      <FormFieldRenderer
+        field={field}
+        value={fieldValues[field.code] ?? null}
+        allFields={(activity?.fields ?? []).map((f) => withServiceOptions(f, activity?.availableServices))}
+        allValues={fieldValues}
+        allErrors={fieldErrors}
+        showQuestionCode={false}
+        isConditionalChild={isConditionalChild}
+        onChange={(code, value) => setFieldValues((prev) => ({ ...prev, [code]: value }))}
+        onFileUpload={() => Promise.resolve()}
+      />
+    </>
   );
 
-  const activitiesListUrl = `${basePath}/submissions/${submissionId}/modules/${moduleId}/activities`;
+  const isReadOnly = activity?.isReadOnly === true;
+  const activitiesListUrl = ROUTES.areaSubmissions.activities.list(apiBase, submissionId, moduleId);
 
   if (isLoading || viewMode === null) {
     return (
@@ -424,21 +552,32 @@ const ActivityFormView = (): React.ReactElement => {
     );
   }
 
-  const allFields = [...activity.fields].sort((a, b) => a.displayOrder - b.displayOrder);
+  // View and summary modes resolve stored values to option labels, so service-backed fields need
+  // their options here too — otherwise a saved answer renders as a raw service ID.
+  const allFields = [...activity.fields]
+    .sort((a, b) => a.displayOrder - b.displayOrder)
+    .map((f) => withServiceOptions(f, activity.availableServices));
   const fieldsWithValues = allFields.filter((field) => hasFieldValue(field) && isFieldVisible(field));
 
   if (viewMode === 'view') {
     return (
       <GeneralLayout backLink={{ href: '#', onClick: handleBack }}>
+        <div ref={stepFocusRef}>
         <span className="govuk-caption-l">Section {activity.sectionNumber} – {activity.moduleName}</span>
         <h1 className="govuk-heading-l">{activityDisplayName}</h1>
         <p className="govuk-body">This page shows the saved information for this {content.activityNoun}.</p>
-        <p className="govuk-body">
-          You can update this {content.activityNoun} at any time to keep your information accurate. Select 'Change' to update the information.
-        </p>
+        {isReadOnly ? (
+          <div className="govuk-inset-text">
+            This delivery plan has been submitted, so this {content.activityNoun} can no longer be changed.
+          </div>
+        ) : (
+          <p className="govuk-body">
+            You can update this {content.activityNoun} at any time to keep your information accurate. Select 'Change' to update the information.
+          </p>
+        )}
         <GovUKSummaryCard
           title={activityDisplayName}
-          actions={[
+          actions={isReadOnly ? [] : [
             { label: 'Change', onClick: handleChangeFromView, visuallyHiddenText: activityDisplayName },
             { label: 'Delete', onClick: handleDeleteFromView, visuallyHiddenText: activityDisplayName },
           ]}>
@@ -446,12 +585,13 @@ const ActivityFormView = (): React.ReactElement => {
             noOuterBorder
             halfWidthColumns
             items={fieldsWithValues.map((field) => ({
-              label: field.label,
+              label: resolveSnapshotLabel(field, fieldValues[field.code]),
               value: getFieldDisplayValue(field),
               isSubAnswer: isSubAnswerField(field),
             }))}
           />
         </GovUKSummaryCard>
+        </div>
       </GeneralLayout>
     );
   }
@@ -459,6 +599,10 @@ const ActivityFormView = (): React.ReactElement => {
   if (viewMode === 'summary') {
     return (
       <GeneralLayout backLink={{ href: '#', onClick: handleBack }}>
+        <div ref={stepFocusRef}>
+        {saveMutation.isError && Object.keys(fieldErrors).length === 0 && (
+          <GovUKErrorSummary heading="There was a problem saving" errors={[{ text: saveError || 'Please try again or contact support if the problem persists.' }]} />
+        )}
         {Object.keys(fieldErrors).length > 0 && (
           <div className="govuk-error-summary" data-module="govuk-error-summary">
             <h2 className="govuk-error-summary__title">There is a problem</h2>
@@ -468,7 +612,7 @@ const ActivityFormView = (): React.ReactElement => {
                   const field = activity.fields.find((f) => f.code === fieldCode);
                   return (
                     <li key={fieldCode}>
-                      <a href="#" onClick={(e) => { e.preventDefault(); handleChangeAnswer(field?.stepNumber ?? 1); }}>
+                      <a href={`#${fieldCode.toLowerCase()}`} onClick={(e) => { e.preventDefault(); handleChangeAnswer(field?.stepNumber ?? 1); }}>
                         {field ? `${field.label} – ${errorMessage}` : errorMessage}
                       </a>
                     </li>
@@ -487,7 +631,7 @@ const ActivityFormView = (): React.ReactElement => {
           items={fieldsWithValues.map((field) => {
             const isReadOnlyType = field.fieldType.toLowerCase() === 'read_only' || field.fieldType.toLowerCase() === 'calculation';
             return {
-              label: field.label,
+              label: resolveSnapshotLabel(field, fieldValues[field.code]),
               value: getFieldDisplayValue(field),
               onAction: isReadOnlyType ? undefined : () => handleChangeAnswer(field.stepNumber ?? 1),
               actionLabel: isReadOnlyType ? undefined : 'Change',
@@ -498,18 +642,17 @@ const ActivityFormView = (): React.ReactElement => {
         <h2 className="govuk-heading-m">Now save this {content.activityNoun}</h2>
         <p className="govuk-body">By saving, you confirm that the details you are providing are correct to the best of your knowledge.</p>
         <GovUKButton onClick={handleConfirmAndSave} isLoading={saveMutation.isLoading}>Confirm and save {content.activityNoun}</GovUKButton>
-        {saveMutation.isError && (
-          <div className="govuk-error-summary" data-module="govuk-error-summary">
-            <h2 className="govuk-error-summary__title">There was a problem saving</h2>
-            <div className="govuk-error-summary__body"><p>Please try again or contact support if the problem persists.</p></div>
-          </div>
-        )}
+        </div>
       </GeneralLayout>
     );
   }
 
   return (
     <GeneralLayout backLink={{ href: '#', onClick: handleBack }}>
+      <div ref={stepFocusRef}>
+      {saveMutation.isError && Object.keys(fieldErrors).length === 0 && (
+        <GovUKErrorSummary heading="There was a problem saving" errors={[{ text: saveError || 'Please try again or contact support if the problem persists.' }]} />
+      )}
       <span className="govuk-caption-l">Section {activity.sectionNumber} – {activity.moduleName} (step {currentStep} of {totalSteps})</span>
       <h1 className="govuk-heading-l">{activityDisplayName}</h1>
 
@@ -524,7 +667,7 @@ const ActivityFormView = (): React.ReactElement => {
             <ul className="govuk-list govuk-error-summary__list">
               {Object.entries(fieldErrors).map(([fieldCode, message]) => {
                 const field = activity.fields.find((f) => f.code === fieldCode);
-                return <li key={fieldCode}><a href={`#${fieldCode}`}>{field ? `${field.label} – ${message}` : message}</a></li>;
+                return <li key={fieldCode}><a href={`#${fieldCode}`} onClick={(e) => focusErrorTarget(e, fieldCode)}>{field ? `${field.label} – ${message}` : message}</a></li>;
               })}
             </ul>
           </div>
@@ -576,13 +719,7 @@ const ActivityFormView = (): React.ReactElement => {
           Save as draft and exit
         </GovUKButton>
       </div>
-
-      {saveMutation.isError && (
-        <div className="govuk-error-summary" data-module="govuk-error-summary">
-          <h2 className="govuk-error-summary__title">There was a problem saving</h2>
-          <div className="govuk-error-summary__body"><p>Please try again or contact support if the problem persists.</p></div>
-        </div>
-      )}
+      </div>
     </GeneralLayout>
   );
 };

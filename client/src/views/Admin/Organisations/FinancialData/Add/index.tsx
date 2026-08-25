@@ -18,6 +18,7 @@ import {
   formatCurrency,
   parseAmount,
 } from '../constants';
+import { ROUTES } from '../../../../../constants/routes';
 
 type UrlParams = { organisationId: string };
 
@@ -94,7 +95,7 @@ const AddFinancialData = (): React.ReactElement => {
 
   const handleContinue = (e: React.FormEvent) => {
     e.preventDefault();
-    navigate(`/admin/organisations/${organisationId}/financial-data/check`, {
+    navigate(ROUTES.admin.organisations.financialData.check(organisationId), {
       state: { values, allocationModules, allocationYears, rolloverModuleKey, rolloverModuleLabel, rolloverYear, isUpdate },
     });
   };
@@ -104,13 +105,13 @@ const AddFinancialData = (): React.ReactElement => {
   return (
     <SettingsLayout
       breadcrumbs={[
-        { label: 'Home', link: '/admin/home' },
-        { label: 'Settings', link: '/admin/settings' },
-        { label: 'Local authorities', link: '/admin/organisations' },
-        { label: orgName, link: `/admin/organisations/${organisationId}` },
+        { label: 'Home', link: ROUTES.admin.home },
+        { label: 'Settings', link: ROUTES.admin.settings },
+        { label: 'Local authorities', link: ROUTES.admin.organisations.list },
+        { label: orgName, link: ROUTES.admin.organisations.view(organisationId) },
       ]}>
       <LoadingBox loading={isLoading}>
-        <a href={`/admin/organisations/${organisationId}`} className="govuk-back-link" onClick={(e) => { e.preventDefault(); navigate(`/admin/organisations/${organisationId}`); }}>
+        <a href={ROUTES.admin.organisations.view(organisationId)} className="govuk-back-link" onClick={(e) => { e.preventDefault(); navigate(ROUTES.admin.organisations.view(organisationId)); }}>
           Back
         </a>
 

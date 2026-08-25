@@ -18,6 +18,7 @@ declare module 'accessible-autocomplete' {
     };
     cssNamespace?: string;
     showAllValues?: boolean;
+    inputClasses?: string;
     dropdownArrow?: (config: { className: string }) => string;
   }
 

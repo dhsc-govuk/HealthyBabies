@@ -121,6 +121,8 @@ public class UpdateServiceStepOneCommandHandler(
                 }
             }
 
+            RemoveOrphanedAnswers(service, request.Answers, questions);
+
             if (request.AdvanceStep)
             {
                 // SMD04 (closing date) is only submitted when the service is no longer offered.
@@ -143,6 +145,24 @@ public class UpdateServiceStepOneCommandHandler(
         {
             return new ServiceUnknownException(service.Id, exception);
         }
+    }
+
+    // See the note on the step two equivalent. SMD01 is excluded because the client never sends it -
+    // the name is handled separately by UpdateName - but bulk upload does write an SMD01 answer, and
+    // the core data export builds its SMD01 column from exactly that row. Without this, the first UI
+    // edit of a bulk uploaded service would silently blank it.
+    private static void RemoveOrphanedAnswers(
+        Service service,
+        IReadOnlyList<ServiceAnswerInputDto> answers,
+        IReadOnlyList<ServiceFormQuestion> questions)
+    {
+        var submittedCodes = answers.Select(a => a.QuestionCode).ToHashSet();
+        var orphanedCodes = questions
+            .Select(q => q.Code)
+            .Where(code => code != ServiceBulkUploadRecordHelper.PredefinedNameCode && !submittedCodes.Contains(code))
+            .ToList();
+
+        service.RemoveAnswers(orphanedCodes);
     }
 
     private static string? GetDisplayValue(ServiceFormQuestion question, string? value)

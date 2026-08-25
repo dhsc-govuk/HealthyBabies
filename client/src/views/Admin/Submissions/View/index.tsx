@@ -23,6 +23,7 @@ import {
   DownloadFormat,
 } from './queries';
 import { processError } from '../../../../helpers/axiosErrorFallback';
+import { ROUTES } from '../../../../constants/routes';
 import './styles.css';
 
 const formatDate = (dateString: string): string => {
@@ -122,13 +123,13 @@ function SubmissionView(): React.ReactElement {
     return (
       <GeneralLayout
         breadcrumbs={[
-          { label: 'Home', link: '/admin/home' },
-          { label: 'Submissions', link: '/admin/submissions' },
+          { label: 'Home', link: ROUTES.admin.home },
+          { label: 'Submissions', link: ROUTES.admin.submissions.list },
         ]}
         currentPage="Error"
       >
         <p className="govuk-body">Unable to load submission.</p>
-        <GovUKButton onClick={() => navigate('/admin/submissions')}>
+        <GovUKButton onClick={() => navigate(ROUTES.admin.submissions.list)}>
           Back to submissions
         </GovUKButton>
       </GeneralLayout>
@@ -140,7 +141,7 @@ function SubmissionView(): React.ReactElement {
         {
           label: 'Status',
           value: status || '',
-          onAction: () => navigate(`/admin/submissions/${submissionId}/change-status`),
+          onAction: () => navigate(ROUTES.admin.submissions.changeStatus(submissionId)),
           actionLabel: 'Change',
         },
         {
@@ -150,7 +151,7 @@ function SubmissionView(): React.ReactElement {
         {
           label: 'Due date',
           value: formatDate(submission.endDate),
-          onAction: () => navigate(`/admin/submissions/${submissionId}/change-due-date`),
+          onAction: () => navigate(ROUTES.admin.submissions.changeDueDate(submissionId)),
           actionLabel: 'Change',
         },
       ]
@@ -159,8 +160,8 @@ function SubmissionView(): React.ReactElement {
   return (
     <GeneralLayout
       breadcrumbs={[
-        { label: 'Home', link: '/admin/home' },
-        { label: 'Submissions', link: '/admin/submissions' },
+        { label: 'Home', link: ROUTES.admin.home },
+        { label: 'Submissions', link: ROUTES.admin.submissions.list },
         { label: submission?.name || 'Submission', link: '' },
       ]}
     >
@@ -303,11 +304,11 @@ function SubmissionView(): React.ReactElement {
                   <li key={la.localAuthorityId} className="submission-la-list__item">
                     <div className="submission-la-list__name">
                       <a
-                        href={`/admin/submissions/${submissionId}/local-authority/${la.localAuthorityId}`}
+                        href={ROUTES.admin.submissions.localAuthority(submissionId, la.localAuthorityId)}
                         className="govuk-link"
                         onClick={(e) => {
                           e.preventDefault();
-                          navigate(`/admin/submissions/${submissionId}/local-authority/${la.localAuthorityId}`);
+                          navigate(ROUTES.admin.submissions.localAuthority(submissionId, la.localAuthorityId));
                         }}
                       >
                         {la.localAuthorityName}

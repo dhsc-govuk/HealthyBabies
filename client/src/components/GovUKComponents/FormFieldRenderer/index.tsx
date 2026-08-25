@@ -4,6 +4,7 @@ import GovUKCheckbox from '../GovUKCheckbox';
 import GovUKInputWithSuffix from '../GovUKInputWithSuffix';
 import GovUKFileUpload from '../GovUKFileUpload';
 import GovUKGroupedInputs from '../GovUKGroupedInputs';
+import GovUKDateField from '../GovUKDateField';
 import { FormModuleFieldDto, ConditionalRule, FieldConfiguration } from '../../../views/OrganisationAdmin/Submissions/queries';
 
 interface FormFieldRendererProps {
@@ -42,7 +43,7 @@ export const computeFormula = (formula: string, allValues: Record<string, string
   if (!formula) return null;
   try {
     // Replace field codes (uppercase letters + digits) with their values
-    const expression = formula.replace(/[A-Z]{1,4}\d+[a-z]*/g, (code) => {
+    const expression = formula.replace(/[A-Z]{1,4}\d+(?:\.\d+)?[a-z]*/g, (code) => {
       const val = parseFloat((allValues[code] as string) || '0');
       return isNaN(val) ? '0' : String(val);
     });
@@ -127,6 +128,22 @@ const FormFieldRenderer: React.FC<FormFieldRendererProps> = ({
           value={stringValue}
           questionCode={showQuestionCode ? field.code : undefined}
           onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleFieldChange(field.code, e.target.value)}
+        />
+      );
+
+    case 'date':
+      return (
+        <GovUKDateField
+          id={field.code}
+          legend={field.label}
+          questionCode={showQuestionCode ? field.code : undefined}
+          value={stringValue}
+          hint={field.helpText ?? undefined}
+          error={error}
+          required={field.isRequired}
+          allowFuture={config?.dateRule !== 'not_in_future'}
+          disallowPast={config?.dateRule === 'not_in_past'}
+          onChange={(dateString: string) => handleFieldChange(field.code, dateString)}
         />
       );
 
@@ -265,7 +282,7 @@ const FormFieldRenderer: React.FC<FormFieldRendererProps> = ({
           <div key={groupName}>
             <div style={{ marginBottom: '8px' }}>
               <p className="govuk-label govuk-label--s" style={{ margin: 0 }}>
-                {showQuestionCode && <span className="govuk-visually-hidden">{groupName}: </span>}
+                {showQuestionCode && <span className="govuk-visually-hidden">Question ID: {groupName}: </span>}
                 {groupLabel}
               </p>
             </div>
@@ -473,6 +490,7 @@ const FormFieldRenderer: React.FC<FormFieldRendererProps> = ({
           error={error}
           value={stringValue}
           type="number"
+          formatThousands
           width={config?.width as '5' | '10' | '20' || '10'}
           questionCode={showQuestionCode ? field.code : undefined}
           onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleFieldChange(field.code, e.target.value)}
@@ -483,7 +501,7 @@ const FormFieldRenderer: React.FC<FormFieldRendererProps> = ({
       return (
         <div className="govuk-form-group" id={field.code}>
           <p className="govuk-label govuk-label--s" style={{ marginBottom: '4px' }}>
-            {showQuestionCode && <span className="govuk-visually-hidden">{field.code}: </span>}
+            {showQuestionCode && <span className="govuk-visually-hidden">Question ID: {field.code}: </span>}
             {field.label}
           </p>
           {field.helpText && <div className="govuk-hint">{field.helpText}</div>}
@@ -493,23 +511,6 @@ const FormFieldRenderer: React.FC<FormFieldRendererProps> = ({
         </div>
       );
 
-    case 'currency':
-      return (
-        <GovUKInputWithSuffix
-          id={field.code}
-          name={field.code}
-          label={field.label}
-          prefix={prefix ?? '£'}
-          hint={field.helpText ?? undefined}
-          error={error}
-          value={stringValue}
-          type="number"
-          width={config?.width as '5' | '10' | '20' || '10'}
-          questionCode={showQuestionCode ? field.code : undefined}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => handleFieldChange(field.code, e.target.value)}
-        />
-      );
-
     case 'calculation': {
       const formula = config?.formula ?? '';
       const computedValue = computeFormula(formula, allValues);
@@ -517,7 +518,7 @@ const FormFieldRenderer: React.FC<FormFieldRendererProps> = ({
       return (
         <div className="govuk-form-group" id={field.code}>
           <p className="govuk-label govuk-label--s" style={{ marginBottom: '4px' }}>
-            {showQuestionCode && <span className="govuk-visually-hidden">{field.code}: </span>}
+            {showQuestionCode && <span className="govuk-visually-hidden">Question ID: {field.code}: </span>}
             {field.label}
             {field.helpText && <span className="govuk-visually-hidden"> ({field.helpText})</span>}
           </p>

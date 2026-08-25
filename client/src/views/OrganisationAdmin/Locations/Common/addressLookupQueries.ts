@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { API_ROUTES } from '../../../../constants/apiRoutes';
 
 export interface OsPlacesAddress {
   uprn: string;
@@ -20,7 +21,7 @@ export interface ParsedAddress {
   uprn: string;
 }
 
-export const lookupAddressByPostcode = (postcode: string) => axios.get<OsPlacesAddress[]>('/address-lookup', { params: { postcode } });
+export const lookupAddressByPostcode = (postcode: string) => axios.get<OsPlacesAddress[]>(API_ROUTES.addressLookup, { params: { postcode } });
 
 export const addressLookupCacheKey = (postcode: string) => ['address-lookup', postcode];
 

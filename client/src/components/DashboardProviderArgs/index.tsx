@@ -6,6 +6,7 @@ import {
   AssignmentOutlined as SubmissionsIcon,
   HelpOutline as HelpIcon,
 } from '@mui/icons-material';
+import { ROUTES } from '../../constants/routes';
 export function withRouter(Component: any) {
   function ComponentWithRouterProp(props: any) {
     let location = useLocation();
@@ -24,8 +25,8 @@ export const listItems = [
       key: 'admin',
       title: 'Admin',
       items: [
-        { label: 'Dashboard', icon: DashboardIcon, to: '/admin/home' },
-        { label: 'Local Authorities', icon: OrganisationIcon, to: '/admin/organisations' },
+        { label: 'Dashboard', icon: DashboardIcon, to: ROUTES.admin.home },
+        { label: 'Local Authorities', icon: OrganisationIcon, to: ROUTES.admin.organisations.list },
       ],
     },
   },
@@ -35,7 +36,7 @@ export const listItems = [
       key: 'org-admin',
       title: 'Local Authority Admin',
       items: [
-        { label: 'Dashboard', icon: DashboardIcon, to: '/organisation-admin/core-data' },
+        { label: 'Dashboard', icon: DashboardIcon, to: ROUTES.organisationAdmin.coreData },
       ],
     },
   },
@@ -45,9 +46,9 @@ export const listItems = [
       key: 'delivery-plan',
       title: 'Delivery Plan Lead',
       items: [
-        { label: 'Core Data', icon: CoreDataIcon, to: '/delivery-plan/core-data' },
-        { label: 'Submissions', icon: SubmissionsIcon, to: '/delivery-plan/submissions' },
-        { label: 'Help', icon: HelpIcon, to: '/delivery-plan/help' },
+        { label: 'Core Data', icon: CoreDataIcon, to: ROUTES.deliveryPlan.coreData },
+        { label: 'Submissions', icon: SubmissionsIcon, to: ROUTES.deliveryPlan.submissions.list },
+        { label: 'Help', icon: HelpIcon, to: ROUTES.deliveryPlan.help },
       ],
     },
   },

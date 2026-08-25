@@ -1,4 +1,5 @@
 import React from 'react';
+import GovUKLinkButton from '../GovUKLinkButton';
 import './styles.css';
 
 export interface GovUKSummaryTableRow {
@@ -15,6 +16,11 @@ export interface GovUKSummaryTableAction {
 export interface GovUKSummaryTableProps {
   caption?: string;
   captionSize?: 's' | 'm' | 'l' | 'xl';
+  /**
+   * Exposes the caption to screen readers only. Use when the page already shows an equivalent
+   * heading above the table, so the caption names the table without duplicating visible text.
+   */
+  captionVisuallyHidden?: boolean;
   rows: GovUKSummaryTableRow[];
   onChangeAll?: () => void;
   className?: string;
@@ -22,23 +28,32 @@ export interface GovUKSummaryTableProps {
   actions?: GovUKSummaryTableAction[];
 }
 
-const GovUKSummaryTable = ({ caption, captionSize = 'm', rows, onChangeAll, className, variant, actions }: GovUKSummaryTableProps): React.ReactElement => {
+const GovUKSummaryTable = ({
+  caption,
+  captionSize = 'm',
+  captionVisuallyHidden = false,
+  rows,
+  onChangeAll,
+  className,
+  variant,
+  actions,
+}: GovUKSummaryTableProps): React.ReactElement => {
+  const showVisibleCaption = Boolean(caption) && !variant && !captionVisuallyHidden;
+
   const table = (
     <table className={`govuk-table govuk-summary-table${!variant && className ? ` ${className}` : ''}`}>
-      {caption && !variant && (
-        <caption className={`govuk-table__caption govuk-table__caption--${captionSize}`}>{caption}</caption>
-      )}
+      <caption className={showVisibleCaption ? `govuk-table__caption govuk-table__caption--${captionSize}` : 'govuk-visually-hidden'}>{caption ?? 'Summary information'}</caption>
       <tbody className="govuk-table__body">
         {rows.map((row, index) => (
           <tr key={index} className="govuk-table__row">
-            <th scope="row" className="govuk-table__header">{row.label}</th>
+            <th scope="row" className="govuk-table__header">
+              {row.label}
+            </th>
             <td className={`govuk-table__cell${onChangeAll ? ' govuk-table__cell--numeric' : ''}`}>
               {onChangeAll ? (
                 <>
                   <span className="govuk-!-margin-right-4">{row.value}</span>
-                  <a className="govuk-link" href="#" onClick={(e) => { e.preventDefault(); onChangeAll(); }}>
-                    Change{row.changeHiddenText && <span className="govuk-visually-hidden"> {row.changeHiddenText}</span>}
-                  </a>
+                  <GovUKLinkButton onClick={onChangeAll}>Change{row.changeHiddenText && <span className="govuk-visually-hidden"> {row.changeHiddenText}</span>}</GovUKLinkButton>
                 </>
               ) : (
                 row.value
@@ -54,15 +69,17 @@ const GovUKSummaryTable = ({ caption, captionSize = 'm', rows, onChangeAll, clas
     return (
       <div className={`govuk-summary-table-card${className ? ` ${className}` : ''}`}>
         <div className="govuk-summary-table-card__header">
-          {caption && <span>{caption}</span>}
+          {caption && !captionVisuallyHidden && <span>{caption}</span>}
           {actions && actions.length > 0 && (
             <div className="govuk-summary-table-card__actions">
               {actions.map((action, i) => (
                 <React.Fragment key={i}>
-                  {i > 0 && <span className="govuk-summary-table-card__actions-separator" aria-hidden="true">|</span>}
-                  <a className="govuk-link" href="#" onClick={(e) => { e.preventDefault(); action.onClick(); }}>
-                    {action.label}
-                  </a>
+                  {i > 0 && (
+                    <span className="govuk-summary-table-card__actions-separator" aria-hidden="true">
+                      |
+                    </span>
+                  )}
+                  <GovUKLinkButton onClick={action.onClick}>{action.label}</GovUKLinkButton>
                 </React.Fragment>
               ))}
             </div>

@@ -49,12 +49,31 @@ public record FinancialSummaryDto(
     RolloverSummaryDto Rollover,
     IReadOnlyList<StrandForecastDto> ForecastByStrand);
 
-/// <summary>A single off-track activity listed under the Activity status section.</summary>
+/// <summary>
+/// A single off-track activity listed under the Activity status section. The three identifiers
+/// address the admin review screens for this activity. <see cref="ActivityId"/> is the
+/// FormSubmission id, and is null only for a legacy single-form strand submission — one saved
+/// against a module that does not hold an Activities list, which the review screens address by
+/// section rather than by activity.
+/// </summary>
 public record OffTrackActivityDto(
     string Module,
     string StrandDisplayName,
     string ActivityName,
-    decimal ActualSpend);
+    decimal ActualSpend,
+    Guid DataCollectionId,
+    Guid FormModuleId,
+    Guid? ActivityId);
+
+/// <summary>
+/// Where the Delivery data tab's "View activities" link points. <see cref="FormModuleId"/> is set
+/// only when a single strand is selected — for "all strands" the caller links to the submission
+/// summary, which lists every section. The whole record is null when the organisation has no
+/// submitted Delivery Plan round to link into.
+/// </summary>
+public record DeliveryActivitiesLinkDto(
+    Guid DataCollectionId,
+    Guid? FormModuleId);
 
 /// <summary>Count + total actual spend for a delivery-status grouping (on/off track).</summary>
 public record DeliveryStatusGroupDto(
@@ -72,4 +91,5 @@ public record DeliverySummaryDto(
     int Started,
     int Delayed,
     int Completed,
-    IReadOnlyList<OffTrackActivityDto> OffTrackActivities);
+    IReadOnlyList<OffTrackActivityDto> OffTrackActivities,
+    DeliveryActivitiesLinkDto? ActivitiesLink);

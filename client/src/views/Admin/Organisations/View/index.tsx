@@ -15,6 +15,7 @@ import AllocationsTab from './tabs/AllocationsTab';
 import FinancialDataTab from './tabs/FinancialDataTab';
 import DeliveryDataTab from './tabs/DeliveryDataTab';
 import UsersTab, { UserRow } from './tabs/UsersTab';
+import { ROUTES } from '../../../../constants/routes';
 import './styles.css';
 
 type UrlParams = {
@@ -68,7 +69,7 @@ const ViewOrganisation = (): React.ReactElement => {
 
   usePageTitle(org?.name ?? 'View local authority');
 
-  const handleEdit = () => navigate(`/admin/organisations/${organisationId}/edit`);
+  const handleEdit = () => navigate(ROUTES.admin.organisations.edit(organisationId));
   const handleEditFinancialData = () => {
     const existingValues: FormValues = entries.reduce<FormValues>(
       (acc, entry) => ({
@@ -77,7 +78,7 @@ const ViewOrganisation = (): React.ReactElement => {
       }),
       {},
     );
-    navigate(`/admin/organisations/${organisationId}/financial-data/add`, {
+    navigate(ROUTES.admin.organisations.financialData.add(organisationId), {
       state: { isUpdate: hasFinancialData, values: hasFinancialData ? existingValues : undefined },
     });
   };
@@ -95,9 +96,9 @@ const ViewOrganisation = (): React.ReactElement => {
   return (
     <SettingsLayout
       breadcrumbs={[
-        { label: 'Home', link: '/admin/home' },
-        { label: 'Settings', link: '/admin/settings' },
-        { label: 'Local authorities', link: '/admin/organisations' },
+        { label: 'Home', link: ROUTES.admin.home },
+        { label: 'Settings', link: ROUTES.admin.settings },
+        { label: 'Local authorities', link: ROUTES.admin.organisations.list },
       ]}>
       <LoadingBox loading={isLoading}>
         {showFinancialDataBanner && (
@@ -132,8 +133,8 @@ const ViewOrganisation = (): React.ReactElement => {
                   items={[
                     { label: 'Edit details', onClick: handleEdit },
                     { label: hasFinancialData ? 'Update financial data' : 'Add financial data', onClick: handleEditFinancialData },
-                    { label: 'Add contact', href: `/admin/organisations/${organisationId}/contacts/create` },
-                    { label: 'Add LA user', href: `/admin/la-users/create?organisationId=${organisationId}` },
+                    { label: 'Add contact', href: ROUTES.admin.organisations.contacts.create(organisationId) },
+                    { label: 'Add LA user', href: ROUTES.admin.laUsers.createForOrganisation(organisationId) },
                   ]}
                 />
               </PageHeaderActions>

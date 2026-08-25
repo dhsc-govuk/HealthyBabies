@@ -12,6 +12,8 @@ import { WarningPanel, WarningPanelTitle, WarningPanelBody, WarningPanelActions,
 import { viewServiceDeliverySiteCacheKey } from '../../../../helpers/queriesParams';
 import axios from 'axios';
 import usePageTitle from '../../../../hooks/usePageTitle';
+import { ROUTES } from '../../../../constants/routes';
+import { API_ROUTES } from '../../../../constants/apiRoutes';
 
 type UrlParams = {
   locationId: string;
@@ -32,12 +34,12 @@ const DeleteLocation = (): React.ReactElement => {
 
   const deleteMutation = useMutation({
     mutationFn: () =>
-      axios.delete(`/organisations/${organisationId}/locations/${locationId}`),
+      axios.delete(API_ROUTES.organisations.locations.byId(organisationId, locationId)),
     onSuccess: () => {
       setNotification({ type: 'success', title: 'Success', message: 'Delivery location deleted successfully' });
       queryClient.invalidateQueries([viewServiceDeliverySiteCacheKey(organisationId!, locationId!)]);
       queryClient.invalidateQueries(['locations']);
-      navigate('/organisation-admin/core-data/delivery-locations');
+      navigate(ROUTES.organisationAdmin.locations.list);
     },
     onError: (error) => {
       processError(error, (e) =>
@@ -52,9 +54,9 @@ const DeleteLocation = (): React.ReactElement => {
     <LoadingBox loading={isLoading || deleteMutation.isLoading}>
       <GeneralLayout
         breadcrumbs={[
-          { label: 'Home', link: '/organisation-admin/home' },
-          { label: 'Delivery locations', link: '/organisation-admin/core-data/delivery-locations' },
-          { label: locationName, link: `/organisation-admin/core-data/delivery-locations/${locationId}` },
+          { label: 'Home', link: ROUTES.organisationAdmin.home },
+          { label: 'Delivery locations', link: ROUTES.organisationAdmin.locations.list },
+          { label: locationName, link: ROUTES.organisationAdmin.locations.view(locationId) },
         ]}
         currentPage="Delete delivery location">
         <WarningPanel>
@@ -74,7 +76,7 @@ const DeleteLocation = (): React.ReactElement => {
               buttonTextColour="#1d70b8">
               Yes, I want to delete
             </Button>
-            <WarningPanelAnchor href={`/organisation-admin/core-data/delivery-locations/${locationId}`}>
+            <WarningPanelAnchor href={ROUTES.organisationAdmin.locations.view(locationId)}>
               Go back
             </WarningPanelAnchor>
           </WarningPanelActions>

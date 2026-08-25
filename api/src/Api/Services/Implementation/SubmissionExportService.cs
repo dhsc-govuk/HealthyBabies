@@ -147,6 +147,136 @@ public class SubmissionExportService(
         return Either<string, byte[]>.Right(jsonBytes);
     }
 
+    public async Task<Either<string, byte[]>> ExportSubmissionAsZipAsync(
+        Guid dataCollectionId,
+        Guid localAuthorityId,
+        CancellationToken cancellationToken = default)
+    {
+        var dcId = new DataCollectionId(dataCollectionId);
+        var orgId = new OrganisationId(localAuthorityId);
+
+        var dataCollectionOption = await dataCollectionQueries.GetByIdWithLocalAuthoritiesAsync(dcId, cancellationToken);
+        if (dataCollectionOption.IsNone)
+        {
+            return Either<string, byte[]>.Left("Data collection not found");
+        }
+
+        var dataCollection = dataCollectionOption.Match(dc => dc, () => null!);
+
+        var organisationOption = await organisationQueries.GetOrganisationById(orgId, cancellationToken);
+        if (organisationOption.IsNone)
+        {
+            return Either<string, byte[]>.Left("Local authority not found");
+        }
+
+        var organisation = organisationOption.Match(o => o, () => null!);
+        var context = new CsvExportContext(organisation.Name, organisation.ONSCode, dataCollection.Name);
+
+        var exportData = new Dictionary<string, object>
+        {
+            ["dataCollectionId"] = dataCollectionId,
+            ["dataCollectionName"] = dataCollection.Name,
+            ["localAuthorityId"] = localAuthorityId,
+            ["localAuthorityName"] = organisation.Name,
+            ["exportedAt"] = DateTime.UtcNow,
+            ["sections"] = new List<object>()
+        };
+        var sections = (List<object>)exportData["sections"];
+
+        using var memoryStream = new MemoryStream();
+        using (var archive = new ZipArchive(memoryStream, ZipArchiveMode.Create, true))
+        {
+            foreach (var assignment in dataCollection.FormModuleAssignments.OrderBy(a => a.FormModule?.SectionNumber))
+            {
+                if (assignment.FormModule == null || !assignment.FormModule.IsActive)
+                {
+                    continue;
+                }
+
+                var formModuleWithFields = await formModuleQueries.GetByIdWithFieldsAsync(
+                    assignment.FormModuleId, cancellationToken);
+
+                if (formModuleWithFields.IsNone)
+                {
+                    continue;
+                }
+
+                var formModule = formModuleWithFields.Match(fm => fm, () => null!);
+
+                var csvContent = await GenerateCsvForModuleAsync(
+                    formModule, orgId, dcId, dataCollection.StartDate, context, cancellationToken);
+                var csvFileName = SanitizeFileName($"{formModule.SectionNumber}_{formModule.Code}.csv");
+                var csvEntry = archive.CreateEntry(csvFileName);
+                using (var csvEntryStream = csvEntry.Open())
+                {
+                    var csvBytes = Encoding.UTF8.GetBytes(csvContent);
+                    await csvEntryStream.WriteAsync(csvBytes, cancellationToken);
+                }
+
+                var sectionData = await GenerateJsonForModuleAsync(
+                    formModule, orgId, dcId, dataCollection.StartDate, cancellationToken);
+                sections.Add(sectionData);
+            }
+
+            var jsonBytes = JsonSerializer.SerializeToUtf8Bytes(exportData, new JsonSerializerOptions { WriteIndented = true });
+            var jsonEntry = archive.CreateEntry("submission.json");
+            using (var jsonEntryStream = jsonEntry.Open())
+            {
+                await jsonEntryStream.WriteAsync(jsonBytes, cancellationToken);
+            }
+        }
+
+        memoryStream.Position = 0;
+        return Either<string, byte[]>.Right(memoryStream.ToArray());
+    }
+
+    // BLUM-7361: "Download copy in CSV" on a module's record list (Outcome Scores, Service Users)
+    // was wired to the bulk-upload *template* generator, which only pre-fills rows for services
+    // still missing data - once every record for a service is approved/submitted there's nothing
+    // "incomplete" left, so the download comes back as headers only. This exports the module's
+    // actual records instead, reusing the same per-module CSV generator the full-submission export
+    // already uses.
+    public async Task<Either<string, byte[]>> ExportModuleAsCsvAsync(
+        Guid dataCollectionId,
+        Guid localAuthorityId,
+        Guid moduleId,
+        CancellationToken cancellationToken = default)
+    {
+        var dcId = new DataCollectionId(dataCollectionId);
+        var orgId = new OrganisationId(localAuthorityId);
+        var modId = new DataCollectionFormModuleId(moduleId);
+
+        var dataCollectionOption = await dataCollectionQueries.GetByIdWithLocalAuthoritiesAsync(dcId, cancellationToken);
+        if (dataCollectionOption.IsNone)
+        {
+            return Either<string, byte[]>.Left("Data collection not found");
+        }
+
+        var dataCollection = dataCollectionOption.Match(dc => dc, () => null!);
+
+        var organisationOption = await organisationQueries.GetOrganisationById(orgId, cancellationToken);
+        if (organisationOption.IsNone)
+        {
+            return Either<string, byte[]>.Left("Local authority not found");
+        }
+
+        var organisation = organisationOption.Match(o => o, () => null!);
+
+        var formModuleOption = await formModuleQueries.GetByIdWithFieldsAsync(modId, cancellationToken);
+        if (formModuleOption.IsNone)
+        {
+            return Either<string, byte[]>.Left("Form module not found");
+        }
+
+        var formModule = formModuleOption.Match(fm => fm, () => null!);
+        var context = new CsvExportContext(organisation.Name, organisation.ONSCode, dataCollection.Name);
+
+        var csvContent = await GenerateCsvForModuleAsync(
+            formModule, orgId, dcId, dataCollection.StartDate, context, cancellationToken);
+
+        return Either<string, byte[]>.Right(Encoding.UTF8.GetBytes(csvContent));
+    }
+
     public async Task<Either<string, byte[]>> ExportConsolidatedCsvZipAsync(
         Guid dataCollectionId,
         CancellationToken cancellationToken = default)
@@ -280,7 +410,11 @@ public class SubmissionExportService(
         CancellationToken cancellationToken)
     {
         var sb = new StringBuilder();
-        var fields = formModule.Fields.Where(f => f.IsActive).OrderBy(f => f.DisplayOrder).ToList();
+        var fields = formModule.Fields
+            .Where(f => f.IsActive)
+            .OrderBy(f => formModule.Sections.FirstOrDefault(s => s.Id == f.FormSectionId)?.SectionNumber ?? 0)
+            .ThenBy(f => f.DisplayOrder)
+            .ToList();
 
         var moduleCode = formModule.Code;
 
@@ -299,7 +433,58 @@ public class SubmissionExportService(
             return await GenerateOutcomeScoresCsvAsync(formModule, fields, organisationId, dataCollectionId, context, cancellationToken);
         }
 
+        if (formModule.AllowsMultipleActivities)
+        {
+            return await GenerateActivitiesCsvAsync(formModule, fields, organisationId, dataCollectionId, context, cancellationToken);
+        }
+
         return await GenerateStandardFormCsvAsync(formModule, fields, organisationId, dataCollectionId, context, cancellationToken);
+    }
+
+    // See GenerateActivitiesJsonAsync — same reasoning: a module with AllowsMultipleActivities can
+    // have more than one submission per (module, organisation, data collection), so every activity
+    // gets its own row block instead of only exporting the single most-recently-created one.
+    private async Task<string> GenerateActivitiesCsvAsync(
+        DataCollectionFormModule formModule,
+        List<FormField> fields,
+        OrganisationId organisationId,
+        DataCollectionId dataCollectionId,
+        CsvExportContext context,
+        CancellationToken cancellationToken)
+    {
+        var sb = new StringBuilder();
+
+        var headers = new List<string> { "LAName", "ONSCode", "CollectionPeriod", "ActivityId", "ActivityName", "Status", "QuestionCode", "Question", "Answer" };
+        sb.AppendLine(string.Join(",", headers.Select(EscapeCsvField)));
+
+        var activitySubmissions = await formSubmissionRepository.GetByFormModuleOrganisationDataCollectionAndEntityTypeAsync(
+            formModule.Id, organisationId, dataCollectionId, "Activity", cancellationToken);
+
+        foreach (var submission in activitySubmissions)
+        {
+            var fieldValues = submission.FieldValues.ToDictionary(fv => fv.FormFieldId);
+
+            foreach (var field in fields)
+            {
+                var fieldValue = fieldValues.TryGetValue(field.Id, out var fv) ? fv : null;
+                var answer = AnswerSnapshotResolver.ResolveDisplayValue(fieldValue, field) ?? string.Empty;
+                var row = new List<string>
+                {
+                    context.LaName,
+                    context.OnsCode,
+                    context.CollectionPeriod,
+                    submission.Id.Value.ToString(),
+                    submission.Name ?? string.Empty,
+                    submission.Status.Value,
+                    field.FieldKey,
+                    AnswerSnapshotResolver.ResolveQuestionLabel(fieldValue) ?? field.Label,
+                    answer
+                };
+                sb.AppendLine(string.Join(",", row.Select(EscapeCsvField)));
+            }
+        }
+
+        return sb.ToString();
     }
 
     private async Task<string> GenerateStandardFormCsvAsync(
@@ -324,16 +509,15 @@ public class SubmissionExportService(
 
         foreach (var field in fields)
         {
-            var answer = fieldValues.TryGetValue(field.Id, out var fv)
-                ? AnswerSnapshotResolver.ResolveDisplayValue(fv, field) ?? string.Empty
-                : string.Empty;
+            var fieldValue = fieldValues.TryGetValue(field.Id, out var fv) ? fv : null;
+            var answer = AnswerSnapshotResolver.ResolveDisplayValue(fieldValue, field) ?? string.Empty;
             var row = new List<string>
             {
                 context.LaName,
                 context.OnsCode,
                 context.CollectionPeriod,
                 field.FieldKey,
-                field.Label,
+                AnswerSnapshotResolver.ResolveQuestionLabel(fieldValue) ?? field.Label,
                 answer
             };
             sb.AppendLine(string.Join(",", row.Select(EscapeCsvField)));
@@ -476,9 +660,10 @@ public class SubmissionExportService(
                     ? AnswerSnapshotResolver.ResolveDisplayValue(fv, field) ?? string.Empty
                     : string.Empty;
 
-                if (field.FieldKey == "PPS01" && !string.IsNullOrEmpty(answer) && serviceNameLookup.TryGetValue(answer, out var serviceName))
+                // Any service-backed field, single or multi-value — not just Outcome Scores' PPS01.
+                if (DynamicServiceOptions.IsServiceBacked(field) && !string.IsNullOrEmpty(answer))
                 {
-                    answer = serviceName;
+                    answer = DynamicServiceOptions.ResolveDisplayValue(answer, serviceNameLookup);
                 }
 
                 row.Add(answer);
@@ -497,7 +682,11 @@ public class SubmissionExportService(
         DateTime collectionStartDate,
         CancellationToken cancellationToken)
     {
-        var fields = formModule.Fields.Where(f => f.IsActive).OrderBy(f => f.DisplayOrder).ToList();
+        var fields = formModule.Fields
+            .Where(f => f.IsActive)
+            .OrderBy(f => formModule.Sections.FirstOrDefault(s => s.Id == f.FormSectionId)?.SectionNumber ?? 0)
+            .ThenBy(f => f.DisplayOrder)
+            .ToList();
         var moduleCode = formModule.Code;
 
         var sectionData = new Dictionary<string, object>
@@ -519,12 +708,61 @@ public class SubmissionExportService(
         {
             sectionData["records"] = await GenerateOutcomeScoresJsonAsync(formModule, fields, organisationId, dataCollectionId, cancellationToken);
         }
+        else if (formModule.AllowsMultipleActivities)
+        {
+            sectionData["activities"] = await GenerateActivitiesJsonAsync(formModule, fields, organisationId, dataCollectionId, cancellationToken);
+        }
         else
         {
             sectionData["answers"] = await GenerateStandardFormJsonAsync(formModule, fields, organisationId, dataCollectionId, cancellationToken);
         }
 
         return sectionData;
+    }
+
+    // Activity modules (Delivery Plan strands with AllowsMultipleActivities) can have more than one
+    // submission per (module, organisation, data collection) — unlike GenerateStandardFormJsonAsync,
+    // which only ever exports a single instance, this exports every activity as its own entry so none
+    // are silently dropped.
+    private async Task<List<Dictionary<string, object>>> GenerateActivitiesJsonAsync(
+        DataCollectionFormModule formModule,
+        List<FormField> fields,
+        OrganisationId organisationId,
+        DataCollectionId dataCollectionId,
+        CancellationToken cancellationToken)
+    {
+        var activitySubmissions = await formSubmissionRepository.GetByFormModuleOrganisationDataCollectionAndEntityTypeAsync(
+            formModule.Id, organisationId, dataCollectionId, "Activity", cancellationToken);
+
+        var activities = new List<Dictionary<string, object>>();
+        foreach (var submission in activitySubmissions)
+        {
+            var fieldValues = submission.FieldValues.ToDictionary(fv => fv.FormFieldId);
+
+            activities.Add(new Dictionary<string, object>
+            {
+                ["activityId"] = submission.Id.Value,
+                ["activityName"] = submission.Name ?? string.Empty,
+                ["status"] = submission.Status.Value,
+                ["answers"] = fields.Select(f =>
+                {
+                    var fieldValue = fieldValues.TryGetValue(f.Id, out var fv) ? fv : null;
+
+                    return new Dictionary<string, object>
+                    {
+                        ["questionCode"] = f.FieldKey,
+                        ["question"] = AnswerSnapshotResolver.ResolveQuestionLabel(fieldValue) ?? f.Label,
+                        ["answer"] = AnswerSnapshotResolver.ResolveDisplayValue(fieldValue, f) ?? string.Empty,
+                        // Raw stored value alongside the resolved display text, so a later consumer (the
+                        // admin's previous-submissions review) can key a tag colour off the option value
+                        // rather than matching on the English label.
+                        ["value"] = fieldValue?.Value ?? string.Empty
+                    };
+                }).ToList()
+            });
+        }
+
+        return activities;
     }
 
     private async Task<List<Dictionary<string, object>>> GenerateStandardFormJsonAsync(
@@ -544,13 +782,12 @@ public class SubmissionExportService(
         var answers = new List<Dictionary<string, object>>();
         foreach (var field in fields)
         {
-            var answer = fieldValues.TryGetValue(field.Id, out var fv)
-                ? AnswerSnapshotResolver.ResolveDisplayValue(fv, field) ?? string.Empty
-                : string.Empty;
+            var fieldValue = fieldValues.TryGetValue(field.Id, out var fv) ? fv : null;
+            var answer = AnswerSnapshotResolver.ResolveDisplayValue(fieldValue, field) ?? string.Empty;
             answers.Add(new Dictionary<string, object>
             {
                 ["questionCode"] = field.FieldKey,
-                ["question"] = field.Label,
+                ["question"] = AnswerSnapshotResolver.ResolveQuestionLabel(fieldValue) ?? field.Label,
                 ["answer"] = answer
             });
         }
@@ -584,13 +821,16 @@ public class SubmissionExportService(
             {
                 ["serviceId"] = service.Id.Value,
                 ["serviceName"] = service.Name ?? string.Empty,
-                ["answers"] = fields.Select(f => new Dictionary<string, object>
+                ["answers"] = fields.Select(f =>
                 {
-                    ["questionCode"] = f.FieldKey,
-                    ["question"] = f.Label,
-                    ["answer"] = fieldValues.TryGetValue(f.Id, out var fv)
-                        ? AnswerSnapshotResolver.ResolveDisplayValue(fv, f) ?? string.Empty
-                        : string.Empty
+                    var fieldValue = fieldValues.TryGetValue(f.Id, out var fv) ? fv : null;
+
+                    return new Dictionary<string, object>
+                    {
+                        ["questionCode"] = f.FieldKey,
+                        ["question"] = AnswerSnapshotResolver.ResolveQuestionLabel(fieldValue) ?? f.Label,
+                        ["answer"] = AnswerSnapshotResolver.ResolveDisplayValue(fieldValue, f) ?? string.Empty
+                    };
                 }).ToList()
             };
 
@@ -631,13 +871,16 @@ public class SubmissionExportService(
             {
                 ["categoryId"] = category.Id.Value,
                 ["categoryName"] = category.CategoryName ?? string.Empty,
-                ["answers"] = fields.Select(f => new Dictionary<string, object>
+                ["answers"] = fields.Select(f =>
                 {
-                    ["questionCode"] = f.FieldKey,
-                    ["question"] = f.Label,
-                    ["answer"] = fieldValues.TryGetValue(f.Id, out var fv)
-                        ? AnswerSnapshotResolver.ResolveDisplayValue(fv, f) ?? string.Empty
-                        : string.Empty
+                    var fieldValue = fieldValues.TryGetValue(f.Id, out var fv) ? fv : null;
+
+                    return new Dictionary<string, object>
+                    {
+                        ["questionCode"] = f.FieldKey,
+                        ["question"] = AnswerSnapshotResolver.ResolveQuestionLabel(fieldValue) ?? f.Label,
+                        ["answer"] = AnswerSnapshotResolver.ResolveDisplayValue(fieldValue, f) ?? string.Empty
+                    };
                 }).ToList()
             };
 
@@ -670,19 +913,18 @@ public class SubmissionExportService(
                 ["recordId"] = submission.Id.Value,
                 ["answers"] = fields.Select(f =>
                 {
-                    var answer = fieldValues.TryGetValue(f.Id, out var fv)
-                        ? AnswerSnapshotResolver.ResolveDisplayValue(fv, f) ?? string.Empty
-                        : string.Empty;
+                    var fieldValue = fieldValues.TryGetValue(f.Id, out var fv) ? fv : null;
+                    var answer = AnswerSnapshotResolver.ResolveDisplayValue(fieldValue, f) ?? string.Empty;
 
-                    if (f.FieldKey == "PPS01" && !string.IsNullOrEmpty(answer) && serviceNameLookup.TryGetValue(answer, out var serviceName))
+                    if (DynamicServiceOptions.IsServiceBacked(f) && !string.IsNullOrEmpty(answer))
                     {
-                        answer = serviceName;
+                        answer = DynamicServiceOptions.ResolveDisplayValue(answer, serviceNameLookup);
                     }
 
                     return new Dictionary<string, object>
                     {
                         ["questionCode"] = f.FieldKey,
-                        ["question"] = f.Label,
+                        ["question"] = AnswerSnapshotResolver.ResolveQuestionLabel(fieldValue) ?? f.Label,
                         ["answer"] = answer
                     };
                 }).ToList()
@@ -760,7 +1002,9 @@ public class SubmissionExportService(
         foreach (var moduleId in assignments.Select(a => a.FormModuleId).Distinct())
         {
             var formModuleOption = await formModuleQueries.GetByIdWithFieldsAsync(moduleId, cancellationToken);
-            var formModule = formModuleOption.Match(fm => fm, () => (DataCollectionFormModule?)null);
+            // MatchUnsafe, not Match: the null below is the intended "module could not be loaded" result,
+            // and Match raises ResultIsNullException on a null result rather than returning it (BLUM-6773).
+            var formModule = formModuleOption.MatchUnsafe(fm => fm, () => (DataCollectionFormModule?)null);
             if (formModule != null)
             {
                 formModulesById[moduleId] = formModule;

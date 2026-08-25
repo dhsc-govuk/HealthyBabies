@@ -1783,7 +1783,7 @@
                                           "code":  "healthy-babies",
                                           "sectionNumber":  1,
                                           "name":  "b64:SGVhbHRoeSBCYWJpZXMgb2ZmZXIgYW5kIFBhcmVudC1DYXJlciBQYW5lbHM=",
-                                          "description":  "b64:VGVsbCB1cyBhYm91dCB0aGUgdXNlcnMgd2hvIGFjY2Vzc2VkIHRoZSBzZXJ2aWNlIG92ZXIgdGhlIHBhc3QgMyBtb250aHMuIFRoaXMgaW5mb3JtYXRpb24gd2lsbCBiZSBpbmNsdWRlZCBpbiB5b3VyIHF1YXJ0ZXJseSBNYW5hZ2VtZW50IEluZm9ybWF0aW9uIGRhdGEgY29sbGVjdGlvbi4=",
+                                          "description":  "b64:VGVsbCB1cyBhYm91dCB0aGUgdXNlcnMgd2hvIGFjY2Vzc2VkIHRoZSBzZXJ2aWNlIGluIHRoZSByZWxldmFudCBxdWFydGVyLiBUaGlzIGluZm9ybWF0aW9uIHdpbGwgYmUgaW5jbHVkZWQgaW4geW91ciBxdWFydGVybHkgTWFuYWdlbWVudCBJbmZvcm1hdGlvbiBkYXRhIGNvbGxlY3Rpb24u",
                                           "lastChangedOn":  "2026-12-21T00:00:00Z",
                                           "isActive":  true,
                                           "status":  "published",
@@ -1901,7 +1901,7 @@
                                                          },
                                                          {
                                                              "fieldKey":  "SPCP05",
-                                                             "label":  "b64:SG93IG1hbnkgdGltZXMgZGlkIHRoZSBQYXJlbnQgQ2FyZXIgUGFuZWwgbWVldCBpbiB0aGUgbGFzdCBxdWFydGVyICgxIEphbnVhcnkgdG8gMzEgTWFyY2ggMjAyNik/",
+                                                             "label":  "b64:SG93IG1hbnkgdGltZXMgZGlkIHRoZSBQYXJlbnQgQ2FyZXIgUGFuZWwgbWVldCBpbiB0aGUgcmVsZXZhbnQgcXVhcnRlcj8=",
                                                              "fieldType":  "number",
                                                              "displayOrder":  3,
                                                              "isRequired":  true,
@@ -2218,7 +2218,7 @@
                                                              "defaultValue":  null,
                                                              "validationRules":  null,
                                                              "conditionalRules":  "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"SPCP010\"}}",
-                                                             "configuration":  "{\"min\": 0, \"group\": \"SPCP010a\", \"width\": \"5\", \"suffix\": \"parents/carers\", \"sumGroup\": \"ethnicity\", \"groupHint\": \"For each ethnicity, give a figure as of 31 March 2026.\", \"groupLabel\": \"How many members of the Parent Carer Panel are there, broken down by ethnicity?\", \"maxSumField\": \"SPCP07\"}",
+                                                             "configuration":  "{\"min\": 0, \"group\": \"SPCP010a\", \"width\": \"5\", \"suffix\": \"parents/carers\", \"sumGroup\": \"ethnicity\", \"groupHint\": \"For each ethnicity, give a figure as of the end of the relevant quarter.\", \"groupLabel\": \"How many members of the Parent Carer Panel are there, broken down by ethnicity?\", \"maxSumField\": \"SPCP07\"}",
                                                              "sectionNumber":  3,
                                                              "options":  {
 
@@ -2589,7 +2589,7 @@
                                                              "displayOrder":  3,
                                                              "isRequired":  true,
                                                              "placeholder":  "b64:dXNlcnM=",
-                                                             "helpText":  "b64:R2l2ZSBhIGZpZ3VyZSBmb3IgdGhlIGxhc3QgMyBtb250aHMuIFRoaXMgaW5jbHVkZXMgc2VydmljZSB1c2VycyBhY3Jvc3MgYWxsIGRlbGl2ZXJ5IG1ldGhvZHMu",
+                                                             "helpText":  "b64:R2l2ZSBhIGZpZ3VyZSBmb3IgdGhlIHJlbGV2YW50IHF1YXJ0ZXIuIFRoaXMgaW5jbHVkZXMgc2VydmljZSB1c2VycyBhY3Jvc3MgYWxsIGRlbGl2ZXJ5IG1ldGhvZHMu",
                                                              "defaultValue":  null,
                                                              "validationRules":  null,
                                                              "conditionalRules":  "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"QSU02\"}, \"parentOption\": \"yes\"}",
@@ -3100,7 +3100,7 @@
                                                              "defaultValue":  null,
                                                              "validationRules":  null,
                                                              "conditionalRules":  "{\"showWhen\": {\"equals\": \"yes\", \"fieldKey\": \"QSU11\"}, \"parentOption\": \"yes\"}",
-                                                             "configuration":  "{\"min\": 0, \"group\": \"QSU12\", \"width\": \"5\", \"suffix\": \"users\", \"sumGroup\": \"sex\", \"groupHint\": \"The total for all sexes cannot exceed the total number of users reported for the service.\", \"groupLabel\": \"How many people used your service in the last quarter, by biological sex?\", \"maxSumField\": \"QSU03\"}",
+                                                             "configuration":  "{\"min\": 0, \"group\": \"QSU12\", \"width\": \"5\", \"suffix\": \"users\", \"sumGroup\": \"sex\", \"groupHint\": \"The total for all sexes cannot exceed the total number of users reported for the service.\", \"groupLabel\": \"How many people used your service in the relevant quarter, by biological sex?\", \"maxSumField\": \"QSU03\"}",
                                                              "sectionNumber":  3,
                                                              "options":  {
 
@@ -3462,7 +3462,7 @@
                                           "fields":  [
                                                          {
                                                              "fieldKey":  "QWSU01",
-                                                             "label":  "b64:SG93IG1hbnkgcGVvcGxlIGhhdmUgdXNlZCB3aWRlciBzZXJ2aWNlcyBpbiB0aGlzIGNhdGVnb3J5IGluIHRoZSBsYXN0IDMgbW9udGhzPw==",
+                                                             "label":  "b64:SG93IG1hbnkgcGVvcGxlIGhhdmUgdXNlZCB3aWRlciBzZXJ2aWNlcyBpbiB0aGlzIGNhdGVnb3J5IGluIHRoZSByZWxldmFudCBxdWFydGVyPw==",
                                                              "fieldType":  "number",
                                                              "displayOrder":  1,
                                                              "isRequired":  true,
@@ -4161,7 +4161,7 @@
                                                            {
                                                                "sectionNumber":  1,
                                                                "title":  "b64:QnJlYXN0ZmVlZGluZyBSYXRlcw==",
-                                                               "description":  "b64:VGVsbCB1cyBhYm91dCBicmVhc3RmZWVkaW5nIHJhdGVzIGluIHlvdXIgbG9jYWwgYXV0aG9yaXR5IG92ZXIgdGhlIHBhc3QgMyBtb250aHMu",
+                                                               "description":  "b64:VGVsbCB1cyBhYm91dCBicmVhc3RmZWVkaW5nIHJhdGVzIGluIHlvdXIgbG9jYWwgYXV0aG9yaXR5IGluIHRoZSByZWxldmFudCBxdWFydGVyLg==",
                                                                "helpText":  null,
                                                                "helpUrl":  null
                                                            },
@@ -4176,7 +4176,7 @@
                                           "fields":  [
                                                          {
                                                              "fieldKey":  "BR01",
-                                                             "label":  "b64:RG8geW91IGhhdmUgZGF0YSBvbiBhdmVyYWdlIGJyZWFzdGZlZWRpbmcgcmF0ZXMgYXQgaW5pdGlhdGlvbiBvdmVyIHRoZSBsYXN0IHF1YXJ0ZXI/",
+                                                             "label":  "b64:RG8geW91IGhhdmUgZGF0YSBvbiBhdmVyYWdlIGJyZWFzdGZlZWRpbmcgcmF0ZXMgYXQgaW5pdGlhdGlvbiBvdmVyIHRoZSByZWxldmFudCBxdWFydGVyPw==",
                                                              "fieldType":  "radio",
                                                              "displayOrder":  1,
                                                              "isRequired":  true,
@@ -4202,7 +4202,7 @@
                                                          },
                                                          {
                                                              "fieldKey":  "BR01a",
-                                                             "label":  "b64:V2hhdCB3ZXJlIHRoZSBhdmVyYWdlIGJyZWFzdGZlZWRpbmcgcmF0ZXMgYXQgaW5pdGlhdGlvbiBvdmVyIHRoZSBsYXN0IHF1YXJ0ZXIgKG9wdGlvbmFsKT8=",
+                                                             "label":  "b64:V2hhdCB3ZXJlIHRoZSBhdmVyYWdlIGJyZWFzdGZlZWRpbmcgcmF0ZXMgYXQgaW5pdGlhdGlvbiBvdmVyIHRoZSByZWxldmFudCBxdWFydGVyIChvcHRpb25hbCk/",
                                                              "fieldType":  "number",
                                                              "displayOrder":  2,
                                                              "isRequired":  false,
@@ -4219,7 +4219,7 @@
                                                          },
                                                          {
                                                              "fieldKey":  "BR02",
-                                                             "label":  "b64:RG8geW91IGhhdmUgZGF0YSBvbiB0aGUgYXZlcmFnZSBicmVhc3RmZWVkaW5nIHJhdGVzIGF0IDYtOCB3ZWVrcyBvdmVyIHRoZSBsYXN0IHF1YXJ0ZXI/",
+                                                             "label":  "b64:RG8geW91IGhhdmUgZGF0YSBvbiB0aGUgYXZlcmFnZSBicmVhc3RmZWVkaW5nIHJhdGVzIGF0IDYtOCB3ZWVrcyBvdmVyIHRoZSByZWxldmFudCBxdWFydGVyPw==",
                                                              "fieldType":  "radio",
                                                              "displayOrder":  3,
                                                              "isRequired":  true,
@@ -4245,7 +4245,7 @@
                                                          },
                                                          {
                                                              "fieldKey":  "BR02a",
-                                                             "label":  "b64:V2hhdCB3ZXJlIHRoZSBhdmVyYWdlIGJyZWFzdGZlZWRpbmcgcmF0ZXMgYXQgNi04IHdlZWtzIG92ZXIgdGhlIGxhc3QgcXVhcnRlciAob3B0aW9uYWwpPw==",
+                                                             "label":  "b64:V2hhdCB3ZXJlIHRoZSBhdmVyYWdlIGJyZWFzdGZlZWRpbmcgcmF0ZXMgYXQgNi04IHdlZWtzIG92ZXIgdGhlIHJlbGV2YW50IHF1YXJ0ZXIgKG9wdGlvbmFsKT8=",
                                                              "fieldType":  "number",
                                                              "displayOrder":  4,
                                                              "isRequired":  false,
@@ -4379,7 +4379,7 @@
                                                          },
                                                          {
                                                              "fieldKey":  "WT04",
-                                                             "label":  "b64:SG93IG1hbnkgc3RhZmYgdG9vayBwYXJ0IGluIHRoaXMgdHJhaW5pbmcgaW4gdGhlIGxhc3QgMyBtb250aHM/",
+                                                             "label":  "b64:SG93IG1hbnkgc3RhZmYgdG9vayBwYXJ0IGluIHRoaXMgdHJhaW5pbmcgaW4gdGhlIHJlbGV2YW50IHF1YXJ0ZXI/",
                                                              "fieldType":  "number",
                                                              "displayOrder":  4,
                                                              "isRequired":  true,

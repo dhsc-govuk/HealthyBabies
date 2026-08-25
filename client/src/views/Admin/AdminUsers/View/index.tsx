@@ -11,6 +11,8 @@ import type { ActionMenuItem } from '../../../../components/GovUKComponents';
 import axios from 'axios';
 import './styles.css';
 import usePageTitle from '../../../../hooks/usePageTitle';
+import { ROUTES } from '../../../../constants/routes';
+import { API_ROUTES } from '../../../../constants/apiRoutes';
 
 interface AdminUserResponse {
   id: string;
@@ -33,11 +35,11 @@ type UrlParams = {
   userId: string;
 };
 
-const getAdminUser = (userId: string) => axios.get<AdminUserResponse>(`/admin/users/${userId}`);
-const getMfaStatus = (userId: string) => axios.get<MfaStatusResponse>(`/admin/users/${userId}/mfa-status`);
-const enableUserMfa = (userId: string) => axios.post(`/admin/users/${userId}/mfa/enable`);
-const disableUserMfa = (userId: string) => axios.post(`/admin/users/${userId}/mfa/disable`);
-const resetUserMfa = (userId: string) => axios.post(`/admin/users/${userId}/mfa/reset`);
+const getAdminUser = (userId: string) => axios.get<AdminUserResponse>(API_ROUTES.admin.users.byId(userId));
+const getMfaStatus = (userId: string) => axios.get<MfaStatusResponse>(API_ROUTES.admin.users.mfaStatus(userId));
+const enableUserMfa = (userId: string) => axios.post(API_ROUTES.admin.users.mfaEnable(userId));
+const disableUserMfa = (userId: string) => axios.post(API_ROUTES.admin.users.mfaDisable(userId));
+const resetUserMfa = (userId: string) => axios.post(API_ROUTES.admin.users.mfaReset(userId));
 
 const ViewAdminUser = (): React.ReactElement => {
   usePageTitle('View departmental user');
@@ -93,7 +95,7 @@ const ViewAdminUser = (): React.ReactElement => {
   });
 
   const handleEdit = () => {
-    navigate(`/admin/departmental-users/${userId}/edit`);
+    navigate(ROUTES.admin.departmentalUsers.edit(userId));
   };
 
   const actionMenuItems: ActionMenuItem[] = useMemo(() => {
@@ -111,7 +113,7 @@ const ViewAdminUser = (): React.ReactElement => {
       items.push({ label: 'Activate MFA', onClick: async () => { await enableMfa(); } });
     }
 
-    items.push({ label: 'Delete account', href: `/admin/departmental-users/${userId}/delete`, dividerBefore: true });
+    items.push({ label: 'Delete account', href: ROUTES.admin.departmentalUsers.delete(userId), dividerBefore: true });
 
     return items;
   }, [mfaStatus, userId, disableMfa, resetMfa, enableMfa]);
@@ -128,9 +130,9 @@ const ViewAdminUser = (): React.ReactElement => {
   return (
     <SettingsLayout
       breadcrumbs={[
-        { label: 'Home', link: '/admin/home' },
-        { label: 'Settings', link: '/admin/settings' },
-        { label: 'Departmental users', link: '/admin/departmental-users' },
+        { label: 'Home', link: ROUTES.admin.home },
+        { label: 'Settings', link: ROUTES.admin.settings },
+        { label: 'Departmental users', link: ROUTES.admin.departmentalUsers.list },
       ]}>
       <LoadingBox loading={isLoading}>
         {user && (
@@ -143,7 +145,7 @@ const ViewAdminUser = (): React.ReactElement => {
               </PageHeaderActions>
             </PageHeaderContainer>
 
-            <dl className="govuk-summary-list">
+            <dl className="govuk-summary-list admin-user-view__summary">
               <div className="govuk-summary-list__row">
                 <dt className="govuk-summary-list__key">First name</dt>
                 <dd className="govuk-summary-list__value">{user.firstName}</dd>

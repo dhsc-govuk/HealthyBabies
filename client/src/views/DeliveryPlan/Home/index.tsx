@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { GeneralLayout } from '../../../layouts';
 import { H1, H2, Paragraph } from '../../../components/GovUKComponents';
 import usePageTitle from '../../../hooks/usePageTitle';
+import { ROUTES } from '../../../constants/routes';
 
 const Home = (): React.ReactElement => {
   usePageTitle('Home');
@@ -14,20 +15,20 @@ const Home = (): React.ReactElement => {
         <Paragraph>You can:</Paragraph>
         <ul className="govuk-list govuk-list--bullet">
           <li>
-            <Link to="/delivery-plan/core-data" className="govuk-link">
+            <Link to={ROUTES.deliveryPlan.coreData} className="govuk-link">
               view core data
             </Link>
             , like services and delivery locations
           </li>
           <li>
-            <Link to="/delivery-plan/submissions" className="govuk-link">
+            <Link to={ROUTES.deliveryPlan.submissions.list} className="govuk-link">
               submit delivery plan returns and view previously submitted returns
             </Link>
           </li>
         </ul>
         <H2>Get help using this service</H2>
         <p className="govuk-body">
-          <Link to="/delivery-plan/help" className="govuk-link">
+          <Link to={ROUTES.deliveryPlan.help} className="govuk-link">
             Guidance
           </Link>
           {' '}is available to help you use this service.
@@ -36,8 +37,8 @@ const Home = (): React.ReactElement => {
         <p className="govuk-body">
           <strong>Email</strong>
           <br />
-          <a href="mailto:support@example.gov.uk" className="govuk-link">
-            support@example.gov.uk
+          <a href="mailto:healthybabies.dataanddigital@dhsc.gov.uk" className="govuk-link">
+            healthybabies.dataanddigital@dhsc.gov.uk
           </a>
         </p>
       </div>

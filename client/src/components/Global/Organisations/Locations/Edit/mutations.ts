@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { API_ROUTES } from '../../../../../constants/apiRoutes';
 
 export interface UpdateLocationDto {
   id: string;
@@ -17,6 +18,6 @@ export interface UpdateLocationDto {
 }
 
 export const updateLocation = (organisationId: string, location: UpdateLocationDto, apiBasePath?: string) => {
-  const url = apiBasePath ? `${apiBasePath}/edit` : `/organisations/${organisationId}/locations/edit`;
+  const url = apiBasePath ? `${apiBasePath}/edit` : API_ROUTES.organisations.locations.edit(organisationId);
   return axios.put<UpdateLocationDto>(url, location);
 };

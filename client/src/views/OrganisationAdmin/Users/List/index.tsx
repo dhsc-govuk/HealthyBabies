@@ -6,6 +6,7 @@ import { SettingsLayout } from '../../../../layouts';
 import { Button } from '../../../../components/GovUKComponents';
 import { PageHeaderContainer, PageHeaderActions } from '../../../../styles/govuk-global';
 import usePageTitle from '../../../../hooks/usePageTitle';
+import { ROUTES } from '../../../../constants/routes';
 
 const ListOrganisationUsers = (): React.ReactElement => {
   usePageTitle('LA users');
@@ -15,19 +16,19 @@ const ListOrganisationUsers = (): React.ReactElement => {
   const organisationId = user?.organisation_id;
 
   const handleView = (userId: string) => {
-    navigate(`/organisation-admin/la-users/${userId}`);
+    navigate(ROUTES.organisationAdmin.laUsers.view(userId));
   };
 
   const handleEdit = (userId: string) => {
-    navigate(`/organisation-admin/la-users/${userId}/edit`);
+    navigate(ROUTES.organisationAdmin.laUsers.edit(userId));
   };
 
   const handleCreate = () => {
-    navigate(`/organisation-admin/la-users/create`);
+    navigate(ROUTES.organisationAdmin.laUsers.create);
   };
 
   return (
-    <SettingsLayout breadcrumbs={[{ label: 'Home', link: '/organisation-admin/home' }]}>
+    <SettingsLayout breadcrumbs={[{ label: 'Home', link: ROUTES.organisationAdmin.home }]}>
       <PageHeaderContainer>
         <h1 className="govuk-heading-l">LA users</h1>
         <PageHeaderActions>

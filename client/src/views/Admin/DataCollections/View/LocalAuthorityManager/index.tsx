@@ -13,6 +13,7 @@ import {
   updateLocalAuthorityEndDate,
 } from '../../List/queries';
 import { processError } from '../../../../../helpers/axiosErrorFallback';
+import { ROUTES } from '../../../../../constants/routes';
 import './styles.css';
 
 interface LocalAuthorityManagerProps {
@@ -216,7 +217,7 @@ function LocalAuthorityManager({
     
     try {
       await updateEndDateMutation({ laId: editEndDateModal.laId, endDate: isoDate });
-    } catch (err) {
+    } catch {
       setEditEndDateModal({
         ...editEndDateModal,
         error: 'Failed to update end date. Please try again.',
@@ -252,15 +253,16 @@ function LocalAuthorityManager({
     },
     {
       key: 'actions',
-      header: '',
+      header: 'Actions',
+      headerVisuallyHidden: true,
       align: 'right',
       render: (la) => (
         <div className="la-manager__actions-cell">
           <Link
-            href={`/admin/organisations/${la.id}`}
+            href={ROUTES.admin.organisations.view(la.id)}
             onClick={(e: React.MouseEvent) => {
               e.preventDefault();
-              navigate(`/admin/organisations/${la.id}`);
+              navigate(ROUTES.admin.organisations.view(la.id));
             }}
           >
             View<span className="govuk-visually-hidden"> {la.name}</span>
@@ -349,6 +351,7 @@ function LocalAuthorityManager({
                 Select the local authorities to include in this data collection.
               </p>
               <GovUKTable<Organisation>
+                caption="Local authorities available for this data collection"
                 data={availableOrganisations}
                 columns={availableColumns}
                 searchPlaceholder="Search local authorities"
@@ -385,6 +388,7 @@ function LocalAuthorityManager({
         <p className="govuk-body">No due date extensions have been added.</p>
       ) : (
         <GovUKTable<LocalAuthorityAssignment>
+          caption="Local authorities in this data collection"
           data={assignedLocalAuthorities}
           columns={assignedColumns}
           searchPlaceholder="Search local authority by name"

@@ -25,6 +25,7 @@ import { getAllModules, getModuleWithFields } from './queries';
 import { deleteFormField, reorderFormFields } from './mutations';
 import { FormField, fieldTypeLabels } from '../Common/types';
 import usePageTitle from '../../../../../hooks/usePageTitle';
+import { ROUTES } from '../../../../../constants/routes';
 
 const DataCollectionFormQuestionsList = (): React.ReactElement => {
   usePageTitle('Data collection form questions');
@@ -34,8 +35,8 @@ const DataCollectionFormQuestionsList = (): React.ReactElement => {
   const [selectedModuleId, setSelectedModuleId] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [fieldToDelete, setFieldToDelete] = useState<FormField | null>(null);
-  const [draggedIndex, setDraggedIndex] = useState<number | null>(null);
-  const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const [draggedFieldId, setDraggedFieldId] = useState<string | null>(null);
+  const [dragOverFieldId, setDragOverFieldId] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
   const { data: allModules = [] } = useQuery({
@@ -74,10 +75,25 @@ const DataCollectionFormQuestionsList = (): React.ReactElement => {
     },
   });
 
+  // One normalised term drives both the filter and the reorder guard below. They must agree: a
+  // guard that trims while the filter does not would treat a whitespace-only search as "no search"
+  // and leave drag-and-drop enabled over a list that is quietly hiding every single-word question.
+  const normalisedSearchTerm = searchTerm.trim().toLowerCase();
+
   const filteredFields = useMemo(() => {
     if (!selectedModule?.fields) return [];
-    return selectedModule.fields.filter((field) => field.fieldKey.toLowerCase().includes(searchTerm.toLowerCase()) || field.label.toLowerCase().includes(searchTerm.toLowerCase()));
-  }, [selectedModule?.fields, searchTerm]);
+    return selectedModule.fields.filter((field) => field.fieldKey.toLowerCase().includes(normalisedSearchTerm) || field.label.toLowerCase().includes(normalisedSearchTerm));
+  }, [selectedModule?.fields, normalisedSearchTerm]);
+
+  // Reordering a filtered list would renumber only the questions that happen to match the search,
+  // silently reshuffling the ones hidden between them, so drag-and-drop is only offered on the
+  // complete list.
+  const isReorderable = normalisedSearchTerm === '';
+
+  // Section number for a field, used to order both the accordions and the module-wide renumbering
+  // below. A field with no section counts as 0, matching how the submission API sorts it, so the
+  // admin list shows the same sequence LAs would see.
+  const sectionNumberOf = useCallback((sectionId: string | null) => selectedModule?.sections.find((s) => s.id === sectionId)?.sectionNumber ?? 0, [selectedModule?.sections]);
 
   const groupedFields = useMemo(() => {
     const groups: Record<string, FormField[]> = {};
@@ -91,8 +107,11 @@ const DataCollectionFormQuestionsList = (): React.ReactElement => {
     Object.keys(groups).forEach((key) => {
       groups[key].sort((a, b) => a.displayOrder - b.displayOrder);
     });
-    return groups;
-  }, [filteredFields]);
+    // Object key order is insertion order, which follows however the API happened to return the
+    // fields. Rebuild the record in section order so the accordions read 1, 2, 3, ..., with any
+    // sectionless questions first where the form would put them.
+    return Object.fromEntries(Object.entries(groups).sort(([a], [b]) => sectionNumberOf(a === 'no-section' ? null : a) - sectionNumberOf(b === 'no-section' ? null : b)));
+  }, [filteredFields, sectionNumberOf]);
 
   const getSectionTitle = useCallback(
     (sectionId: string) => {
@@ -109,7 +128,7 @@ const DataCollectionFormQuestionsList = (): React.ReactElement => {
   };
 
   const handleEdit = (fieldId: string) => {
-    navigate(`/admin/configuration/data-collection-form-questions/edit/${fieldId}`);
+    navigate(ROUTES.admin.configuration.dataCollectionFormQuestions.edit(fieldId));
   };
 
   const handleDeleteClick = (field: FormField) => {
@@ -124,65 +143,110 @@ const DataCollectionFormQuestionsList = (): React.ReactElement => {
     }
   };
 
-  const handleDragStart = (e: DragEvent<HTMLDivElement>, index: number) => {
-    setDraggedIndex(index);
-    e.dataTransfer.effectAllowed = 'move';
-    e.dataTransfer.setData('text/plain', index.toString());
+  // A drop is only meaningful when one of our own rows is being moved within the section it
+  // already belongs to: the reorder endpoint rewrites display_order and nothing else.
+  const isDropAllowed = (target: FormField) => {
+    if (!isReorderable || draggedFieldId === null) return false;
+    const dragged = selectedModule?.fields.find((f) => f.id === draggedFieldId);
+    return !!dragged && (dragged.formSectionId ?? null) === (target.formSectionId ?? null);
   };
 
-  const handleDragOver = (e: DragEvent<HTMLDivElement>, index: number) => {
+  // The drag payload carries the question's id, not its row index. Indexes are per-accordion, so
+  // an index from one section means something different in another, and a drag that started
+  // outside the page carries no index at all - both used to be accepted and acted on.
+  const handleDragStart = (e: DragEvent<HTMLDivElement>, field: FormField) => {
+    setDraggedFieldId(field.id);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', field.id);
+  };
+
+  const handleDragOver = (e: DragEvent<HTMLDivElement>, field: FormField) => {
+    // Only accept the drop when it is one of our rows moving within its own section. Calling
+    // preventDefault() unconditionally made every row a drop target for anything on the desktop.
+    if (!isDropAllowed(field)) return;
+
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
-    if (draggedIndex !== null && draggedIndex !== index) {
-      setDragOverIndex(index);
+    if (draggedFieldId !== field.id) {
+      setDragOverFieldId(field.id);
     }
   };
 
   const handleDragLeave = () => {
-    setDragOverIndex(null);
+    setDragOverFieldId(null);
   };
 
-  const handleDrop = (e: DragEvent<HTMLDivElement>, toIndex: number, sectionFields: FormField[]) => {
+  const handleDrop = (e: DragEvent<HTMLDivElement>, target: FormField, sectionFields: FormField[]) => {
     e.preventDefault();
-    const fromIndex = parseInt(e.dataTransfer.getData('text/plain'), 10);
-    if (fromIndex !== toIndex && selectedModuleId) {
-      const reorderedFields = [...sectionFields];
-      const [removed] = reorderedFields.splice(fromIndex, 1);
-      reorderedFields.splice(toIndex, 0, removed);
+    const sourceId = e.dataTransfer.getData('text/plain') || draggedFieldId;
+    const fromIndex = sectionFields.findIndex((f) => f.id === sourceId);
+    const toIndex = sectionFields.findIndex((f) => f.id === target.id);
 
-      const fieldsWithNewOrder = reorderedFields.map((field, idx) => ({
-        id: field.id,
-        displayOrder: idx + 1,
-      }));
+    // findIndex returns -1 for a foreign drag or one that started in a different section; the
+    // reorder endpoint only rewrites display_order, so moving a question between sections is not
+    // something this screen can express. Either way, do nothing rather than guess.
+    if (fromIndex !== -1 && toIndex !== -1 && fromIndex !== toIndex && selectedModuleId && selectedModule) {
+      const reorderedSection = [...sectionFields];
+      const [removed] = reorderedSection.splice(fromIndex, 1);
+      reorderedSection.splice(toIndex, 0, removed);
+
+      // displayOrder is a single sequence per module, not per section. Numbering the dragged
+      // section 1..n on its own collides with every other section, and the submission review
+      // screens - which flatten the module into one list - then interleave questions from
+      // different sections (BLUM-7219). So rebuild every section, swap in the dragged one, and
+      // renumber the module end to end.
+      const sectionKeyOf = (field: FormField) => field.formSectionId ?? 'no-section';
+      const draggedSectionKey = sectionKeyOf(target);
+
+      const bySection = new Map<string, FormField[]>();
+      selectedModule.fields.forEach((field) => {
+        const key = sectionKeyOf(field);
+        const group = bySection.get(key);
+        if (group) {
+          group.push(field);
+        } else {
+          bySection.set(key, [field]);
+        }
+      });
+      bySection.set(draggedSectionKey, reorderedSection);
+
+      const fieldsWithNewOrder = [...bySection.entries()]
+        // Comparing section numbers alone keeps this a total order. Sections that share a number
+        // (nothing enforces uniqueness) compare equal and Array.prototype.sort is stable, so they
+        // simply hold their current relative position instead of shuffling unpredictably.
+        .sort(([a], [b]) => sectionNumberOf(a === 'no-section' ? null : a) - sectionNumberOf(b === 'no-section' ? null : b))
+        .flatMap(([key, fields]) => (key === draggedSectionKey ? fields : [...fields].sort((x, y) => x.displayOrder - y.displayOrder)))
+        .map((field, idx) => ({ id: field.id, displayOrder: idx + 1 }));
 
       reorderMutation.mutate({
         formModuleId: selectedModuleId,
         fields: fieldsWithNewOrder,
       });
     }
-    setDraggedIndex(null);
-    setDragOverIndex(null);
+
+    setDraggedFieldId(null);
+    setDragOverFieldId(null);
   };
 
   const handleDragEnd = () => {
-    setDraggedIndex(null);
-    setDragOverIndex(null);
+    setDraggedFieldId(null);
+    setDragOverFieldId(null);
   };
 
   return (
     <SettingsLayout
       breadcrumbs={[
-        { label: 'Home', link: '/admin/home' },
-        { label: 'Settings', link: '/admin/settings' },
+        { label: 'Home', link: ROUTES.admin.home },
+        { label: 'Settings', link: ROUTES.admin.settings },
       ]}>
       <PageHeaderContainer>
         <PageTitle>Data Collection Form Questions</PageTitle>
         <PageHeaderActions>
-          <Button onClick={() => navigate('/admin/configuration/data-collection-form-questions/create')}>Add Question</Button>
+          <Button onClick={() => navigate(ROUTES.admin.configuration.dataCollectionFormQuestions.create)}>Add Question</Button>
         </PageHeaderActions>
       </PageHeaderContainer>
       <Box sx={{ mb: 3 }}>
-        <Typography variant="h6" sx={{ mb: 2 }}>
+        <Typography variant="h6" component="h2" sx={{ mb: 2 }}>
           Select a Form Module
         </Typography>
         <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
@@ -216,41 +280,49 @@ const DataCollectionFormQuestionsList = (): React.ReactElement => {
             sx={{ mb: 3 }}
           />
 
+          {!isReorderable && (
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              Clear the search to reorder questions.
+            </Typography>
+          )}
+
           {moduleLoading ? (
             <Typography>Loading questions...</Typography>
           ) : (
             Object.entries(groupedFields).map(([sectionId, fields]) => (
               <Accordion key={sectionId} defaultExpanded>
                 <AccordionSummary expandIcon={<ExpandMoreIcon />}>
-                  <Typography variant="h6">{getSectionTitle(sectionId)}</Typography>
+                  <Typography variant="h6" component="h3">{getSectionTitle(sectionId)}</Typography>
                   <Chip label={fields.length} size="small" sx={{ ml: 2 }} />
                 </AccordionSummary>
                 <AccordionDetails>
-                  {fields.map((field, index) => (
+                  {fields.map((field) => (
                     <Box
                       key={field.id}
-                      draggable
-                      onDragStart={(e) => handleDragStart(e, index)}
-                      onDragOver={(e) => handleDragOver(e, index)}
-                      onDragLeave={handleDragLeave}
-                      onDrop={(e) => handleDrop(e, index, fields)}
-                      onDragEnd={handleDragEnd}
+                      draggable={isReorderable}
+                      onDragStart={isReorderable ? (e) => handleDragStart(e, field) : undefined}
+                      onDragOver={isReorderable ? (e) => handleDragOver(e, field) : undefined}
+                      onDragLeave={isReorderable ? handleDragLeave : undefined}
+                      onDrop={isReorderable ? (e) => handleDrop(e, field, fields) : undefined}
+                      onDragEnd={isReorderable ? handleDragEnd : undefined}
                       sx={{
                         display: 'flex',
                         alignItems: 'center',
                         p: 2,
                         mb: 1,
                         border: '1px solid',
-                        borderColor: dragOverIndex === index ? 'primary.main' : 'grey.300',
+                        // Keyed on the field id, not the row index: indexes restart in every
+                        // accordion, so the old comparison highlighted one row per section.
+                        borderColor: dragOverFieldId === field.id ? 'primary.main' : 'grey.300',
                         borderRadius: 1,
-                        backgroundColor: draggedIndex === index ? 'action.hover' : 'background.paper',
-                        opacity: draggedIndex === index ? 0.5 : 1,
-                        cursor: 'grab',
-                        '&:active': { cursor: 'grabbing' },
+                        backgroundColor: draggedFieldId === field.id ? 'action.hover' : 'background.paper',
+                        opacity: draggedFieldId === field.id ? 0.5 : 1,
+                        cursor: isReorderable ? 'grab' : 'default',
+                        '&:active': { cursor: isReorderable ? 'grabbing' : 'default' },
                       }}>
-                      <DragIndicatorIcon sx={{ color: 'grey.500', mr: 2 }} />
+                      <DragIndicatorIcon sx={{ color: isReorderable ? 'grey.500' : 'grey.300', mr: 2 }} />
                       <Box sx={{ flex: 1 }}>
-                        <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                        <Typography variant="subtitle1" component="h4" sx={{ fontWeight: 600 }}>
                           {field.fieldKey}
                         </Typography>
                         <Typography variant="body2" color="text.secondary">

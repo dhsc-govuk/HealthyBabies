@@ -3,6 +3,7 @@ using Application.Common.Interfaces.Queries;
 using Application.Common.Interfaces.Repositories;
 using Application.Common.Permissions;
 using Application.Submissions.Dtos;
+using Application.Submissions.Helpers;
 using Domain.DataCollections;
 using LanguageExt;
 using MediatR;
@@ -75,7 +76,8 @@ public class ProcessStagedBulkUploadCommandHandler(
         var formModule = formModuleOption.Match(fm => fm, () => null!);
         var fields = formModule.Fields
             .Where(f => f.IsActive)
-            .OrderBy(f => f.DisplayOrder)
+            .OrderBy(f => formModule.Sections.FirstOrDefault(s => s.Id == f.FormSectionId)?.SectionNumber ?? 0)
+            .ThenBy(f => f.DisplayOrder)
             .ToList();
 
         var services = await serviceQueries.GetByOrganisationIdAsync(orgId, cancellationToken);
@@ -109,17 +111,11 @@ public class ProcessStagedBulkUploadCommandHandler(
                 var dataRows = rows.Skip(1).ToList();
                 var skippedRows = 1;
 
-                if (dataRows.Count > 0 && BulkUploadCsvHelper.IsLabelRow(dataRows[0], fields))
-                {
-                    dataRows = dataRows.Skip(1).ToList();
-                    skippedRows++;
-                }
-
-                if (dataRows.Count > 0 && BulkUploadCsvHelper.IsRequiredIndicatorsRow(dataRows[0]))
-                {
-                    dataRows = dataRows.Skip(1).ToList();
-                    skippedRows++;
-                }
+                // Detect the preamble against the template's columns, not the full field list above:
+                // validate split the file that way, and the client's row indices follow validate.
+                var preambleRows = BulkUploadCsvHelper.CountPreambleRows(dataRows, BulkUploadTemplateColumns.ForModule(formModule));
+                dataRows = dataRows.Skip(preambleRows).ToList();
+                skippedRows += preambleRows;
 
                 ApplyCellEdits(dataRows, request.CellEdits);
 

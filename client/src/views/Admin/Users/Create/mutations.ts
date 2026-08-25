@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { API_ROUTES } from '../../../../constants/apiRoutes';
 
 export interface CreateAdminDto {
   id?: string;
@@ -20,7 +21,7 @@ export interface CreateOrganisationUserDto {
 
 export interface CreateOrganisationUserResponse extends CreateOrganisationUserDto {}
 
-export const createAdmin = (user: CreateAdminDto) => axios.post<CreateAdminDto>('admin/users/create', user);
+export const createAdmin = (user: CreateAdminDto) => axios.post<CreateAdminDto>(API_ROUTES.admin.users.create, user);
 
 export const createOrganisationUser = (user: CreateOrganisationUserDto) =>
-  axios.post<CreateOrganisationUserResponse>('admin/users/organisation-users', user);
+  axios.post<CreateOrganisationUserResponse>(API_ROUTES.admin.users.organisationUsers.create, user);

@@ -8,6 +8,7 @@ import { getService, deleteService, serviceCacheKey, servicesCacheKey } from '..
 import { processError } from '../../../../helpers/axiosErrorFallback';
 import { WarningPanel, WarningPanelTitle, WarningPanelBody, WarningPanelActions, WarningPanelAnchor } from '../../../../styles/govuk-global';
 import usePageTitle from '../../../../hooks/usePageTitle';
+import { ROUTES } from '../../../../constants/routes';
 
 const DeleteService = (): React.ReactElement => {
   usePageTitle('Delete service');
@@ -27,7 +28,7 @@ const DeleteService = (): React.ReactElement => {
     onSuccess: () => {
       setNotification({ type: 'success', title: 'Success', message: 'Service deleted successfully' });
       queryClient.invalidateQueries(servicesCacheKey());
-      navigate('/organisation-admin/core-data/services');
+      navigate(ROUTES.organisationAdmin.services.list);
     },
     onError: (error) => {
       processError(error, (e) => setNotification({ type: 'important', title: 'Error', message: e || 'Failed to delete service' }));
@@ -42,7 +43,7 @@ const DeleteService = (): React.ReactElement => {
 
   return (
     <LoadingBox loading={isLoading || deleteMutation.isLoading}>
-      <GeneralLayout backLink={{ href: `/organisation-admin/core-data/services/${serviceId}` }}>
+      <GeneralLayout backLink={{ href: ROUTES.organisationAdmin.services.view(serviceId) }}>
         <WarningPanel>
           <WarningPanelTitle>Are you sure you want to delete the service?</WarningPanelTitle>
           <WarningPanelBody>
@@ -57,7 +58,7 @@ const DeleteService = (): React.ReactElement => {
             <Button onClick={handleDelete} disabled={deleteMutation.isLoading} buttonColour="#ffffff" buttonTextColour="#1d70b8">
               Yes, I want to delete
             </Button>
-            <WarningPanelAnchor href={`/organisation-admin/core-data/services/${serviceId}`}>Go back</WarningPanelAnchor>
+            <WarningPanelAnchor href={ROUTES.organisationAdmin.services.view(serviceId)}>Go back</WarningPanelAnchor>
           </WarningPanelActions>
         </WarningPanel>
       </GeneralLayout>

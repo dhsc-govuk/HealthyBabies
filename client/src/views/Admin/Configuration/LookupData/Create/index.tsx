@@ -9,6 +9,7 @@ import { createGlobalData } from './mutations';
 import { lookupDataReducer } from '../Common';
 import LookupDataSteps from '../Common/components/Steps';
 import { encodeForWaf, encodeNullableForWaf } from '../../../../../helpers/stringUtils';
+import { ROUTES } from '../../../../../constants/routes';
 
 const CreateLookupData = (): React.ReactElement => {
   const navigate = useNavigate();
@@ -28,7 +29,7 @@ const CreateLookupData = (): React.ReactElement => {
       setNotification({ type: 'success', title: 'Success', message: 'Lookup data created successfully' });
       queryClient.invalidateQueries(['global-data-list']);
       queryClient.invalidateQueries(['global-data', variables.entity]);
-      navigate('/admin/configuration/lookup-data');
+      navigate(ROUTES.admin.configuration.lookupData.list);
     },
     onError(error, _variables, _context) {
       processError(error, (e) => setNotification({ type: 'important', title: 'Error', message: e }));
@@ -52,7 +53,7 @@ const CreateLookupData = (): React.ReactElement => {
           lookupData={lookupData}
           dispatch={dispatchLookupData}
           handleSave={handleSave}
-          onCancel={() => navigate('/admin/configuration/lookup-data')}
+          onCancel={() => navigate(ROUTES.admin.configuration.lookupData.list)}
         />
       </LoadingBox>
     </SettingsLayout>

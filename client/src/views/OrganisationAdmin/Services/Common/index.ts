@@ -18,6 +18,48 @@ export const isServiceQuestionVisible = (question: ServiceFormQuestionDto, answe
   return true;
 };
 
+// isServiceQuestionVisible only looks at the immediate parent, so a stored answer for a question that
+// is itself hidden would keep its own children alive: SMD08=parenting -> SMD10=exemption_other ->
+// SMD10a, then SMD08 flips to infant_feeding. SMD10 goes hidden but its answer lingers, so SMD10a
+// stays required with nothing on screen to answer it (BLUM-7221). Dropping hidden questions' answers
+// makes that cascade. Pruning happens at read time, not in the reducer, so flipping SMD08 back to
+// parenting restores the original SMD10 answer instead of destroying it.
+export const getEffectiveServiceAnswers = (
+  questions: ServiceFormQuestionDto[],
+  answers: Record<string, string | undefined>
+): Record<string, string | undefined> => {
+  // displayOrder restarts on each step, so fold the step in to get a single form-wide ordering. This
+  // matches the ordering the Admin question builder validates conditional references against.
+  const formOrderOf = (question: ServiceFormQuestionDto) => question.step * 1000 + question.displayOrder;
+  const ordered = [...questions].sort((a, b) => formOrderOf(a) - formOrderOf(b));
+  const effective = { ...answers };
+
+  // One ordered pass settles a chain whose conditions only reference earlier questions, which the
+  // rules builder enforces for conditionalRules. The legacy "Indent under question" dropdown does not,
+  // so repeat until a pass changes nothing. Answers are put back as well as taken away: a notEquals
+  // rule becomes true when the question it references is itself pruned, and dropping an answer that
+  // the form is about to show again would report it as missing while the field still displays a value.
+  // The pass count is capped because a negated rule can oscillate rather than settle.
+  for (let pass = 0; pass < ordered.length; pass++) {
+    let changed = false;
+    for (const question of ordered) {
+      const visible = isServiceQuestionVisible(question, effective);
+      const isPresent = effective[question.code] !== undefined;
+
+      if (!visible && isPresent) {
+        delete effective[question.code];
+        changed = true;
+      } else if (visible && !isPresent && answers[question.code] !== undefined) {
+        effective[question.code] = answers[question.code];
+        changed = true;
+      }
+    }
+    if (!changed) break;
+  }
+
+  return effective;
+};
+
 export interface ServiceFormState {
   id?: string;
   name: string;
@@ -64,8 +106,16 @@ export interface ValidationErrors {
 
 export const shouldSkipServiceCharacteristics = (state: ServiceFormState): boolean => state.answers.SMD03 === 'no_longer_offered';
 
-export const validateStep = (state: ServiceFormState, questions: ServiceFormQuestionDto[]): ValidationErrors => {
+// `questions` are the ones being validated (a single step); `allQuestions` is the whole form and
+// drives the visibility cascade, since a parent may live on an earlier step. It defaults to
+// `questions` so a caller that omits it still gets the cascade for chains contained in one step.
+export const validateStep = (
+  state: ServiceFormState,
+  questions: ServiceFormQuestionDto[],
+  allQuestions: ServiceFormQuestionDto[] = questions
+): ValidationErrors => {
   const errors: ValidationErrors = {};
+  const effectiveAnswers = getEffectiveServiceAnswers(allQuestions, state.answers);
 
   // Validate name (always required, always first in step 1)
   if (!state.name || state.name.trim() === '') {
@@ -79,22 +129,24 @@ export const validateStep = (state: ServiceFormState, questions: ServiceFormQues
     // Skip SMD01 (name) as it's handled separately
     if (question.code === 'SMD01') continue;
 
-    // Skip validation for questions hidden by their conditional rules
-    if (!isServiceQuestionVisible(question, state.answers)) {
+    // Skip validation for questions hidden by their conditional rules, or by a hidden ancestor
+    if (!isServiceQuestionVisible(question, effectiveAnswers)) {
       continue;
     }
 
-    const value = state.answers[question.code];
+    const value = effectiveAnswers[question.code];
 
     if (value === undefined || value === null || value === '') {
       errors[question.code] = getErrorMessage(question);
       continue;
     }
 
-    if (question.questionType === ServiceFormQuestionType.Date && question.dateValidationRule) {
+    // Structural validation always runs — see the note in Locations/Common. The rule only
+    // selects the past/future policy; an unset rule defaults to past-only.
+    if (question.questionType === ServiceFormQuestionType.Date) {
       const [day, month, year] = value.split('/');
       const result = validateDateParts(day, month, year, {
-        allowFuture: question.dateValidationRule !== DateValidationRule.NotInFuture,
+        allowFuture: question.dateValidationRule === DateValidationRule.NotInPast,
         disallowPast: question.dateValidationRule === DateValidationRule.NotInPast,
         legendText: question.label,
       });
@@ -104,7 +156,7 @@ export const validateStep = (state: ServiceFormState, questions: ServiceFormQues
     }
   }
 
-  const ageRangeError = validateAgeRange(state, questions);
+  const ageRangeError = validateAgeRange(effectiveAnswers, questions);
   if (ageRangeError) {
     errors.SMD14 = ageRangeError;
   }
@@ -112,9 +164,9 @@ export const validateStep = (state: ServiceFormState, questions: ServiceFormQues
   return errors;
 };
 
-const validateAgeRange = (state: ServiceFormState, questions: ServiceFormQuestionDto[]): string | undefined => {
-  const lowestValue = state.answers.SMD13;
-  const highestValue = state.answers.SMD14;
+const validateAgeRange = (answers: Record<string, string | undefined>, questions: ServiceFormQuestionDto[]): string | undefined => {
+  const lowestValue = answers.SMD13;
+  const highestValue = answers.SMD14;
 
   if (!lowestValue || !highestValue || lowestValue.toLowerCase() === 'unknown' || highestValue.toLowerCase() === 'unknown') {
     return undefined;
@@ -168,17 +220,23 @@ export const mapServiceToFormState = (service: ServiceDto): ServiceFormState => 
   };
 };
 
-export const buildAnswersForRequest = (state: ServiceFormState, questions: ServiceFormQuestionDto[]): AnswerInputRequest[] => {
+// See validateStep for what `allQuestions` is for.
+export const buildAnswersForRequest = (
+  state: ServiceFormState,
+  questions: ServiceFormQuestionDto[],
+  allQuestions: ServiceFormQuestionDto[] = questions
+): AnswerInputRequest[] => {
   const answers: AnswerInputRequest[] = [];
+  const effectiveAnswers = getEffectiveServiceAnswers(allQuestions, state.answers);
 
   for (const question of questions) {
     // Skip SMD01 (name) as it's handled separately
     if (question.code === 'SMD01') continue;
 
-    const value = state.answers[question.code];
+    const value = effectiveAnswers[question.code];
 
-    // Don't include answers for questions hidden by their conditional rules
-    if (!isServiceQuestionVisible(question, state.answers)) {
+    // Don't include answers for questions hidden by their conditional rules, or by a hidden ancestor
+    if (!isServiceQuestionVisible(question, effectiveAnswers)) {
       continue;
     }
 
