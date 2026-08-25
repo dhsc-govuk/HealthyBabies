@@ -6,6 +6,8 @@ import { SettingsLayout } from '../../../../layouts';
 import { OrganisationUserForm, OrganisationUserFormData } from '../../../../components/Global/OrganisationUsers';
 import { useGovUKNotification } from '../../../../components/GovUKComponents';
 import axios from 'axios';
+import { ROUTES } from '../../../../constants/routes';
+import { API_ROUTES } from '../../../../constants/apiRoutes';
 
 interface CreateAdminUserRequest {
   firstName: string;
@@ -19,7 +21,7 @@ interface CreateAdminUserResponse {
 }
 
 const createAdminUser = (data: CreateAdminUserRequest) =>
-  axios.post<CreateAdminUserResponse>('/admin/users/create', data);
+  axios.post<CreateAdminUserResponse>(API_ROUTES.admin.users.create, data);
 
 const CreateAdminUser = (): React.ReactElement => {
   const navigate = useNavigate();
@@ -30,7 +32,7 @@ const CreateAdminUser = (): React.ReactElement => {
     mutationFn: createAdminUser,
     onSuccess(data) {
       setNotification({ type: 'success', title: 'Success', message: 'Departmental user created successfully' });
-      navigate(`/admin/departmental-users/${data.data.id}`);
+      navigate(ROUTES.admin.departmentalUsers.view(data.data.id));
     },
     onError(error) {
       processError(error, (e) => setNotification({ type: 'important', title: 'Error', message: e }));
@@ -49,16 +51,18 @@ const CreateAdminUser = (): React.ReactElement => {
   return (
     <SettingsLayout
       currentPage="Add departmental user"
-      backLink={{ href: '/admin/departmental-users', onClick: () => navigate('/admin/departmental-users') }}>
+      manageTitle={false}
+      backLink={{ href: ROUTES.admin.departmentalUsers.list, onClick: () => navigate(ROUTES.admin.departmentalUsers.list) }}>
       <OrganisationUserForm
         organisations={[]}
         isSaving={saving}
         onSubmit={handleSubmit}
-        onCancel={() => navigate('/admin/departmental-users')}
+        onCancel={() => navigate(ROUTES.admin.departmentalUsers.list)}
         submitLabel="Confirm and create"
         showOrganisation={false}
         showRole={false}
         hideBackLink={true}
+        pageTitle="Add departmental user"
       />
     </SettingsLayout>
   );

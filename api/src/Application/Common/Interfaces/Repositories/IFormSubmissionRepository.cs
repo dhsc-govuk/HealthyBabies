@@ -25,6 +25,7 @@ public interface IFormSubmissionRepository
     Task<Option<FormSubmission>> GetByFormModuleDataCollectionAndServiceCategoryAsync(DataCollectionFormModuleId formModuleId, DataCollectionId dataCollectionId, Guid serviceCategoryId, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<FormSubmission>> GetByOrganisationIdAsync(OrganisationId organisationId, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<FormSubmission>> GetActivitiesByOrganisationAndModulesAsync(OrganisationId organisationId, IReadOnlyCollection<DataCollectionFormModuleId> formModuleIds, CancellationToken cancellationToken = default);
+    Task<IReadOnlyList<FormSubmission>> GetByOrganisationAndModulesAsync(OrganisationId organisationId, IReadOnlyCollection<DataCollectionFormModuleId> formModuleIds, CancellationToken cancellationToken = default);
     Task<IReadOnlyList<FormSubmission>> GetAllAsync(CancellationToken cancellationToken = default);
     Task<int> DeleteAllAsync(CancellationToken cancellationToken = default);
     Task DeleteAsync(FormSubmissionId id, CancellationToken cancellationToken = default);

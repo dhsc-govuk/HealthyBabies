@@ -2,12 +2,20 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useQuery } from 'react-query';
 import { GeneralLayout } from '../../../../layouts';
-import { LoadingSpinner, GovUKButton, GovUKTag, GovUKDetails, GovUKNotificationBanner } from '../../../../components/GovUKComponents';
+import { LoadingSpinner, GovUKButton, GovUKLinkButton, GovUKTag, GovUKDetails, GovUKNotificationBanner } from '../../../../components/GovUKComponents';
 import { SpreadsheetIcon } from '../../../../components/Icons';
-import { getServiceUsersModule, ServiceFormStatusDto, downloadBulkUploadTemplate, type TemplateFormat, getBulkUploadTemplateFileName } from '../queries';
+import {
+  getServiceUsersModule,
+  ServiceFormStatusDto,
+  downloadBulkUploadTemplate,
+  downloadModuleExportCsv,
+  type TemplateFormat,
+  getBulkUploadTemplateFileName,
+} from '../queries';
 import { getSubmissionStatusTagColour } from '../../../../helpers/submissionStatusColour';
 import './styles.css';
 import usePageTitle from '../../../../hooks/usePageTitle';
+import { ROUTES } from '../../../../constants/routes';
 
 const downloadFile = (blob: Blob, filename: string) => {
   const url = window.URL.createObjectURL(blob);
@@ -86,14 +94,14 @@ const ServiceUsersList = (): React.ReactElement => {
 
   const handleServiceClick = (serviceId: string, status: string) => {
     if (status.toLowerCase() === 'completed') {
-      navigate(`/organisation-admin/submissions/${submissionId}/modules/${moduleId}/services/${serviceId}/view`);
+      navigate(ROUTES.organisationAdmin.submissions.serviceUsers.view(submissionId, moduleId, serviceId));
     } else {
-      navigate(`/organisation-admin/submissions/${submissionId}/modules/${moduleId}/services/${serviceId}`);
+      navigate(ROUTES.organisationAdmin.submissions.serviceUsers.form(submissionId, moduleId, serviceId));
     }
   };
 
   const handleBack = () => {
-    navigate(`/organisation-admin/submissions/${submissionId}`);
+    navigate(ROUTES.organisationAdmin.submissions.view(submissionId));
   };
 
   const handleDownloadTemplate = async (format: TemplateFormat = 'csv') => {
@@ -106,8 +114,19 @@ const ServiceUsersList = (): React.ReactElement => {
     }
   };
 
+  // BLUM-7361: exports the actual submitted records, not the blank upload template - see
+  // downloadModuleExportCsv for why these are different endpoints.
+  const handleDownloadExport = async () => {
+    try {
+      const blob = await downloadModuleExportCsv(submissionId!, moduleId!);
+      downloadFile(blob, 'service_users.csv');
+    } catch (error) {
+      console.error('Failed to download export:', error);
+    }
+  };
+
   const handleBulkUpload = () => {
-    navigate(`/organisation-admin/submissions/${submissionId}/modules/${moduleId}/services/bulk-upload`);
+    navigate(ROUTES.organisationAdmin.submissions.serviceUsers.bulkUpload(submissionId, moduleId));
   };
 
   if (isLoading) {
@@ -123,7 +142,7 @@ const ServiceUsersList = (): React.ReactElement => {
       <GeneralLayout>
         <h1 className="govuk-heading-l">Module not found</h1>
         <p className="govuk-body">The module you are looking for does not exist.</p>
-        <GovUKButton onClick={() => navigate(`/organisation-admin/submissions/${submissionId}`)}>Back to submission</GovUKButton>
+        <GovUKButton onClick={() => navigate(ROUTES.organisationAdmin.submissions.view(submissionId))}>Back to submission</GovUKButton>
       </GeneralLayout>
     );
   }
@@ -131,9 +150,9 @@ const ServiceUsersList = (): React.ReactElement => {
   return (
     <GeneralLayout
       breadcrumbs={[
-        { label: 'Home', link: '/organisation-admin/home' },
-        { label: 'Submissions', link: '/organisation-admin/submissions' },
-        { label: moduleData.submissionName || 'Submission', link: `/organisation-admin/submissions/${submissionId}` },
+        { label: 'Home', link: ROUTES.organisationAdmin.home },
+        { label: 'Submissions', link: ROUTES.organisationAdmin.submissions.list },
+        { label: moduleData.submissionName || 'Submission', link: ROUTES.organisationAdmin.submissions.view(submissionId) },
         { label: 'Section 2: Service users', link: '#' },
       ]}
       currentPage=""
@@ -158,7 +177,7 @@ const ServiceUsersList = (): React.ReactElement => {
       <h2 className="govuk-heading-m">Tell us about your service users</h2>
       <p className="govuk-body">
         Provide information about the users of any services your local authority has delivered, or arranged to be delivered on its behalf, through your Best Start Family Hub and
-        Healthy Babies Network over the past 3 months.
+        Healthy Babies Network in the relevant quarter.
       </p>
       <p className="govuk-body">If you do not have any user data for this period, you can tell us that instead.</p>
 
@@ -189,26 +208,14 @@ const ServiceUsersList = (): React.ReactElement => {
               <p className="govuk-body-s govuk-!-margin-bottom-2">Template</p>
               <ul className="govuk-list govuk-!-margin-bottom-0">
                 <li>
-                  <a
-                    href="#"
-                    className="govuk-link"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      handleDownloadTemplate('csv');
-                    }}>
+                  <GovUKLinkButton onClick={() => handleDownloadTemplate('csv')}>
                     Download CSV template
-                  </a>
+                  </GovUKLinkButton>
                 </li>
                 <li>
-                  <a
-                    href="#"
-                    className="govuk-link"
-                    onClick={(e) => {
-                      e.preventDefault();
-                      handleDownloadTemplate('xlsx');
-                    }}>
+                  <GovUKLinkButton onClick={() => handleDownloadTemplate('xlsx')}>
                     Download Excel template
-                  </a>
+                  </GovUKLinkButton>
                 </li>
               </ul>
             </div>
@@ -236,10 +243,10 @@ const ServiceUsersList = (): React.ReactElement => {
           <GovUKButton className="govuk-button govuk-!-margin-bottom-0" onClick={handleBulkUpload}>
             Upload with CSV
           </GovUKButton>
-          <GovUKButton className="govuk-button govuk-button--secondary govuk-!-margin-bottom-0" onClick={() => handleDownloadTemplate('csv')}>
+          <GovUKButton className="govuk-button govuk-button--secondary govuk-!-margin-bottom-0" onClick={handleDownloadExport}>
             Download copy in CSV
           </GovUKButton>
-          <GovUKButton className="govuk-button govuk-button--secondary govuk-!-margin-bottom-0" onClick={() => navigate('/organisation-admin/core-data/services')}>
+          <GovUKButton className="govuk-button govuk-button--secondary govuk-!-margin-bottom-0" onClick={() => navigate(ROUTES.organisationAdmin.services.list)}>
             Manage services
           </GovUKButton>
         </div>
@@ -270,16 +277,10 @@ const ServiceUsersList = (): React.ReactElement => {
       {filteredAndSortedServices.length > 0 ? (
         <ul className="govuk-list" style={{ borderTop: '1px solid #b1b4b6' }}>
           {filteredAndSortedServices.map((service: ServiceFormStatusDto) => (
-            <li key={service.serviceId} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '15px 0', borderBottom: '1px solid #b1b4b6' }}>
-              <a
-                href="#"
-                className="govuk-link"
-                onClick={(e) => {
-                  e.preventDefault();
-                  handleServiceClick(service.serviceId, service.status);
-                }}>
+            <li key={service.serviceId} style={{ display: 'flex', flexWrap: 'wrap', gap: '15px', justifyContent: 'space-between', alignItems: 'center', padding: '15px 0', borderBottom: '1px solid #b1b4b6' }}>
+              <GovUKLinkButton onClick={() => handleServiceClick(service.serviceId, service.status)}>
                 {service.serviceName}
-              </a>
+              </GovUKLinkButton>
               <GovUKTag colour={getSubmissionStatusTagColour(service.status)}>{service.status}</GovUKTag>
             </li>
           ))}

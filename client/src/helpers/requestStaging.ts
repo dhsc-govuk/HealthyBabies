@@ -1,11 +1,14 @@
 import axios, { AxiosRequestConfig, InternalAxiosRequestConfig } from 'axios';
+import { API_ROUTES } from '../constants/apiRoutes';
 
 export const STAGING_THRESHOLD_BYTES = 100 * 1024;
 export const BODY_STAGING_ID_HEADER = 'X-Body-Staging-Id';
-export const STAGING_ENDPOINT_PATH = '/system/request-staging';
+export const STAGING_ENDPOINT_PATH = API_ROUTES.system.requestStaging;
 
 // Routes that always go through staging regardless of payload size,
 // because their bodies contain embedded JSON that triggers WAF rules.
+// These are substring patterns matched against the request URL, not endpoints in their own right —
+// they deliberately cover whole families of paths, so they are not API_ROUTES entries.
 const FORCE_STAGE_URL_PATTERNS = [
   '/data-collection-form-questions',
   '/site-form-questions',

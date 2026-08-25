@@ -210,13 +210,17 @@ public class FormSubmission : SoftDeletableEntity<FormSubmissionId>
     /// <summary>
     /// Saves the current state as a draft.
     /// </summary>
-    public void SaveAsDraft()
+    /// <param name="asOfUtc">
+    /// Overrides <see cref="DraftSavedAt"/> with a historical timestamp instead of now - used only
+    /// by migration imports that must preserve a source system's original effective date.
+    /// </param>
+    public void SaveAsDraft(DateTime? asOfUtc = null)
     {
         // if (Status != SubmissionStatus.Draft && Status != SubmissionStatus.RequiresChanges)
         // {
         //    throw new InvalidOperationException("Can only save as draft when in Draft or RequiresChanges status.");
         // }
-        DraftSavedAt = DateTime.UtcNow;
+        DraftSavedAt = asOfUtc ?? DateTime.UtcNow;
         AddHistoryEntry(Status, "Draft saved");
     }
 
@@ -330,11 +334,16 @@ public class FormSubmission : SoftDeletableEntity<FormSubmissionId>
     /// <summary>
     /// Marks the submission as complete (for form modules that don't require review).
     /// </summary>
-    public void MarkAsComplete()
+    /// <param name="asOfUtc">
+    /// Overrides <see cref="ReviewedAt"/> with a historical timestamp instead of now - used only by
+    /// migration imports that must preserve a source system's original effective date rather than
+    /// stamping the date the import happened to run.
+    /// </param>
+    public void MarkAsComplete(DateTime? asOfUtc = null)
     {
         var previousStatus = Status;
         Status = SubmissionStatus.Approved;
-        ReviewedAt = DateTime.UtcNow;
+        ReviewedAt = asOfUtc ?? DateTime.UtcNow;
 
         AddHistoryEntry(previousStatus, "Marked as complete");
     }

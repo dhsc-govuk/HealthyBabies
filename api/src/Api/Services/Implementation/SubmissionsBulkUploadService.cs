@@ -2,6 +2,7 @@ using System.Text;
 using Api.Services.Abstract;
 using Application.Common.Interfaces.Queries;
 using Application.Common.Interfaces.Repositories;
+using Application.Submissions.Helpers;
 using ClosedXML.Excel;
 using Domain.DataCollections;
 using Domain.DataCollections.Forms;
@@ -16,6 +17,11 @@ public class SubmissionsBulkUploadService(
     IServiceQueries serviceQueries,
     IFormSubmissionRepository formSubmissionRepository) : ISubmissionsBulkUploadService
 {
+    // Column widths in NoC (character widths). Excel's own default is 8.43; anything past roughly a
+    // screen's worth is easier to read wrapped than scrolled.
+    private const double MinColumnWidth = 10;
+    private const double MaxColumnWidth = 60;
+
     public async Task<byte[]> GenerateCsvTemplateAsync(
         Guid organisationId,
         Guid moduleId,
@@ -34,12 +40,20 @@ public class SubmissionsBulkUploadService(
         }
 
         var formModule = formModuleOption.Match(fm => fm, () => null!);
-        var fields = GetOrderedFields(formModule);
+        var isActivityModule = formModule.AllowsMultipleActivities;
+        var fields = BulkUploadTemplateColumns.ForModule(formModule);
         var isOutcomeScores = formModule.Code == DataCollectionFormModuleCodes.OutcomeScores;
+        var hasServiceNameColumn = !isOutcomeScores && !isActivityModule;
 
-        // Get services for this organisation based on module type
+        // Get services for this organisation based on module type. Activity modules (Delivery
+        // Plan strands) create a brand-new record per row rather than matching an existing
+        // Service, so there's no fixed set of rows to pre-fill.
         List<Service> incompleteServices;
-        if (isOutcomeScores)
+        if (isActivityModule)
+        {
+            incompleteServices = new List<Service>();
+        }
+        else if (isOutcomeScores)
         {
             // For Outcome Scores, only include services where QSU13 = "yes"
             incompleteServices = await GetServicesRequiringOutcomeScoresAsync(orgId, modId, dcId, cancellationToken);
@@ -53,9 +67,9 @@ public class SubmissionsBulkUploadService(
 
         // Row 1: Header row with field codes
         var headers = new List<string>();
-        if (!isOutcomeScores)
+        if (hasServiceNameColumn)
         {
-            // For non-Outcome Scores modules, add ServiceName column
+            // For non-Outcome Scores, non-Activity modules, add ServiceName column
             // Outcome Scores uses PPS01 as the service field, AnonymisedId is auto-generated on upload
             headers.Add("ServiceName");
         }
@@ -65,7 +79,7 @@ public class SubmissionsBulkUploadService(
 
         // Row 2: Labels row
         var labels = new List<string>();
-        if (!isOutcomeScores)
+        if (hasServiceNameColumn)
         {
             labels.Add("Service Name");
         }
@@ -73,7 +87,23 @@ public class SubmissionsBulkUploadService(
         labels.AddRange(fields.Select(f => EscapeCsvField(f.Label.Replace("{serviceName}", "this service", StringComparison.OrdinalIgnoreCase))));
         sb.AppendLine(string.Join(",", labels));
 
-        // Row 3+: Pre-fill rows with incomplete service names (empty values for user to fill)
+        // Row 3: Valid options row, so form-builder option changes are visible in the CSV without
+        // opening the Excel template. Upload skips it (BulkUploadCsvHelper.CountPreambleRows).
+        // Omitted entirely when no field has options: an all-blank ",,,," row isn't whitespace-only,
+        // so the parser would keep it and validate it as a bogus data row.
+        if (HasOptionsRow(fields))
+        {
+            var optionCells = new List<string>();
+            if (hasServiceNameColumn)
+            {
+                optionCells.Add(string.Empty);
+            }
+
+            optionCells.AddRange(fields.Select(f => EscapeCsvField(BulkUploadOptionsRow.BuildCell(f))));
+            sb.AppendLine(string.Join(",", optionCells));
+        }
+
+        // Row 4+: Pre-fill rows with incomplete service names (empty values for user to fill)
         foreach (var service in incompleteServices)
         {
             var row = new List<string>();
@@ -114,12 +144,20 @@ public class SubmissionsBulkUploadService(
         }
 
         var formModule = formModuleOption.Match(fm => fm, () => null!);
-        var fields = GetOrderedFields(formModule);
+        var isActivityModule = formModule.AllowsMultipleActivities;
+        var fields = BulkUploadTemplateColumns.ForModule(formModule);
         var isOutcomeScores = formModule.Code == DataCollectionFormModuleCodes.OutcomeScores;
+        var hasServiceNameColumn = !isOutcomeScores && !isActivityModule;
 
-        // Get services for this organisation based on module type
+        // Get services for this organisation based on module type. Activity modules (Delivery
+        // Plan strands) create a brand-new record per row rather than matching an existing
+        // Service, so there's no fixed set of rows to pre-fill.
         List<Service> incompleteServices;
-        if (isOutcomeScores)
+        if (isActivityModule)
+        {
+            incompleteServices = new List<Service>();
+        }
+        else if (isOutcomeScores)
         {
             // For Outcome Scores, only include services where QSU13 = "yes"
             incompleteServices = await GetServicesRequiringOutcomeScoresAsync(orgId, modId, dcId, cancellationToken);
@@ -129,38 +167,36 @@ public class SubmissionsBulkUploadService(
             incompleteServices = await GetIncompleteServicesAsync(orgId, modId, dcId, cancellationToken);
         }
 
+        // "Rows to pre-fill" and "options for a dropdown" are different questions. Activity modules
+        // have no rows to pre-fill, but their service-backed fields still need the full service list.
+        var serviceOptions = isActivityModule && fields.Any(DynamicServiceOptions.IsServiceBacked)
+            ? (await serviceQueries.GetByOrganisationIdAsync(orgId, cancellationToken)).ToList()
+            : incompleteServices;
+
         using var workbook = new XLWorkbook();
 
         // Create hidden options sheet FIRST (needed for named ranges)
         var optionsSheet = workbook.Worksheets.Add("Options");
-        CreateOptionsSheet(optionsSheet, fields, incompleteServices, isOutcomeScores, workbook);
+        CreateOptionsSheet(optionsSheet, fields, serviceOptions, isOutcomeScores, hasServiceNameColumn, workbook);
         optionsSheet.Hide();
 
         // Create main data sheet (uses named ranges from Options sheet)
         var dataSheet = workbook.Worksheets.Add("Data");
-        CreateDataSheet(dataSheet, fields, incompleteServices, isOutcomeScores, workbook);
+        CreateDataSheet(dataSheet, fields, incompleteServices, isOutcomeScores, hasServiceNameColumn, workbook);
 
         // Create instructions sheet
         var instructionsSheet = workbook.Worksheets.Add("Instructions");
-        CreateInstructionsSheet(instructionsSheet, fields, isOutcomeScores);
+        CreateInstructionsSheet(instructionsSheet, fields, hasServiceNameColumn);
 
         using var stream = new MemoryStream();
         workbook.SaveAs(stream);
         return stream.ToArray();
     }
 
-    private static List<FormField> GetOrderedFields(DataCollectionFormModule formModule)
-    {
-        // Build a lookup of section IDs to section numbers
-        var sectionLookup = formModule.Sections
-            .ToDictionary(s => s.Id, s => s.SectionNumber);
-
-        return formModule.Fields
-            .Where(f => f.IsActive)
-            .OrderBy(f => f.FormSectionId != null && sectionLookup.TryGetValue(f.FormSectionId, out var sectionNum) ? sectionNum : 0)
-            .ThenBy(f => f.DisplayOrder)
-            .ToList();
-    }
+    // A row of blank cells would be parsed as data rather than skipped, so the options row is only
+    // worth emitting when at least one column actually has something to list.
+    private static bool HasOptionsRow(List<FormField> fields) =>
+        fields.Any(f => BulkUploadOptionsRow.BuildCell(f).Length > 0);
 
     private static string EscapeCsvField(string field)
     {
@@ -264,12 +300,12 @@ public class SubmissionsBulkUploadService(
             .ToList();
     }
 
-    private static void CreateOptionsSheet(IXLWorksheet sheet, List<FormField> fields, List<Service> services, bool isOutcomeScores, IXLWorkbook workbook)
+    private static void CreateOptionsSheet(IXLWorksheet sheet, List<FormField> fields, List<Service> services, bool isOutcomeScores, bool hasServiceNameColumn, IXLWorkbook workbook)
     {
         var column = 1;
 
-        // Add ServiceName options for non-Outcome Scores modules
-        if (!isOutcomeScores && services.Any())
+        // Add ServiceName options for non-Outcome Scores, non-Activity modules
+        if (hasServiceNameColumn && services.Any())
         {
             sheet.Cell(1, column).Value = "ServiceName";
             var row = 2;
@@ -290,10 +326,16 @@ public class SubmissionsBulkUploadService(
             column++;
         }
 
-        // Add PPS01 (service name) options for Outcome Scores module
-        if (isOutcomeScores && services.Any())
+        // Service-name options for every field configured with {"dynamicOptions":"services"} —
+        // Outcome Scores' PPS01 and the delivery plan's "Which service is the activity funding?".
+        foreach (var serviceField in fields.Where(DynamicServiceOptions.IsServiceBacked))
         {
-            sheet.Cell(1, column).Value = "PPS01";
+            if (!services.Any())
+            {
+                break;
+            }
+
+            sheet.Cell(1, column).Value = serviceField.FieldKey;
             var row = 2;
             foreach (var service in services.OrderBy(s => s.Name))
             {
@@ -306,7 +348,7 @@ public class SubmissionsBulkUploadService(
             if (lastRow >= 2)
             {
                 var rangeAddress = $"Options!${columnLetter}$2:${columnLetter}${lastRow}";
-                workbook.DefinedNames.Add("Options_PPS01", rangeAddress);
+                workbook.DefinedNames.Add($"Options_{SanitiseNamedRange(serviceField.FieldKey)}", rangeAddress);
             }
 
             column++;
@@ -336,17 +378,18 @@ public class SubmissionsBulkUploadService(
         }
     }
 
-    private static void CreateDataSheet(IXLWorksheet sheet, List<FormField> fields, List<Service> incompleteServices, bool isOutcomeScores, IXLWorkbook workbook)
+    private static void CreateDataSheet(IXLWorksheet sheet, List<FormField> fields, List<Service> incompleteServices, bool isOutcomeScores, bool hasServiceNameColumn, IXLWorkbook workbook)
     {
         // Calculate column indices
-        // For Outcome Scores: fields only (PPS01 is the service field, AnonymisedId is auto-generated on upload)
+        // For Outcome Scores / Activity modules: fields only (Outcome Scores uses PPS01 as the
+        // service field; Activity modules have no service to key off at all)
         // For other modules: ServiceName + fields
         var colIndex = 1;
-        var serviceNameCol = isOutcomeScores ? -1 : colIndex++;
+        var serviceNameCol = hasServiceNameColumn ? colIndex++ : -1;
         var fieldStartCol = colIndex;
 
         // Header row with field codes
-        if (!isOutcomeScores)
+        if (hasServiceNameColumn)
         {
             var serviceNameCell = sheet.Cell(1, serviceNameCol);
             serviceNameCell.Value = "ServiceName";
@@ -368,7 +411,7 @@ public class SubmissionsBulkUploadService(
         }
 
         // Row 2: Labels row with field labels (questions)
-        if (!isOutcomeScores)
+        if (hasServiceNameColumn)
         {
             sheet.Cell(2, serviceNameCol).Value = "Service Name";
         }
@@ -378,8 +421,25 @@ public class SubmissionsBulkUploadService(
             sheet.Cell(2, fieldStartCol + i).Value = fields[i].Label;
         }
 
+        // Row 3: the same valid-options row the CSV template carries. Uploads only accept .csv, so
+        // this sheet reaches the parser via "Save As CSV" — it has to match the CSV row-for-row.
+        // It's also the only visible place checkbox/multi-select options appear: CreateOptionsSheet
+        // skips those field types, leaving just a cell comment most users never open.
+        var hasOptionsRow = HasOptionsRow(fields);
+        if (hasOptionsRow)
+        {
+            for (var i = 0; i < fields.Count; i++)
+            {
+                sheet.Cell(3, fieldStartCol + i).Value = BulkUploadOptionsRow.BuildCell(fields[i]);
+            }
+
+            sheet.Row(3).Style.Font.Italic = true;
+            sheet.Row(3).Style.Font.FontColor = XLColor.Gray;
+        }
+
         // Pre-fill rows with incomplete service names
-        var dataRowStart = 3;
+        var firstDataRow = hasOptionsRow ? 4 : 3;
+        var dataRowStart = firstDataRow;
         foreach (var service in incompleteServices)
         {
             if (isOutcomeScores)
@@ -399,11 +459,11 @@ public class SubmissionsBulkUploadService(
             dataRowStart++;
         }
 
-        // Add data validation for ServiceName column (non-Outcome Scores only)
-        if (!isOutcomeScores)
+        // Add data validation for ServiceName column (non-Outcome Scores, non-Activity only)
+        if (hasServiceNameColumn)
         {
             var serviceNameColumnLetter = GetColumnLetter(serviceNameCol);
-            var serviceNameRange = sheet.Range($"{serviceNameColumnLetter}3:{serviceNameColumnLetter}1000");
+            var serviceNameRange = sheet.Range($"{serviceNameColumnLetter}{firstDataRow}:{serviceNameColumnLetter}1000");
             var serviceNameNamedRange = workbook.DefinedNames.FirstOrDefault(nr => nr.Name == "Options_ServiceName");
             if (serviceNameNamedRange != null)
             {
@@ -426,8 +486,8 @@ public class SubmissionsBulkUploadService(
                     .Select(o => o.Value)
                     .ToList();
 
-                // Apply validation to rows 3-1000 (after header and labels rows)
-                var range = sheet.Range($"{columnLetter}3:{columnLetter}1000");
+                // Apply validation to the data rows only (after the header, labels and options rows)
+                var range = sheet.Range($"{columnLetter}{firstDataRow}:{columnLetter}1000");
 
                 if (field.FieldType.Value == "checkbox" || field.FieldType.Value == "multi_select")
                 {
@@ -447,14 +507,15 @@ public class SubmissionsBulkUploadService(
                 }
             }
 
-            // Add PPS01 dropdown for Outcome Scores module
-            if (isOutcomeScores && field.FieldKey == "PPS01")
+            // Dropdown for any service-backed field. Multi-value fields (checkboxes) still get the
+            // list so users can see valid names, though Excel only enforces one value per cell.
+            if (DynamicServiceOptions.IsServiceBacked(field))
             {
-                var range = sheet.Range($"{columnLetter}3:{columnLetter}1000");
-                var pps01NamedRange = workbook.DefinedNames.FirstOrDefault(nr => nr.Name == "Options_PPS01");
-                if (pps01NamedRange != null)
+                var rangeName = $"Options_{SanitiseNamedRange(field.FieldKey)}";
+                var range = sheet.Range($"{columnLetter}{firstDataRow}:{columnLetter}1000");
+                if (workbook.DefinedNames.Any(nr => nr.Name == rangeName))
                 {
-                    range.CreateDataValidation().List("=Options_PPS01");
+                    range.CreateDataValidation().List($"={rangeName}");
                 }
             }
 
@@ -466,11 +527,16 @@ public class SubmissionsBulkUploadService(
             }
         }
 
-        // Auto-fit columns
-        sheet.Columns().AdjustToContents();
+        // Auto-fit columns, but cap the width: a question with many options makes the row 3 cell far
+        // longer than its label, and an uncapped fit would leave the sheet unusably wide to scroll.
+        var lastRow = sheet.LastRowUsed()?.RowNumber() ?? 1;
+        foreach (var column in sheet.ColumnsUsed())
+        {
+            column.AdjustToContents(1, lastRow, MinColumnWidth, MaxColumnWidth);
+        }
     }
 
-    private static void CreateInstructionsSheet(IXLWorksheet sheet, List<FormField> fields, bool isOutcomeScores)
+    private static void CreateInstructionsSheet(IXLWorksheet sheet, List<FormField> fields, bool hasServiceNameColumn)
     {
         // Headers
         sheet.Cell(1, 1).Value = "Code";
@@ -485,9 +551,9 @@ public class SubmissionsBulkUploadService(
 
         var currentRow = 2;
 
-        // For non-Outcome Scores modules, add ServiceName row
+        // For non-Outcome Scores, non-Activity modules, add ServiceName row
         // For Outcome Scores, PPS01 is the service field and AnonymisedId is auto-generated on upload
-        if (!isOutcomeScores)
+        if (hasServiceNameColumn)
         {
             sheet.Cell(currentRow, 1).Value = "ServiceName";
             sheet.Cell(currentRow, 2).Value = "Service Name";
@@ -529,6 +595,10 @@ public class SubmissionsBulkUploadService(
 
         sheet.Columns().AdjustToContents();
     }
+
+    // Excel named ranges allow letters, digits and underscores only — delivery-plan service
+    // fields are coded with a dot (DG05.2), so it has to be substituted.
+    private static string SanitiseNamedRange(string fieldKey) => fieldKey.Replace(".", "_");
 
     private static string GetColumnLetter(int columnNumber)
     {

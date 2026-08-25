@@ -7,6 +7,7 @@ import { GeneralLayout } from '../../../../layouts';
 import { LoadingSpinner, useGovUKNotification } from '../../../../components/GovUKComponents';
 import useErrorSummaryFocus from '../../../../hooks/useErrorSummaryFocus';
 import useStepFocus from '../../../../hooks/useStepFocus';
+import useStepUrlSync from '../../../../hooks/useStepUrlSync';
 import { getServiceFormQuestions, serviceFormQuestionsCacheKey } from '../../../../components/Global/Services';
 import { useAuthProvider } from '../../../../components/AuthProvider';
 import {
@@ -31,12 +32,16 @@ import StepUpdateServices from './StepUpdateServices';
 import FullScreenTableModal from './FullScreenTableModal';
 import './styles.css';
 import usePageTitle from '../../../../hooks/usePageTitle';
+import { ROUTES } from '../../../../constants/routes';
+import { API_ROUTES } from '../../../../constants/apiRoutes';
 
 interface LocationDto {
   id: string;
   name: string;
   isActive: boolean;
 }
+
+const BULK_UPLOAD_STEP_ORDER = ['upload', 'preview', 'check', 'update'] as const;
 
 const BulkUploadServices: React.FC = () => {
   const navigate = useNavigate();
@@ -52,7 +57,23 @@ const BulkUploadServices: React.FC = () => {
 
   const totalRowErrors = useMemo(() => state.rows.reduce((sum, row) => sum + row.errors.length, 0), [state.rows]);
   const hasCheckErrors = state.currentStep === 'check' && totalRowErrors > 0;
-  usePageTitle('Bulk upload services', hasCheckErrors);
+
+  const SERVICE_BULK_UPLOAD_STEPS: Record<typeof state.currentStep, string> = {
+    upload: 'Step 1 of 4: Upload file',
+    preview: 'Step 2 of 4: Preview data',
+    check: 'Step 3 of 4: Check your data',
+    update: 'Step 4 of 4: Update services',
+  };
+  usePageTitle('Bulk upload services', hasCheckErrors, SERVICE_BULK_UPLOAD_STEPS[state.currentStep]);
+
+  // Give each step its own history entry so browser Back returns to the previous step rather
+  // than leaving the flow. The title (and so the announcement) follows the restored step.
+  useStepUrlSync({
+    step: state.currentStep,
+    steps: BULK_UPLOAD_STEP_ORDER,
+    onStepChange: (nextStep) => dispatch({ type: BulkUploadActionType.SET_STEP, payload: nextStep }),
+    isResumable: state.rows.length > 0,
+  });
   useErrorSummaryFocus(submitAttempts, hasCheckErrors);
 
   useEffect(() => {
@@ -74,7 +95,7 @@ const BulkUploadServices: React.FC = () => {
   // Mirrors the ServiceForm Create flow where StepTwo injects the org's locations as SMD19 options.
   const { data: locationsData } = useQuery(
     ['locations', organisationId],
-    () => axios.get<LocationDto[]>(`/organisations/${organisationId}/locations`),
+    () => axios.get<LocationDto[]>(API_ROUTES.organisations.locations.list(organisationId)),
     {
       enabled: !!organisationId,
       staleTime: 5 * 60 * 1000,
@@ -162,7 +183,7 @@ const BulkUploadServices: React.FC = () => {
           title: 'User data saved.',
           message: `User data for ${data.data.successCount} service${data.data.successCount !== 1 ? 's' : ''} has been successfully saved.`,
         });
-        navigate('/organisation-admin/core-data/services');
+        navigate(ROUTES.organisationAdmin.services.list);
       } else {
         // Has errors - show results page
         setUpdateResult(data.data);
@@ -285,6 +306,19 @@ const BulkUploadServices: React.FC = () => {
     dispatch({ type: BulkUploadActionType.SET_STEP, payload: step });
   };
 
+  // One back control for the whole flow, in the standard GOV.UK position. From any step after
+  // the first it goes exactly one step back; from the first step it leaves the flow. Previously
+  // each step component was handed an onBack it never rendered, so no step had a back control.
+  const handleBack = () => {
+    const i = BULK_UPLOAD_STEP_ORDER.indexOf(state.currentStep as (typeof BULK_UPLOAD_STEP_ORDER)[number]);
+    const previous = BULK_UPLOAD_STEP_ORDER[i - 1];
+    if (i > 0 && previous) {
+      goToStep(previous as BulkUploadState['currentStep']);
+      return;
+    }
+    navigate(ROUTES.organisationAdmin.services.list);
+  };
+
   const handleUploadContinue = useCallback(() => {
     if (state.file) {
       const reader = new FileReader();
@@ -388,21 +422,21 @@ const BulkUploadServices: React.FC = () => {
         selectedRowNumbers,
         cellEdits: state.editedCells,
       });
-    } catch (error) {
+    } catch {
       // Error is handled by the mutation's onError callback
     }
   }, [state.stagingId, state.updateSelections, state.rows, state.editedCells, confirmUpload, setNotification]);
 
   const handleFinish = useCallback(() => {
     setNotification({ type: 'success', title: 'Services updated', message: `${updateResult?.successCount || 0} services were updated successfully.` });
-    navigate('/organisation-admin/core-data/services');
+    navigate(ROUTES.organisationAdmin.services.list);
   }, [navigate, updateResult, setNotification]);
 
   const isLoading = questionsLoading || downloadingTemplate || matchingServices || validatingUpload || updatingServices || state.isLoading;
 
   return (
     <>
-      <GeneralLayout backLink={{ href: '/organisation-admin/core-data/services' }}>
+      <GeneralLayout backLink={{ href: ROUTES.organisationAdmin.services.list, onClick: handleBack }}>
         <div ref={stepFocusRef} style={{ maxWidth: '960px', margin: '0 auto', paddingBottom: '40px' }}>
           {/* Step content */}
           {state.currentStep === 'upload' && (
@@ -424,7 +458,6 @@ const BulkUploadServices: React.FC = () => {
               rows={state.rows}
               onDelimiterChange={handleDelimiterChange}
               onOpenFullScreen={() => setFullScreenOpen(true)}
-              onBack={() => goToStep('upload')}
               onContinue={handlePreviewContinue}
             />
           )}
@@ -435,9 +468,9 @@ const BulkUploadServices: React.FC = () => {
               labels={state.labels}
               rows={state.rows}
               questions={questions}
+              fileName={state.file?.name ?? 'upload.csv'}
               onCellEdit={handleCellEdit}
               onOpenFullScreen={() => setFullScreenOpen(true)}
-              onBack={() => goToStep('preview')}
               onContinue={handleCheckContinue}
             />
           )}
@@ -448,7 +481,6 @@ const BulkUploadServices: React.FC = () => {
               updateResult={updateResult}
               isLoading={updatingServices}
               onToggleSelection={handleToggleSelection}
-              onBack={() => goToStep('check')}
               onSubmit={handleSubmit}
               onFinish={handleFinish}
             />

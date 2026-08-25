@@ -4,6 +4,7 @@ import { GovUKSideNavigation, GovUKInsetText, GovUKBreadcrumbs } from '../../../
 import type { SideNavigationSection } from '../../../components/GovUKComponents';
 import './styles.css';
 import usePageTitle from '../../../hooks/usePageTitle';
+import { ROUTES } from '../../../constants/routes';
 
 const sections: SideNavigationSection[] = [
   {
@@ -21,9 +22,11 @@ const sections: SideNavigationSection[] = [
       { text: 'FHS14: Town or City', href: '#fhs14', id: 'fhs14-link' },
       { text: 'FHS15: County', href: '#fhs15', id: 'fhs15-link' },
       { text: 'FHS04: Status of Site', href: '#fhs04', id: 'fhs04-link' },
+      { text: 'FHS17: Opening Days', href: '#fhs17', id: 'fhs17-link' },
       { text: 'FHS05: Site Closure Date', href: '#fhs05', id: 'fhs05-link' },
       { text: 'FHS06: Reason for Closure', href: '#fhs06', id: 'fhs06-link' },
       { text: 'FHS07: Type of Site', href: '#fhs07', id: 'fhs07-link' },
+      { text: 'FHS18: Working Towards Clarification', href: '#fhs18', id: 'fhs18-link' },
       { text: 'FHS07A: Date Planned to be Opened', href: '#fhs07a', id: 'fhs07a-link' },
       { text: 'FHS08: Date Opened or Repurposed', href: '#fhs08', id: 'fhs08-link' },
       { text: 'FHS08A: Location Repurposed', href: '#fhs08a', id: 'fhs08a-link' },
@@ -32,7 +35,6 @@ const sections: SideNavigationSection[] = [
       { text: 'FHS10: Location Type (Co-location)', href: '#fhs10', id: 'fhs10-link' },
       { text: 'FHS11: Location Type Select', href: '#fhs11', id: 'fhs11-link' },
       { text: 'FHS12: Clarification Comments', href: '#fhs12', id: 'fhs12-link' },
-      { text: 'FHS17: Days Per Week Open', href: '#fhs17', id: 'fhs17-link' },
     ],
   },
   {
@@ -49,9 +51,9 @@ const sections: SideNavigationSection[] = [
       { text: 'SMD08: Strand', href: '#smd08', id: 'smd08-link' },
       { text: 'SMD09: Service Category (PIR/PMH)', href: '#smd09', id: 'smd09-link' },
       { text: 'SMD10: Service Category (Parenting)', href: '#smd10', id: 'smd10-link' },
-      { text: 'SMD10A: Parenting EBI (approved exemptions)', href: '#smd10a', id: 'smd10a-link' },
+      { text: 'SMD10A: Service Category (Parenting, Exemption)', href: '#smd10a', id: 'smd10a-link' },
       { text: 'SMD11: Service Category (HLE)', href: '#smd11', id: 'smd11-link' },
-      { text: 'SMD11A: HLE EBI (approved exemptions)', href: '#smd11a', id: 'smd11a-link' },
+      { text: 'SMD11A: Service Category (HLE, Exemption)', href: '#smd11a', id: 'smd11a-link' },
       { text: 'SMD12: Wider Service Categories', href: '#smd12', id: 'smd12-link' },
       { text: 'SMD13: Lowest Age Benefit', href: '#smd13', id: 'smd13-link' },
       { text: 'SMD14: Highest Age Benefit', href: '#smd14', id: 'smd14-link' },
@@ -101,7 +103,6 @@ const sections: SideNavigationSection[] = [
       { text: 'QSU10: Service users by IDACI', href: '#qsu10', id: 'qsu10-link' },
       { text: 'QSU11: Service users by sex', href: '#qsu11', id: 'qsu11-link' },
       { text: 'QSU12: Service users by age', href: '#qsu12-age', id: 'qsu12-age-link' },
-      { text: 'QSU13A: Service users by age group (availability)', href: '#qsu13a', id: 'qsu13a-link' },
       { text: 'QSU03: Pre post availability', href: '#qsu03', id: 'qsu03-link' },
       { text: 'QSU12: Waiting time', href: '#qsu12-waiting', id: 'qsu12-waiting-link' },
       { text: 'QSU13: Average waiting time', href: '#qsu13', id: 'qsu13-link' },
@@ -232,7 +233,7 @@ const KnowledgeHub = (): React.ReactElement => {
       <div className="govuk-grid-row knowledge-hub-row">
         <div className="govuk-grid-column-one-third knowledge-hub-sidebar-column">
           <nav className="knowledge-hub-sidebar" aria-label="Knowledge hub sections">
-            <h2 className="govuk-heading-s govuk-!-margin-bottom-3">Contents</h2>
+            <h2 className="govuk-heading-s govuk-!-margin-bottom-3 knowledge-hub-sidebar__heading">Contents</h2>
             <GovUKSideNavigation label="Guidance navigation" sections={sections} activeSection={activeSection} />
           </nav>
         </div>
@@ -241,8 +242,8 @@ const KnowledgeHub = (): React.ReactElement => {
           <div className="knowledge-hub-content">
             <GovUKBreadcrumbs
               items={[
-                { label: 'Home', href: '/organisation-admin/home' },
-                { label: 'Guidelines', href: '/organisation-admin/help' },
+                { label: 'Home', href: ROUTES.organisationAdmin.home },
+                { label: 'Guidelines', href: ROUTES.organisationAdmin.help },
               ]}
             />
             <h1 className="govuk-heading-xl">Guidance</h1>
@@ -370,7 +371,7 @@ const KnowledgeHub = (): React.ReactElement => {
                 </p>
                 <ul className="govuk-list govuk-list--bullet">
                   <li>
-                    <strong>The location is currently open</strong> — currently delivering BSFH and/or Healthy Babies services in any capacity.
+                    <strong>The location is open</strong> — currently delivering BSFH and/or Healthy Babies services in any capacity.
                   </li>
                   <li>
                     <strong>The location is planned to be opened</strong> — the location is due to open in the future.
@@ -379,6 +380,25 @@ const KnowledgeHub = (): React.ReactElement => {
                     <strong>The location has been closed</strong> — the location has closed or stopped operating as a BSFH, Family Hub, or Network Site.
                   </li>
                 </ul>
+                <GovUKInsetText>&lsquo;The location is open&rsquo; has replaced &lsquo;Active&rsquo; in response to LA feedback.</GovUKInsetText>
+              </article>
+              <hr className="govuk-section-break govuk-section-break--l govuk-section-break--visible" />
+
+              <article id="fhs17" data-section-id="fhs17" tabIndex={-1}>
+                <h3 className="govuk-heading-m">FHS17: Opening Days</h3>
+                <p className="govuk-body">
+                  <strong>Question:</strong> How many days per week is the location open for the delivery of Best Start Family Hub services?
+                </p>
+                <p className="govuk-body">
+                  <strong>Guidance:</strong> This question is only asked for locations which are &lsquo;open&rsquo; (FHS04).
+                </p>
+                <p className="govuk-body">The number of days open should refer only to when the location is open and delivering Best Start Family Hub services.</p>
+                <p className="govuk-body">
+                  For example, if the location is co-located with a school, and the school is open 5 days a week, but Best Start Family Hub services are only delivered 2 days a
+                  week, please record the location as being open 2 days a week.
+                </p>
+                <p className="govuk-body">Select one from options: 1, 2, 3, 4, 5, 6, 7.</p>
+                <p className="govuk-body">If the location&rsquo;s opening days vary week to week, provide the average number of days per week the location is open.</p>
               </article>
               <hr className="govuk-section-break govuk-section-break--l govuk-section-break--visible" />
 
@@ -413,8 +433,13 @@ const KnowledgeHub = (): React.ReactElement => {
                 <ul className="govuk-list govuk-list--bullet">
                   <li>A Best Start Family Hub</li>
                   <li>Working towards becoming a Best Start Family Hub</li>
-                  <li>A network site</li>
+                  <li>A Network Site</li>
                 </ul>
+                <GovUKInsetText>
+                  &lsquo;A Family Hub&rsquo; is no longer a valid response option. As this is the first collection for the Best Start Family Hubs MI, locations previously
+                  categorised as a &lsquo;Family Hub&rsquo; should be re-categorised as a &lsquo;Best Start Family Hub&rsquo;, &lsquo;working towards becoming a Best Start Family
+                  Hub&rsquo;, or a &lsquo;Network Site&rsquo;.
+                </GovUKInsetText>
                 <p className="govuk-body">
                   <strong>Definitions:</strong>
                 </p>
@@ -447,32 +472,30 @@ const KnowledgeHub = (): React.ReactElement => {
                   </li>
                 </ul>
                 <p className="govuk-body">
-                  <strong>Working towards a Best Start Family Hub</strong> — Sites currently open and delivering services, intending to become a BSFH but missing some required
-                  criteria and actively working to address them. If the site is also a Network Site or Family Hub, select both relevant options. If the site does not meet the
-                  Network Site or Family Hub definition, select only &lsquo;Working towards a Best Start Family Hub&rsquo;.
+                  <strong>Working towards becoming a Best Start Family Hub</strong> — Sites currently open and delivering services, intending to become a BSFH but missing some
+                  required criteria and actively working to address them. If the site is also a Network Site, select both relevant options.
                 </p>
-                <p className="govuk-body">
-                  <strong>Family Hub</strong> — Applicable only to sites operating prior to 1st April 2026 that met either Part A or Part B of the Family Hub definition. Family
-                  Hubs are expected to transition to Best Start Family Hubs by March 2028.
-                </p>
-                <p className="govuk-body">
-                  <em>2022/23–25/26 Family Hub definition:</em>
-                </p>
-                <ul className="govuk-list govuk-list--bullet">
-                  <li>
-                    <strong>Part A:</strong> A physical place where families can visit and speak to a trained staff member face-to-face, who provides advice on a wide range of
-                    family issues (0–19, or 25 with SEND) and connects families to further services.
-                  </li>
-                  <li>
-                    <strong>Part B:</strong> Families accessing parenting support, parent–infant relationships, perinatal mental health, early language, HLE, and infant feeding
-                    have access to a key contact within the FH. The site uses the &lsquo;Family Hub&rsquo; naming convention and meets the 2025/26 Programme Guide requirements.
-                  </li>
-                </ul>
                 <p className="govuk-body">
                   <strong>Network Site</strong> — Other trusted community locations that extend reach. They deliver at least one BSFH or Healthy Babies service on a regular,
                   sustained basis and can connect families with others. These might include early years settings, schools, libraries, health and faith venues, leisure centres, and
                   VCF venues.
                 </p>
+              </article>
+              <hr className="govuk-section-break govuk-section-break--l govuk-section-break--visible" />
+
+              <article id="fhs18" data-section-id="fhs18" tabIndex={-1}>
+                <h3 className="govuk-heading-m">FHS18: Working Towards Clarification</h3>
+                <p className="govuk-body">
+                  <strong>Question:</strong> Which of the Best Start Family Hub definition criteria are currently missing?
+                </p>
+                <p className="govuk-body">
+                  <strong>Guidance:</strong> This question is only shown where FHS07 = &lsquo;Working towards becoming a Best Start Family Hub&rsquo;.
+                </p>
+                <p className="govuk-body">
+                  If you have designated your location as &lsquo;working towards becoming a Best Start Family Hub&rsquo;, briefly explain which criteria from the Best Start Family
+                  Hub definition are currently missing.
+                </p>
+                <p className="govuk-body">For example: missing branding, awaiting appointment of a Best Start Inclusion Practitioner, or developing outreach strategy.</p>
               </article>
               <hr className="govuk-section-break govuk-section-break--l govuk-section-break--visible" />
 
@@ -508,12 +531,6 @@ const KnowledgeHub = (): React.ReactElement => {
                   <strong>Guidance:</strong> For Best Start Family Hubs only. If previously used for another purpose (e.g., Children&rsquo;s Centre, Library, Family Hub), select
                   &lsquo;yes&rsquo;.
                 </p>
-                <p className="govuk-body">Select one of the following options:</p>
-                <ul className="govuk-list govuk-list--bullet">
-                  <li>Yes</li>
-                  <li>No</li>
-                  <li>Unknown</li>
-                </ul>
               </article>
               <hr className="govuk-section-break govuk-section-break--l govuk-section-break--visible" />
 
@@ -589,27 +606,6 @@ const KnowledgeHub = (): React.ReactElement => {
                 <p className="govuk-body">
                   <strong>Guidance:</strong> Optional free-text field for additional context.
                 </p>
-              </article>
-              <hr className="govuk-section-break govuk-section-break--l govuk-section-break--visible" />
-
-              <article id="fhs17" data-section-id="fhs17" tabIndex={-1}>
-                <h3 className="govuk-heading-m">FHS17: Days Per Week Open</h3>
-                <p className="govuk-body">
-                  <strong>Question:</strong> How many days per week is the location open?
-                </p>
-                <p className="govuk-body">
-                  <strong>Guidance:</strong> Provide the number of days per week the location is typically open to deliver BSFH and/or Healthy Babies services.
-                </p>
-                <p className="govuk-body">Select one of the following options:</p>
-                <ul className="govuk-list govuk-list--bullet">
-                  <li>1</li>
-                  <li>2</li>
-                  <li>3</li>
-                  <li>4</li>
-                  <li>5</li>
-                  <li>6</li>
-                  <li>7</li>
-                </ul>
               </article>
             </section>
 
@@ -701,7 +697,7 @@ const KnowledgeHub = (): React.ReactElement => {
                 <p className="govuk-body">
                   Review your Delivery Plan to ensure all funded services are recorded. There should be <strong>at least one funded service per funding strand</strong>.
                 </p>
-                <p className="govuk-body">Select one of the following options:</p>
+                <p className="govuk-body">Select one:</p>
                 <ul className="govuk-list govuk-list--bullet">
                   <li>Funded</li>
                   <li>Partially funded</li>
@@ -721,7 +717,7 @@ const KnowledgeHub = (): React.ReactElement => {
                 <ul className="govuk-list govuk-list--bullet">
                   <li>
                     <strong>Open</strong> — currently available to service users, following the expected frequency of offer. Services delivered as a single annual event or
-                    infrequently that have run previously and are intended to continue should be recorded as open.
+                    infrequently that have run previously and are intended to continue should be recorded as live.
                   </li>
                   <li>
                     <strong>Planned</strong> — for services intended to start later in the year.
@@ -814,11 +810,10 @@ const KnowledgeHub = (): React.ReactElement => {
                 <ul className="govuk-list govuk-list--bullet">
                   <li>Parenting support</li>
                   <li>Parent-infant relationships and perinatal mental health support</li>
-                  <li>Infant Feeding support</li>
+                  <li>Infant feeding support</li>
                   <li>Early language and the home learning environment</li>
                   <li>Children with additional needs and their families</li>
                   <li>Delivery</li>
-                  <li>Wider services</li>
                 </ul>
                 <p className="govuk-body">
                   If funded by multiple strands, select the strand contributing the majority of funding. If not funded by BSFH/HB, record as <strong>Wider Services</strong>.
@@ -847,9 +842,10 @@ const KnowledgeHub = (): React.ReactElement => {
                 </p>
                 <p className="govuk-body">
                   <strong>Guidance:</strong> For parenting support strand services only. Most parenting services are expected to be delivered as a component of an EBI from the
-                  menu. If an exemption has been agreed with DfE for a non-EBI service, select <strong>Not Applicable</strong>.
+                  menu. If your service is from the EBI approved exemption list, select <strong>Exemption (other)</strong>. If your service is not drawn from the Evidence Based
+                  Intervention menu or approved list of exemptions, select <strong>Not Applicable</strong>.
                 </p>
-                <p className="govuk-body">Select one of the following options:</p>
+                <p className="govuk-body">Select one:</p>
                 <ul className="govuk-list govuk-list--bullet">
                   <li>Not applicable</li>
                   <li>Child-Parent Psychotherapy</li>
@@ -863,13 +859,13 @@ const KnowledgeHub = (): React.ReactElement => {
                   <li>Schoolchildren and their Families</li>
                   <li>Strengthening Families, Strengthening Communities</li>
                   <li>Trauma-Focused Cognitive Behavioural Therapy</li>
-                  <li>Triple P &ndash; Enhanced Triple P (Level 5)</li>
-                  <li>Triple P &ndash; Family Transitions</li>
-                  <li>Triple P &ndash; Level 4 Group Triple P</li>
-                  <li>Triple P &ndash; Level 4 Standard Triple P</li>
-                  <li>Triple P &ndash; Level 5 Pathways</li>
-                  <li>Triple P &ndash; Selected (Seminars) Stepping Stones</li>
-                  <li>Triple P &ndash; Standard Stepping Stones + Group</li>
+                  <li>Triple P – Enhanced Triple P (Level 5)</li>
+                  <li>Triple P – Family Transitions</li>
+                  <li>Triple P – Level 4 Group Triple P</li>
+                  <li>Triple P – Level 4 Standard Triple P</li>
+                  <li>Triple P – Level 5 Pathways</li>
+                  <li>Triple P – Selected (Seminars) Stepping Stones</li>
+                  <li>Triple P – Standard Stepping Stones + Group</li>
                   <li>Triple P Level 3 Discussion Groups</li>
                   <li>Triple P Online</li>
                   <li>Video-Interventions to promote positive parenting and sensitive discipline (VIPPSD)</li>
@@ -880,15 +876,15 @@ const KnowledgeHub = (): React.ReactElement => {
               <hr className="govuk-section-break govuk-section-break--l govuk-section-break--visible" />
 
               <article id="smd10a" data-section-id="smd10a" tabIndex={-1}>
-                <h3 className="govuk-heading-m">SMD10A: Parenting EBI (approved exemptions)</h3>
+                <h3 className="govuk-heading-m">SMD10A: Service Category (Parenting, Exemption)</h3>
                 <p className="govuk-body">
-                  <strong>Question:</strong> If the parenting support service is an approved exemption from the Evidence Based Intervention (EBI) menu, select the relevant approved
-                  exemption.
+                  <strong>Question:</strong> If the Parenting support service is from the Evidence Based Intervention menu of approved exemptions, select the relevant intervention.
                 </p>
                 <p className="govuk-body">
-                  <strong>Guidance:</strong> Select the approved exemption that has been agreed with DfE for this parenting support service.
+                  <strong>Guidance:</strong> This question is only shown where SMD10 = &lsquo;Exemption (other)&rsquo;. Select the Evidence Based Intervention approved through the
+                  exemption process.
                 </p>
-                <p className="govuk-body">Select one of the following options:</p>
+                <p className="govuk-body">Select one:</p>
                 <ul className="govuk-list govuk-list--bullet">
                   <li>The Nurturing Programme (Centre for Emotional Health)</li>
                   <li>Invest in Play</li>
@@ -911,10 +907,11 @@ const KnowledgeHub = (): React.ReactElement => {
                   <strong>Question:</strong> If the Early Language and HLE service is from the EBI menu, select the relevant intervention.
                 </p>
                 <p className="govuk-body">
-                  <strong>Guidance:</strong> For Early Language and HLE strand services only. If an exemption has been agreed with DfE for a non-EBI service, select{' '}
+                  <strong>Guidance:</strong> For Early Language and HLE strand services only. If your service is from the EBI approved exemption list, select{' '}
+                  <strong>Exemption (other)</strong>. If your service is not drawn from the Evidence Based Intervention menu or approved list of exemptions, select{' '}
                   <strong>Not Applicable</strong>.
                 </p>
-                <p className="govuk-body">Select one of the following options:</p>
+                <p className="govuk-body">Select one:</p>
                 <ul className="govuk-list govuk-list--bullet">
                   <li>Not applicable</li>
                   <li>Auditory Verbal Therapy</li>
@@ -929,24 +926,26 @@ const KnowledgeHub = (): React.ReactElement => {
                   <li>ParentChild+</li>
                   <li>Parents as First Teachers (PAFT)</li>
                   <li>PEEP Learning Together Programme</li>
-                  <li>Triple P &ndash; Level 3 Discussion Groups</li>
-                  <li>Triple P &ndash; Level 4 Group</li>
-                  <li>Triple P &ndash; Online</li>
-                  <li>Triple P &ndash; Stepping Stones</li>
+                  <li>Triple P – Level 3 Discussion Groups</li>
+                  <li>Triple P – Level 4 Group</li>
+                  <li>Triple P – Online</li>
+                  <li>Triple P – Stepping Stones</li>
                   <li>Exemption (other)</li>
                 </ul>
               </article>
               <hr className="govuk-section-break govuk-section-break--l govuk-section-break--visible" />
 
               <article id="smd11a" data-section-id="smd11a" tabIndex={-1}>
-                <h3 className="govuk-heading-m">SMD11A: HLE EBI (approved exemptions)</h3>
+                <h3 className="govuk-heading-m">SMD11A: Service Category (HLE, Exemption)</h3>
                 <p className="govuk-body">
-                  <strong>Question:</strong> If the Early Language and HLE service is an approved exemption from the EBI menu, select the relevant approved exemption.
+                  <strong>Question:</strong> If the Early language and Home Learning Environment service is from the Evidence Based Intervention menu of approved exemptions, select
+                  the relevant intervention.
                 </p>
                 <p className="govuk-body">
-                  <strong>Guidance:</strong> Select the approved exemption that has been agreed with DfE for this Early Language and HLE service.
+                  <strong>Guidance:</strong> This question is only shown where SMD11 = &lsquo;Exemption (other)&rsquo;. Select the Evidence Based Intervention approved through the
+                  exemption process.
                 </p>
-                <p className="govuk-body">Select one of the following options:</p>
+                <p className="govuk-body">Select one:</p>
                 <ul className="govuk-list govuk-list--bullet">
                   <li>Parenting Puzzle (Centre for Emotional Health)</li>
                   <li>Tots Talking (Speech and Language UK)</li>
@@ -974,7 +973,7 @@ const KnowledgeHub = (): React.ReactElement => {
                   <li>Vaccination services</li>
                   <li>Birth Registration</li>
                   <li>Children affected by parent/carer imprisonment</li>
-                  <li>Reducing parent/carer conflict</li>
+                  <li>Reducing Parent/Carer Conflict</li>
                   <li>Support for separated and separating parents/carers</li>
                   <li>Targeted whole-family support, delivered by local family help services</li>
                   <li>Unknown</li>
@@ -1009,7 +1008,7 @@ const KnowledgeHub = (): React.ReactElement => {
                   <strong>Guidance:</strong> For example, a service for parents of children aged 0–5, the lowest age category would be 0–2. For antenatal services, select{' '}
                   <strong>up to birth</strong>.
                 </p>
-                <p className="govuk-body">Select one of the following options:</p>
+                <p className="govuk-body">Select one:</p>
                 <ul className="govuk-list govuk-list--bullet">
                   <li>Up to birth</li>
                   <li>0-2 years</li>
@@ -1032,7 +1031,7 @@ const KnowledgeHub = (): React.ReactElement => {
                   <strong>Guidance:</strong> For example, a service for parents of children aged 0–4, the highest age category would be 3–4. For antenatal-only services, the
                   highest age would be <strong>up to birth</strong>.
                 </p>
-                <p className="govuk-body">Select one of the following options:</p>
+                <p className="govuk-body">Select one:</p>
                 <ul className="govuk-list govuk-list--bullet">
                   <li>Up to birth</li>
                   <li>0-2 years</li>
@@ -1184,8 +1183,7 @@ const KnowledgeHub = (): React.ReactElement => {
                 <p className="govuk-body">This page lets you add, view, change or delete wider services offered through your Best Start Family Hub Network.</p>
                 <GovUKInsetText>If you have reported all delivery for a wider service category in your Core Service Data, you do not need to report on it here.</GovUKInsetText>
                 <p className="govuk-body">
-                  You can add or update services via the guided online form or by uploading a CSV file. Only add categories not covered or only partially covered in your Core
-                  Service data.
+                  You can add or update services via the guided online form. Only add categories not covered or only partially covered in your Core Service data.
                 </p>
                 <p className="govuk-body">
                   <strong>How to add or update using the guided form:</strong>
@@ -1198,15 +1196,6 @@ const KnowledgeHub = (): React.ReactElement => {
                     Select <strong>Change</strong> to update a single wider service.
                   </li>
                   <li>Save progress at any time and return later.</li>
-                </ul>
-                <p className="govuk-body">
-                  <strong>How to add or update using a CSV:</strong>
-                </p>
-                <ul className="govuk-list govuk-list--bullet">
-                  <li>Download the service list template as CSV or XLSM from this page.</li>
-                  <li>Add details for one or more services.</li>
-                  <li>Leave a wider service category row blank if you do not want to report on it.</li>
-                  <li>Save as CSV and upload via &lsquo;Upload with CSV&rsquo;.</li>
                 </ul>
                 <p className="govuk-body">
                   Beyond funded services, LAs are expected to integrate wider services into their BSFH model. Where delivery of wider services{' '}
@@ -1286,7 +1275,7 @@ const KnowledgeHub = (): React.ReactElement => {
                   <li>All parents-to-be should be provided with a hard-copy version of the local Healthy Babies offer prior to birth.</li>
                 </ul>
                 <p className="govuk-body">Respond with how your Offer was published, whether it was referred to as the Start for Life Offer or Healthy Babies Offer.</p>
-                <p className="govuk-body">Select one of the following options:</p>
+                <p className="govuk-body">Select one:</p>
                 <ul className="govuk-list govuk-list--bullet">
                   <li>Yes - both physically and online</li>
                   <li>Yes - physically only</li>
@@ -1533,7 +1522,7 @@ const KnowledgeHub = (): React.ReactElement => {
                   for a service, as website data can dramatically skew user analysis.
                 </p>
                 <p className="govuk-body">The number of virtual users cannot be greater than the total number of users provided in QSU05.</p>
-                <p className="govuk-body">Give a figure for the last 3 months.</p>
+                <p className="govuk-body">Give a figure for the relevant quarter.</p>
               </article>
               <hr className="govuk-section-break govuk-section-break--l govuk-section-break--visible" />
 
@@ -1664,22 +1653,6 @@ const KnowledgeHub = (): React.ReactElement => {
               </article>
               <hr className="govuk-section-break govuk-section-break--l govuk-section-break--visible" />
 
-              <article id="qsu13a" data-section-id="qsu13a" tabIndex={-1}>
-                <h3 className="govuk-heading-m">QSU13A: Service users by age group (availability)</h3>
-                <p className="govuk-body">
-                  <strong>Question:</strong> Do you have data on how many people used this service in the relevant quarter, by age group?
-                </p>
-                <p className="govuk-body">
-                  <strong>Guidance:</strong> Answer yes if you have data for the age group of service users. If you are not able to provide this data, respond no.
-                </p>
-                <p className="govuk-body">Select one:</p>
-                <ul className="govuk-list govuk-list--bullet">
-                  <li>Yes</li>
-                  <li>No</li>
-                </ul>
-              </article>
-              <hr className="govuk-section-break govuk-section-break--l govuk-section-break--visible" />
-
               <article id="qsu03" data-section-id="qsu03" tabIndex={-1}>
                 <h3 className="govuk-heading-m">QSU03: Pre post availability</h3>
                 <p className="govuk-body">
@@ -1720,11 +1693,11 @@ const KnowledgeHub = (): React.ReactElement => {
               <article id="qsu13" data-section-id="qsu13" tabIndex={-1}>
                 <h3 className="govuk-heading-m">QSU13: Average waiting time</h3>
                 <p className="govuk-body">
-                  <strong>Question:</strong> What is the average waiting time from referral to first appointment? Provide the average for the last 3 months in days.
+                  <strong>Question:</strong> What is the average waiting time from referral to first appointment? Provide the average for the relevant quarter in days.
                 </p>
                 <p className="govuk-body">
                   <strong>Guidance:</strong> Waiting time should be calculated as the average (mean) waiting time in number of days from referral to receiving the first appointment
-                  or session, for the service in the last 3 months.
+                  or session, for the service in the relevant quarter.
                 </p>
                 <p className="govuk-body">Provide a numeric response rounded to 1 decimal place, e.g., 3.5.</p>
               </article>
@@ -1760,17 +1733,17 @@ const KnowledgeHub = (): React.ReactElement => {
                 <p className="govuk-body">
                   <strong>Guidance:</strong> This question will only show if you answered yes to QSU18.
                 </p>
-                <p className="govuk-body">Select yes if you have the data of the total number of sessions service users attended. Select no if not.</p>
-                <p className="govuk-body">
-                  Please note, attendance data may not be appropriate to collect for all EBIs. Discuss with your EBI service provider if attendance data is appropriate to collect
-                  for this service.
-                </p>
-                <p className="govuk-body">Select one of the following options:</p>
+                <p className="govuk-body">Select one:</p>
                 <ul className="govuk-list govuk-list--bullet">
                   <li>Yes</li>
                   <li>No</li>
                   <li>Not Applicable</li>
                 </ul>
+                <p className="govuk-body">Select yes if you have the data of the total number of sessions service users attended. Select no if not.</p>
+                <p className="govuk-body">
+                  Please note, attendance data may not be appropriate to collect for all EBIs. Discuss with your EBI service provider if attendance data is appropriate to collect
+                  for this service.
+                </p>
               </article>
               <hr className="govuk-section-break govuk-section-break--l govuk-section-break--visible" />
 
@@ -1950,11 +1923,7 @@ const KnowledgeHub = (): React.ReactElement => {
                 <p className="govuk-body">
                   <strong>Guidance:</strong> If known, provide the user&rsquo;s ethnicity according to their broad ethnic group.
                 </p>
-                <p className="govuk-body">
-                  For all pre and post outcome scores provided for users of a service, the total number of users of each ethnicity, including unknown and prefer not to say should
-                  not exceed the total provided in QSU09 for each ethnic group.
-                </p>
-                <p className="govuk-body">Select one of the following options:</p>
+                <p className="govuk-body">Select one:</p>
                 <ul className="govuk-list govuk-list--bullet">
                   <li>White or White British</li>
                   <li>Mixed or multiple ethnic groups</li>
@@ -1964,6 +1933,10 @@ const KnowledgeHub = (): React.ReactElement => {
                   <li>Prefer not to say</li>
                   <li>Unknown</li>
                 </ul>
+                <p className="govuk-body">
+                  For all pre and post outcome scores provided for users of a service, the total number of users of each ethnicity, including unknown and prefer not to say should
+                  not exceed the total provided in QSU09 for each ethnic group.
+                </p>
               </article>
               <hr className="govuk-section-break govuk-section-break--l govuk-section-break--visible" />
 
@@ -2001,7 +1974,7 @@ const KnowledgeHub = (): React.ReactElement => {
                     MHCLG English Indices of Deprivation
                   </a>
                 </p>
-                <p className="govuk-body">Select one of the following options:</p>
+                <p className="govuk-body">Select one:</p>
                 <ul className="govuk-list govuk-list--bullet">
                   <li>1 (most deprived)</li>
                   <li>2</li>
@@ -2425,7 +2398,7 @@ const KnowledgeHub = (): React.ReactElement => {
               <article id="br01" data-section-id="br01" tabIndex={-1}>
                 <h3 className="govuk-heading-m">BR01: Breastfeeding rates at initiation</h3>
                 <p className="govuk-body">
-                  <strong>Question:</strong> What were the average breastfeeding rates at initiation over the last quarter (optional)? Provide an overall figure for your local
+                  <strong>Question:</strong> What were the average breastfeeding rates at initiation over the relevant quarter (optional)? Provide an overall figure for your local
                   authority, if you have one.
                 </p>
                 <p className="govuk-body">
@@ -2443,7 +2416,7 @@ const KnowledgeHub = (): React.ReactElement => {
               <article id="br02" data-section-id="br02" tabIndex={-1}>
                 <h3 className="govuk-heading-m">BR02: Breastfeeding rates at 6-8 weeks</h3>
                 <p className="govuk-body">
-                  <strong>Question:</strong> What were the average breastfeeding rates at 6-8 weeks over the last quarter (optional)? Provide an overall figure for your local
+                  <strong>Question:</strong> What were the average breastfeeding rates at 6-8 weeks over the relevant quarter (optional)? Provide an overall figure for your local
                   authority, if you have one.
                 </p>
                 <p className="govuk-body">

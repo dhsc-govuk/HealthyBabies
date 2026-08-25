@@ -6,6 +6,7 @@ import { LoadingBox, Button } from 'govuk-react';
 import { GeneralLayout } from '../../../../layouts';
 import { getOutcomeScoreRecord, getOutcomeScoresModule, deleteOutcomeScoreRecord, OutcomeScoresModuleDetailDto } from '../queries';
 import { WarningPanel, WarningPanelTitle, WarningPanelBody, WarningPanelActions, WarningPanelAnchor } from '../../../../styles/govuk-global';
+import { ROUTES } from '../../../../constants/routes';
 
 const OutcomeScoreDelete = (): React.ReactElement => {
   const navigate = useNavigate();
@@ -40,7 +41,7 @@ const OutcomeScoreDelete = (): React.ReactElement => {
         const records = old.data.records.filter((r) => r.recordId !== recordId);
         return { ...old, data: { ...old.data, records, totalRecords: records.length } };
       });
-      navigate(`/organisation-admin/submissions/${submissionId}/modules/${moduleId}/outcome-scores`);
+      navigate(ROUTES.organisationAdmin.submissions.outcomeScores.list(submissionId, moduleId));
     },
   });
 
@@ -61,23 +62,23 @@ const OutcomeScoreDelete = (): React.ReactElement => {
 
   return (
     <LoadingBox loading={isLoading || deleteMutation.isLoading}>
-      <GeneralLayout currentPage="" backLink={{ href: `/organisation-admin/submissions/${submissionId}/modules/${moduleId}/outcome-scores` }}>
+      <GeneralLayout currentPage="" backLink={{ href: ROUTES.organisationAdmin.submissions.outcomeScores.list(submissionId, moduleId) }}>
         <WarningPanel>
           <WarningPanelTitle>Are you sure you want to delete the outcome scores record?</WarningPanelTitle>
           <WarningPanelBody>
-            Deleting the outcome scores record {anonymisedId} will remove all saved outcome score information for one of the users who used &apos;{serviceName}&apos; in the past 3
-            months.
+            Deleting the outcome scores record {anonymisedId} will remove all saved outcome score information for one of the users who used &apos;{serviceName}&apos; in the
+            relevant quarter.
           </WarningPanelBody>
           <WarningPanelBody>This will not remove outcome scores for other service users or from previous Management Information data collections.</WarningPanelBody>
           <WarningPanelBody>
             <strong>This cannot be undone.</strong>
           </WarningPanelBody>
-          <WarningPanelBody>If you want to keep this service&apos;s outcome scores for the past quarter, you can go back.</WarningPanelBody>
+          <WarningPanelBody>If you want to keep this service&apos;s outcome scores for the relevant quarter, you can go back.</WarningPanelBody>
           <WarningPanelActions>
             <Button onClick={handleDelete} disabled={deleteMutation.isLoading} buttonColour="#ffffff" buttonTextColour="#1d70b8">
               Yes, I want to delete
             </Button>
-            <WarningPanelAnchor href={`/organisation-admin/submissions/${submissionId}/modules/${moduleId}/outcome-scores`}>Go back</WarningPanelAnchor>
+            <WarningPanelAnchor href={ROUTES.organisationAdmin.submissions.outcomeScores.list(submissionId, moduleId)}>Go back</WarningPanelAnchor>
           </WarningPanelActions>
         </WarningPanel>
       </GeneralLayout>

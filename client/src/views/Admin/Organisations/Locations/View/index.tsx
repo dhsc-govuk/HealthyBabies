@@ -5,6 +5,7 @@ import { GeneralLayout } from '../../../../../layouts';
 import ViewLocationComponent from '../../../../../components/Global/Organisations/Locations/View';
 import { useLocationQuery } from '../../../../../components/Global/Queries/locations';
 import { useOrganisationQuery } from '../../../../../components/Global/Queries/organisations';
+import { ROUTES } from '../../../../../constants/routes';
 
 type UrlParams = {
   organisationId: string;
@@ -21,10 +22,10 @@ const ViewLocation = (): React.ReactElement => {
     <LoadingSpinner loading={locLoading || orgLoading} label="Loading">
       <GeneralLayout
         breadcrumbs={[
-          { label: 'Home', link: '/admin/home' },
-          { label: 'Local Authorities', link: '/admin/organisations' },
-          { label: orgData?.data.name ?? '', link: `/admin/organisations/${organisationId}` },
-          { label: 'Delivery location', link: `/admin/organisations/${organisationId}/service-delivery-locations` },
+          { label: 'Home', link: ROUTES.admin.home },
+          { label: 'Local Authorities', link: ROUTES.admin.organisations.list },
+          { label: orgData?.data.name ?? '', link: ROUTES.admin.organisations.view(organisationId) },
+          { label: 'Delivery location', link: ROUTES.admin.organisations.locations.list(organisationId) },
         ]}
         currentPage={locationData?.data.name ?? ''}>
         <ViewLocationComponent organisationId={organisationId!} locationId={locationId!} />

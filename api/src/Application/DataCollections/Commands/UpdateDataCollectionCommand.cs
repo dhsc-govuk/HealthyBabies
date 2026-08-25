@@ -69,7 +69,7 @@ public class UpdateDataCollectionCommandHandler(
             // Update local authority assignments
             if (request.IsSubmittedByAllLocalAuthorities)
             {
-                dataCollection.ClearLocalAuthorities();
+                dataCollection.ClearLocalAuthorityAssignments();
             }
             else
             {

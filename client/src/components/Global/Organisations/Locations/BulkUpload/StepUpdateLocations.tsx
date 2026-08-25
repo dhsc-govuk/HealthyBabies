@@ -1,5 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { LocationUpdateSelection } from './types';
+import { GovUKTableScroll } from '../../../../../components/GovUKComponents';
 import { BulkUploadLocationsResultDto } from './mutations';
 import './styles.css';
 
@@ -8,7 +9,6 @@ interface StepUpdateLocationsProps {
   updateResult: BulkUploadLocationsResultDto | null;
   isLoading: boolean;
   onToggleSelection: (siteName: string, updateFromFile: boolean) => void;
-  onBack: () => void;
   onSubmit: () => void;
   onFinish: () => void;
 }
@@ -18,7 +18,6 @@ const StepUpdateLocations: React.FC<StepUpdateLocationsProps> = ({
   updateResult,
   isLoading,
   onToggleSelection,
-  onBack,
   onSubmit,
   onFinish,
 }) => {
@@ -63,7 +62,9 @@ const StepUpdateLocations: React.FC<StepUpdateLocationsProps> = ({
 
         <div className="bulk-upload-section">
           <h3 className="bulk-upload-heading--medium">Results</h3>
+          <GovUKTableScroll label="Delivery locations to update table">
           <table className="bulk-upload-table">
+            <caption className="govuk-visually-hidden">Delivery location update results</caption>
             <thead>
               <tr>
                 <th>Site name</th>
@@ -92,9 +93,10 @@ const StepUpdateLocations: React.FC<StepUpdateLocationsProps> = ({
               ))}
             </tbody>
           </table>
+          </GovUKTableScroll>
         </div>
 
-        <button type="button" className="bulk-upload-button" onClick={onFinish}>
+        <button type="button" className="govuk-button" onClick={onFinish}>
           Return to sites list
         </button>
       </div>
@@ -140,7 +142,7 @@ const StepUpdateLocations: React.FC<StepUpdateLocationsProps> = ({
 
       {/* Summary list of sites */}
       <div className="bulk-upload-summary-list">
-        {displayedSelections.map((selection) => (
+        {displayedSelections.map((selection, selectionIndex) => (
           <div key={selection.siteName} className="bulk-upload-summary-list__row">
             {/* Site name and status */}
             <div className="bulk-upload-summary-list__key">
@@ -150,12 +152,22 @@ const StepUpdateLocations: React.FC<StepUpdateLocationsProps> = ({
               </p>
             </div>
 
-            {/* Radio options */}
-            <div className="bulk-upload-summary-list__value">
+            {/* Radio options. The fieldset + legend are what associate the two radios with the
+                site they belong to; without them a screen reader announces "Update from this
+                file" with no indication of which site, since the name is only in an adjacent
+                cell. The legend is visually hidden because the name and status are already
+                shown in the row. */}
+            <fieldset className="govuk-fieldset govuk-radios--small bulk-upload-summary-list__value">
+              <legend className="govuk-fieldset__legend">
+                <span className="govuk-visually-hidden">
+                  Data update option for {selection.siteName}, {getStatusLabel(selection)}
+                </span>
+              </legend>
               {/* Update from file option */}
               <div className="bulk-upload-summary-list__option">
-                <label className="bulk-upload-radio-small">
+                <label className="bulk-upload-radio-small" htmlFor={`location-selection-update-${selectionIndex}`}>
                   <input
+                    id={`location-selection-update-${selectionIndex}`}
                     type="radio"
                     name={`selection-${selection.siteName}`}
                     checked={selection.updateFromFile}
@@ -171,8 +183,9 @@ const StepUpdateLocations: React.FC<StepUpdateLocationsProps> = ({
               {/* Keep existing / Do not update option */}
               {!selection.isNew && (
                 <div className="bulk-upload-summary-list__option">
-                  <label className="bulk-upload-radio-small">
+                  <label className="bulk-upload-radio-small" htmlFor={`location-selection-keep-${selectionIndex}`}>
                     <input
+                      id={`location-selection-keep-${selectionIndex}`}
                       type="radio"
                       name={`selection-${selection.siteName}`}
                       checked={!selection.updateFromFile}
@@ -192,7 +205,7 @@ const StepUpdateLocations: React.FC<StepUpdateLocationsProps> = ({
                   </div>
                 </div>
               )}
-            </div>
+            </fieldset>
           </div>
         ))}
       </div>
@@ -212,7 +225,7 @@ const StepUpdateLocations: React.FC<StepUpdateLocationsProps> = ({
       <div>
         <button
           type="button"
-          className="bulk-upload-button"
+          className="govuk-button"
           onClick={onSubmit}
           disabled={selectedForUpdate.length === 0 || isLoading}
         >

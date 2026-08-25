@@ -91,9 +91,24 @@
   font-weight: inherit;
 }
 
-/* ── Desktop layout (≥ 641px) ────────────────────────────────────────────── */
+/*
+ * ── Desktop layout (≥ 1050px) ─────────────────────────────────────────────
+ *
+ * govuk-frontend's own default is 641px, but that assumes a short service
+ * name. Ours ("Report data on Best Start Family Hubs and Healthy Babies")
+ * plus four nav items needs ~1012px of viewport to fit on one line (measured
+ * against the real rendered app — .govuk-width-container's max-width is a
+ * border-box value here via the app's global box-sizing reset, so the usable
+ * inner width is max-width minus its own 60px of horizontal padding, not
+ * max-width itself). Below this breakpoint, the mobile "Menu" toggle
+ * collapses the nav instead of letting it wrap. govuk-frontend's vanilla JS
+ * (which would size this dynamically) is never initialised in this app —
+ * LayoutHeader reimplements the toggle in React, driven purely by these two
+ * breakpoints, so they must stay in sync with each other and with
+ * .govuk-width-container's max-width in Content/styles.css.
+ */
 
-@media (min-width: 641px) {
+@media (min-width: 1050px) {
   .govuk-service-navigation__list {
     display: flex;
     flex-wrap: wrap;
@@ -104,12 +119,17 @@
 
   .govuk-service-navigation__item {
     padding: 15px 0;
-    margin-right: 20px;
     line-height: calc(29 / 19);
   }
 
-  .govuk-service-navigation__item:last-child {
-    margin-right: 0;
+  /*
+   * govuk-frontend's own rule for this is `.govuk-service-navigation__item:not(:last-child)`
+   * (specificity 0,2,0, also scoped to >=641px) — matching that shape but nesting it under
+   * the outer .govuk-service-navigation class (0,3,0) guarantees this wins regardless of
+   * CSS import order, rather than depending on which stylesheet happens to load last.
+   */
+  .govuk-service-navigation .govuk-service-navigation__item:not(:last-child) {
+    margin-right: 16px;
   }
 
   /* Active item: bottom border indicator — 5px per govuk-frontend v6 */
@@ -125,18 +145,33 @@
   }
 }
 
-/* ── Mobile layout (< 641px) ─────────────────────────────────────────────── */
+/* ── Mobile layout (< 1050px) ────────────────────────────────────────────── */
 
-@media (max-width: 640px) {
+@media (max-width: 1049px) {
+  /*
+   * govuk-frontend's own >=641px rules (flex-direction:row on the container,
+   * display:inline-block + zero vertical margin on items/service-name,
+   * display:flex on the list) are still active for our whole 641-1049px
+   * range and share the same specificity as a bare `.govuk-service-navigation__x`
+   * selector, so whichever stylesheet the bundler happens to output last would
+   * otherwise win. Nesting every selector below under the outer
+   * `.govuk-service-navigation` class makes ours win deterministically instead.
+   */
+
   /* Stack service name above the nav wrapper */
-  .govuk-service-navigation__container {
+  .govuk-service-navigation .govuk-service-navigation__container {
     display: flex;
     flex-direction: column;
     align-items: start;
   }
 
-  /* List: vertical stack, no flex */
-  .govuk-service-navigation__list {
+  /*
+   * List: vertical stack, no flex. `display` isn't set here — the
+   * show/hide rules below (higher specificity via the sibling combinator)
+   * always govern it in every reachable state, so setting it here would be
+   * dead code.
+   */
+  .govuk-service-navigation .govuk-service-navigation__list {
     list-style: none;
     margin: 0;
     margin-bottom: 15px; /* govuk-spacing(3) */
@@ -146,8 +181,13 @@
   /*
    * Each item carries the border declaration up-front so the active state
    * only needs to change border-left-width — colour and style are inherited.
+   * display/margin are reset here because govuk-frontend's >=641px rule makes
+   * items `display:inline-block` with zero vertical margin, which would
+   * otherwise render items side-by-side instead of stacked once the mobile
+   * menu is expanded.
    */
-  .govuk-service-navigation__item {
+  .govuk-service-navigation .govuk-service-navigation__item {
+    display: block;
     position: relative;
     margin: 10px 0; /* govuk-spacing(2) */
     border-width: 0;
@@ -159,11 +199,16 @@
    * Active item: left-border indicator.
    * margin-left = −(govuk-spacing(2) + border-width) = −(10px + 5px) = −15px
    * padding-left = govuk-spacing(2) = 10px
+   * border-bottom/padding-bottom reset to 0 because govuk-frontend's >=641px
+   * desktop active-indicator style (bottom border) is otherwise still active
+   * here alongside our left-border mobile indicator.
    */
-  .govuk-service-navigation__item--active {
+  .govuk-service-navigation .govuk-service-navigation__item--active {
     margin-left: -15px;
     padding-left: 10px;
     border-left-width: 5px; /* govuk-spacing(1) = $govuk-service-navigation-active-link-border-width */
+    border-bottom-width: 0;
+    padding-bottom: 0;
   }
 
   /*

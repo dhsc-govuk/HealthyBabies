@@ -10,6 +10,7 @@ import { stringFromArray } from '../../../../helpers/stringUtils';
 import { deleteAdmin } from './mutations';
 import { WarningPanel, WarningPanelTitle, WarningPanelBody, WarningPanelActions, WarningPanelAnchor } from '../../../../styles/govuk-global';
 import usePageTitle from '../../../../hooks/usePageTitle';
+import { ROUTES } from '../../../../constants/routes';
 
 type UrlParams = {
   userId: string;
@@ -33,7 +34,7 @@ const DeleteAdmin = (): React.ReactElement => {
     onSuccess() {
       setNotification({ type: 'success', title: 'Success', message: 'LA user deleted successfully' });
       queryClient.invalidateQueries(['la-users-list']);
-      navigate('/admin/la-users');
+      navigate(ROUTES.admin.laUsers.list);
     },
     onError(error) {
       processError(error, (e) => setNotification({ type: 'important', title: 'Error', message: e }));
@@ -45,13 +46,13 @@ const DeleteAdmin = (): React.ReactElement => {
   };
 
   const handleCancel = () => {
-    navigate(`/admin/la-users/${userId}`);
+    navigate(ROUTES.admin.laUsers.view(userId));
   };
 
   const userName = data ? stringFromArray([data.data.firstName, data.data.lastName]) : '';
 
   return (
-    <SettingsLayout hideNavigation backLink={{ href: `/admin/la-users/${userId}`, onClick: handleCancel }}>
+    <SettingsLayout hideNavigation backLink={{ href: ROUTES.admin.laUsers.view(userId), onClick: handleCancel }}>
       <LoadingBox loading={isLoading || isDeleting}>
         {data && (
           <WarningPanel>
@@ -69,7 +70,7 @@ const DeleteAdmin = (): React.ReactElement => {
                 Yes, I want to delete
               </Button>
               <WarningPanelAnchor
-                href={`/admin/la-users/${userId}`}
+                href={ROUTES.admin.laUsers.view(userId)}
                 onClick={(e) => {
                   e.preventDefault();
                   handleCancel();

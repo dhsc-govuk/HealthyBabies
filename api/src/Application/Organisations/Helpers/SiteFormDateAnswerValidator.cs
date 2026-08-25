@@ -1,3 +1,4 @@
+using Application.Common;
 using Application.SiteForms.Dtos;
 using Domain.SiteForms;
 
@@ -7,7 +8,8 @@ public static class SiteFormDateAnswerValidator
 {
     public static string? ValidateAnswers(
         IReadOnlyList<SiteAnswerInputDto> answers,
-        IReadOnlyList<SiteFormQuestion> questions)
+        IReadOnlyList<SiteFormQuestion> questions,
+        DateTime? today = null)
     {
         foreach (var answer in answers)
         {
@@ -17,12 +19,12 @@ public static class SiteFormDateAnswerValidator
             }
 
             var question = questions.FirstOrDefault(q => q.Code == answer.QuestionCode);
-            if (question == null || !DateTime.TryParse(answer.Value, out var date))
+            if (question == null || !FormDateParser.TryParse(answer.Value, out var date))
             {
                 continue;
             }
 
-            var error = ValidateDateRule(question, date);
+            var error = ValidateDateRule(question, date, today);
             if (error != null)
             {
                 return error;
@@ -32,21 +34,21 @@ public static class SiteFormDateAnswerValidator
         return null;
     }
 
-    public static string? ValidateDateRule(SiteFormQuestion question, DateTime date)
+    public static string? ValidateDateRule(SiteFormQuestion question, DateTime date, DateTime? today = null)
     {
         if (question.QuestionType != SiteFormQuestionType.Date || string.IsNullOrEmpty(question.DateValidationRule))
         {
             return null;
         }
 
-        var today = DateTime.UtcNow.Date;
+        var cutoff = (today ?? DateTime.UtcNow).Date;
 
-        if (question.DateValidationRule == SiteFormDateValidationRules.NotInFuture && date.Date > today)
+        if (question.DateValidationRule == SiteFormDateValidationRules.NotInFuture && date.Date > cutoff)
         {
             return $"'{question.Label}' must not be a date in the future.";
         }
 
-        if (question.DateValidationRule == SiteFormDateValidationRules.NotInPast && date.Date < today)
+        if (question.DateValidationRule == SiteFormDateValidationRules.NotInPast && date.Date < cutoff)
         {
             return $"'{question.Label}' must not be a date in the past.";
         }

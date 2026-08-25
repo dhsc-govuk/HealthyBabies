@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { sanitizeCsvForUpload, zipCsvForUpload, zipFileForUpload } from '../../../../../helpers/csvUpload';
+import { API_ROUTES } from '../../../../../constants/apiRoutes';
 
 export interface BulkUploadFieldOptionDto {
   value: string;
@@ -23,7 +24,7 @@ export interface BulkUploadFieldErrorDto {
 
 export interface BulkUploadRowValidationDto {
   rowNumber: number;
-  siteName?: string;
+  entityName?: string;
   isValid: boolean;
   errors: BulkUploadFieldErrorDto[];
 }
@@ -96,7 +97,7 @@ export const validateBulkUpload = async (organisationId: string, file: File, api
   const formData = new FormData();
   formData.append('file', await toUploadFile(file));
 
-  const url = apiBasePath ? `${apiBasePath}/bulk-upload/validate` : `/organisations/${organisationId}/locations/bulk-upload/validate`;
+  const url = apiBasePath ? `${apiBasePath}/bulk-upload/validate` : API_ROUTES.organisations.locations.bulkUploadValidate(organisationId);
   return axios.post<BulkUploadLocationsValidationResultDto>(
     url,
     formData,
@@ -109,12 +110,12 @@ export const validateBulkUpload = async (organisationId: string, file: File, api
 };
 
 export const processStagedBulkUpload = (organisationId: string, request: ProcessStagedBulkUploadLocationsRequest, apiBasePath?: string) => {
-  const url = apiBasePath ? `${apiBasePath}/bulk-upload/staged` : `/organisations/${organisationId}/locations/bulk-upload/staged`;
+  const url = apiBasePath ? `${apiBasePath}/bulk-upload/staged` : API_ROUTES.organisations.locations.bulkUploadStaged(organisationId);
   return axios.post<BulkUploadLocationsResultDto>(url, request);
 };
 
 export const downloadTemplate = (organisationId: string, format: TemplateFormat = 'csv', apiBasePath?: string) => {
-  const baseUrl = apiBasePath ? `${apiBasePath}/bulk-upload/template` : `/organisations/${organisationId}/locations/bulk-upload/template`;
+  const baseUrl = apiBasePath ? `${apiBasePath}/bulk-upload/template` : API_ROUTES.organisations.locations.bulkUploadTemplate(organisationId);
   const url = `${baseUrl}?format=${format}`;
   return axios.get(url, {
     responseType: 'blob',
@@ -143,4 +144,4 @@ export interface LocationMatchResult {
 
 // Match locations by name or UPRN
 export const matchLocationsByName = (organisationId: string, siteNames: string[]) =>
-  axios.post<LocationMatchResult[]>(`/organisations/${organisationId}/locations/bulk-upload/match`, { siteNames });
+  axios.post<LocationMatchResult[]>(API_ROUTES.organisations.locations.bulkUploadMatch(organisationId), { siteNames });

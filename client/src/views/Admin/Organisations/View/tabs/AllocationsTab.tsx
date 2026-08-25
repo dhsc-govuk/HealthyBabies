@@ -1,7 +1,8 @@
 import React from 'react';
 import { Link } from 'govuk-react';
+import { GovUKTableScroll } from '../../../../../components/GovUKComponents';
 import { FinancialDataEntryDto } from '../queries';
-import { ALLOCATION_STRANDS, ALLOCATION_YEARS, ROLLOVER_STRAND, ROLLOVER_YEAR, Strand, formatMoney } from './constants';
+import { ALLOCATION_STRANDS, ALLOCATION_YEARS, ROLLOVER_STRAND, ROLLOVER_YEAR, Strand, formatMoney } from '../../../../../components/Global/DeliveryPlanAnalytics/constants';
 
 interface AllocationsTabProps {
   entries: FinancialDataEntryDto[];
@@ -33,7 +34,9 @@ const AllocationsTab = ({ entries, onChange }: AllocationsTabProps): React.React
   const renderStrandTable = (strand: Strand, years: string[], amountHeader: string) => (
     <React.Fragment key={strand.key}>
       <h2 className="govuk-heading-m">{strand.label}</h2>
+      <GovUKTableScroll label={`${strand.label} allocations table`}>
       <table className="govuk-table">
+        <caption className="govuk-visually-hidden">{strand.label} allocations</caption>
         <thead className="govuk-table__head">
           <tr className="govuk-table__row">
             <th scope="col" className="govuk-table__header">
@@ -55,6 +58,7 @@ const AllocationsTab = ({ entries, onChange }: AllocationsTabProps): React.React
           ))}
         </tbody>
       </table>
+      </GovUKTableScroll>
     </React.Fragment>
   );
 

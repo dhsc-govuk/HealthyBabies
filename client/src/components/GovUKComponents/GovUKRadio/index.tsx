@@ -40,15 +40,15 @@ function GovUKRadio({
     <div className={`govuk-form-group ${error ? 'govuk-form-group--error' : ''}`} style={{ position: 'relative' }}>
       <fieldset
         className="govuk-fieldset"
-        aria-describedby={[hint ? `${id}-hint` : '', error ? `${id}-error` : '', questionCode ? `${id}-question-code` : ''].filter(Boolean).join(' ') || undefined}>
-        <legend className={`govuk-fieldset__legend govuk-fieldset__legend--${legendSize}`} style={{ paddingRight: questionCode ? '100px' : undefined }}>
+        aria-describedby={[hint ? `${id}-hint` : '', error ? `${id}-error` : ''].filter(Boolean).join(' ') || undefined}
+        aria-labelledby={questionCode ? `${id}-question-code ${id}-legend` : undefined}>
+        <legend id={`${id}-legend`} className={`govuk-fieldset__legend govuk-fieldset__legend--${legendSize}`}>
           {legend}
           {required && <span className="govuk-visually-hidden"> (required)</span>}
         </legend>
         {questionCode && (
-          <span id={`${id}-question-code`} style={{ position: 'absolute', right: 0, top: 0, color: '#505a5f', fontSize: '16px', fontWeight: 'normal', whiteSpace: 'nowrap' }}>
-            <span className="govuk-visually-hidden">Question ID: </span>
-            {questionCode}
+          <span id={`${id}-question-code`} className="govuk-visually-hidden">
+            Question ID: {questionCode}:{' '}
           </span>
         )}
 
@@ -64,7 +64,9 @@ function GovUKRadio({
           </p>
         )}
 
-        <div className="govuk-radios" data-module="govuk-radios">
+        {/* 'Smaller radios' variant is the service-wide default per the design and
+            DAC_Styles_and_Layout_Usability_09 — it is the variant with a visible hover state. */}
+        <div className="govuk-radios govuk-radios--small" data-module="govuk-radios">
           {options.map((option) => (
             <React.Fragment key={String(option.value)}>
               <div className="govuk-radios__item">

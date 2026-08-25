@@ -82,3 +82,16 @@ export const zipFileForUpload = (fileBytes: Uint8Array, fileName: string): Uint8
 // This doesn't replace sanitizeCsvForUpload, it wraps its output.
 export const zipCsvForUpload = (csvText: string, csvFileName: string): Uint8Array<ArrayBuffer> =>
   zipFileForUpload(strToU8(csvText), csvFileName);
+
+// Sanitizes and zips a CSV file before it's sent to a bulk-upload endpoint; passes any other file
+// type (e.g. .xlsx) through unchanged, since only CSV triggers WAF content-inspection false positives.
+export const toBulkUploadFile = async (file: File): Promise<File> => {
+  if (!file.name.toLowerCase().endsWith('.csv')) {
+    return file;
+  }
+
+  const sanitizedContent = sanitizeCsvForUpload(await file.text());
+  const zippedContent = zipCsvForUpload(sanitizedContent, file.name);
+  const zipFileName = `${file.name.slice(0, -'.csv'.length)}.zip`;
+  return new File([zippedContent], zipFileName, { type: 'application/zip' });
+};

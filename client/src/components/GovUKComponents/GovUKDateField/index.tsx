@@ -38,24 +38,27 @@ function GovUKDateField({
   const [month, setMonth] = useState('');
   const [year, setYear] = useState('');
 
-  const hasDateConstraint = allowFuture !== undefined || disallowPast !== undefined;
+
   // Only live-validate once all three parts are filled in — a day typed on its own isn't
   // "missing a month and a year" yet, it's just not finished. Genuinely incomplete dates are
   // still caught at submit time by the parent's own required-field check. A single/double-digit
   // day or month is already a complete, meaningful value (e.g. "3" = the 3rd) but a year always
   // needs its full 4 digits — "202" isn't a partial year, it just isn't one yet.
   const isComplete = !!day && !!month && year.length === 4;
-  const dateRuleError =
-    hasDateConstraint && isComplete
-      ? validateDateParts(day, month, year, { allowFuture: allowFuture ?? true, disallowPast: disallowPast ?? false, legendText: legend }).error
-      : undefined;
+  // Structural validity — complete, numeric, and a real calendar date — always applies. It
+  // must not depend on a constraint prop being supplied, or a field with no configured
+  // past/future rule ends up with no validation at all. Only the past/future policy is
+  // configurable, and it stays permissive here so callers that legitimately accept future
+  // dates (e.g. data collection windows) are unaffected; callers needing past-only pass
+  // allowFuture={false}.
+  const dateRuleError = isComplete
+    ? validateDateParts(day, month, year, { allowFuture: allowFuture ?? true, disallowPast: disallowPast ?? false, legendText: legend }).error
+    : undefined;
 
   useEffect(() => {
-    if (hasDateConstraint) {
-      onValidate?.(dateRuleError);
-    }
+    onValidate?.(dateRuleError);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dateRuleError, hasDateConstraint]);
+  }, [dateRuleError]);
 
   const displayError = error ?? dateRuleError;
 
@@ -122,12 +125,28 @@ function GovUKDateField({
 
   return (
     <div className={`govuk-form-group ${displayError ? 'govuk-form-group--error' : ''}`}>
-      {questionCode && <span className="question-code">{questionCode}</span>}
-      <fieldset className="govuk-fieldset" role="group" aria-describedby={[hint ? `${id}-hint` : '', displayError ? `${id}-error` : ''].filter(Boolean).join(' ') || undefined}>
-        <legend className={`govuk-fieldset__legend govuk-fieldset__legend--${legendSize}`}>
+      <fieldset
+        className="govuk-fieldset"
+        role="group"
+        aria-describedby={[hint ? `${id}-hint` : '', displayError ? `${id}-error` : ''].filter(Boolean).join(' ') || undefined}
+        aria-labelledby={questionCode ? `${id}-question-code ${id}-legend` : undefined}>
+        <legend id={`${id}-legend`} className={`govuk-fieldset__legend govuk-fieldset__legend--${legendSize}`}>
           {legend}
           {required && <span className="govuk-visually-hidden"> (required)</span>}
         </legend>
+
+        {/* Identifier sits inside the fieldset after the legend (never nested in it), but is
+            wired into the group's accessible NAME via aria-labelledby rather than its
+            description: a group's description is not reliably announced, whereas its name
+            demonstrably is — that is how the legend itself gets read out. This also matches the
+            label-based fields, where the code sits inside the <label> and so forms part of the
+            control's name. */}
+        {questionCode && (
+          <span id={`${id}-question-code`} className="question-code">
+            <span className="govuk-visually-hidden">Question ID: </span>
+            {questionCode}
+          </span>
+        )}
 
         {hint && (
           <div className="govuk-hint" id={`${id}-hint`}>

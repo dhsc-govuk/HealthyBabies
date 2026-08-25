@@ -1,10 +1,11 @@
 import axios from 'axios';
+import { API_ROUTES } from '../../../constants/apiRoutes';
 
 export const downloadSitesCsv = () =>
-  axios.get('/admin/core-data/sites/download', { responseType: 'blob' });
+  axios.get(API_ROUTES.admin.coreData.sitesDownload, { responseType: 'blob' });
 
 export const downloadServicesCsv = () =>
-  axios.get('/admin/core-data/services/download', { responseType: 'blob' });
+  axios.get(API_ROUTES.admin.coreData.servicesDownload, { responseType: 'blob' });
 
 export const triggerCsvDownload = (data: BlobPart, fileName: string): void => {
   const blob = new Blob([data], { type: 'text/csv' });

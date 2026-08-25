@@ -1,10 +1,15 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
+import { useQuery } from 'react-query';
+import { Link } from 'react-router-dom';
 import { LoadingBox } from 'govuk-react';
-import { GovUKDetails } from '../../../../../components/GovUKComponents';
-import { ALLOCATION_STRANDS, ROLLOVER_STRAND, formatWholeMoney } from './constants';
-import { generateDeliverySummary } from './mockData';
-import StatCard from './StatCard';
-import './styles.css';
+import { GovUKDetails, GovUKTableScroll } from '../../../../../components/GovUKComponents';
+import { defaultStaleTime } from '../../../../../helpers/queriesParams';
+import { getOrganisationDeliverySummary } from '../queries';
+import { ALLOCATION_STRANDS, ROLLOVER_STRAND, formatWholeMoney } from '../../../../../components/Global/DeliveryPlanAnalytics/constants';
+import type { OffTrackActivityDto } from '../../../../../components/Global/DeliveryPlanAnalytics/types';
+import StatCard from '../../../../../components/Global/DeliveryPlanAnalytics/StatCard';
+import { ROUTES } from '../../../../../constants/routes';
+import '../../../../../components/Global/DeliveryPlanAnalytics/styles.css';
 
 interface DeliveryDataTabProps {
   organisationId: string;
@@ -15,15 +20,25 @@ const STRAND_OPTIONS = [{ key: 'all', label: 'All strands' }, ...ALLOCATION_STRA
 const DeliveryDataTab = ({ organisationId }: DeliveryDataTabProps): React.ReactElement => {
   const [strand, setStrand] = useState<string>('all');
 
-  // STUB DATA: no agreed source for these figures yet. Swap back to the real
-  // endpoint when available:
-  //   const { data } = useQuery(['organisation-delivery-summary', organisationId, strand],
-  //     () => getOrganisationDeliverySummary(organisationId, strand));
-  //   const summary = data?.data;
-  const summary = useMemo(() => generateDeliverySummary(organisationId, strand), [organisationId, strand]);
-  const isLoading = false;
-  const totalActivities =
-    summary.onTrack.activityCount + summary.offTrack.activityCount + summary.notStarted + summary.started + summary.delayed + summary.completed;
+  const { data, isLoading } = useQuery({
+    queryKey: ['organisation-delivery-summary', organisationId, strand],
+    queryFn: () => getOrganisationDeliverySummary(organisationId, strand),
+    staleTime: defaultStaleTime,
+    keepPreviousData: true,
+  });
+
+  const summary = data?.data;
+  const totalActivities = summary
+    ? summary.onTrack.activityCount + summary.offTrack.activityCount + summary.notStarted + summary.started + summary.delayed + summary.completed
+    : 0;
+
+  // The review route's ":submissionId" is the data collection id and ":localAuthorityId" is the
+  // organisation id. A row without an activity id comes from a module that holds no activities list,
+  // so it is addressed by section instead.
+  const activityHref = (activity: OffTrackActivityDto): string =>
+    activity.activityId
+      ? ROUTES.admin.submissions.reviewActivity(activity.dataCollectionId, organisationId, activity.formModuleId, activity.activityId)
+      : ROUTES.admin.submissions.reviewSection(activity.dataCollectionId, organisationId, activity.formModuleId);
 
   return (
     <>
@@ -55,7 +70,9 @@ const DeliveryDataTab = ({ organisationId }: DeliveryDataTabProps): React.ReactE
 
             {summary.offTrackActivities.length > 0 && (
               <GovUKDetails summary="Show off-track activities">
+                <GovUKTableScroll label="Off-track activities table">
                 <table className="govuk-table">
+                  <caption className="govuk-visually-hidden">Off-track activities</caption>
                   <thead className="govuk-table__head">
                     <tr className="govuk-table__row">
                       <th scope="col" className="govuk-table__header">
@@ -67,19 +84,42 @@ const DeliveryDataTab = ({ organisationId }: DeliveryDataTabProps): React.ReactE
                       <th scope="col" className="govuk-table__header govuk-table__header--numeric">
                         Actual spend
                       </th>
+                      <th scope="col" className="govuk-table__header govuk-table__header--numeric">
+                        <span className="govuk-visually-hidden">Actions</span>
+                      </th>
                     </tr>
                   </thead>
                   <tbody className="govuk-table__body">
                     {summary.offTrackActivities.map((activity, index) => (
-                      <tr key={index} className="govuk-table__row">
+                      <tr key={activity.activityId ?? `${activity.module}-${index}`} className="govuk-table__row">
                         <td className="govuk-table__cell">{activity.activityName}</td>
                         <td className="govuk-table__cell">{activity.strandDisplayName}</td>
                         <td className="govuk-table__cell govuk-table__cell--numeric">{formatWholeMoney(activity.actualSpend)}</td>
+                        <td className="govuk-table__cell govuk-table__cell--numeric">
+                          <Link className="govuk-link govuk-link--no-visited-state" to={activityHref(activity)}>
+                            View<span className="govuk-visually-hidden"> {activity.activityName}</span>
+                          </Link>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
+                </GovUKTableScroll>
               </GovUKDetails>
+            )}
+
+            {summary.activitiesLink && (
+              <p className="govuk-body govuk-!-text-align-right">
+                <Link
+                  className="govuk-link govuk-link--no-visited-state"
+                  to={
+                    summary.activitiesLink.formModuleId
+                      ? ROUTES.admin.submissions.reviewSection(summary.activitiesLink.dataCollectionId, organisationId, summary.activitiesLink.formModuleId)
+                      : ROUTES.admin.submissions.localAuthority(summary.activitiesLink.dataCollectionId, organisationId)
+                  }>
+                  View activities
+                </Link>
+              </p>
             )}
 
             <h2 className="govuk-heading-m govuk-!-margin-top-6">Delivery status</h2>

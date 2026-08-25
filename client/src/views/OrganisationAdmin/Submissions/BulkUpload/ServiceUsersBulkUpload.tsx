@@ -1,6 +1,8 @@
 import React from 'react';
 import { useParams } from 'react-router-dom';
-import BulkUpload from './index';
+import BulkUpload from '../../../../components/Global/BulkUpload';
+import { downloadBulkUploadTemplate, validateBulkUpload, processStagedBulkUpload, checkServiceUserDuplicates } from '../queries';
+import { ROUTES } from '../../../../constants/routes';
 
 const ServiceUsersBulkUpload: React.FC = () => {
   const { submissionId, moduleId } = useParams<{
@@ -12,7 +14,13 @@ const ServiceUsersBulkUpload: React.FC = () => {
     <BulkUpload
       moduleType="service-users"
       moduleName="Service users"
-      backUrl={`/organisation-admin/submissions/${submissionId}/modules/${moduleId}/services`}
+      backUrl={ROUTES.organisationAdmin.submissions.serviceUsers.list(submissionId, moduleId)}
+      api={{
+        downloadTemplate: downloadBulkUploadTemplate,
+        validate: validateBulkUpload,
+        processStaged: processStagedBulkUpload,
+        checkServiceUserDuplicates,
+      }}
     />
   );
 };

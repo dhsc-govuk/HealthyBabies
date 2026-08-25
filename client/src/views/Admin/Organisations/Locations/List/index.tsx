@@ -4,6 +4,7 @@ import { LoadingSpinner } from '../../../../../components/GovUKComponents';
 import { GeneralLayout } from '../../../../../layouts';
 import ListLocationsComponent from '../../../../../components/Global/Organisations/Locations/List';
 import { useOrganisationQuery } from '../../../../../components/Global/Queries/organisations';
+import { ROUTES } from '../../../../../constants/routes';
 
 type UrlParams = {
   organisationId: string;
@@ -17,15 +18,15 @@ const ListLocations = (): React.ReactElement => {
   const { data: orgData, isLoading: orgLoading } = useOrganisationQuery({ organisationId: organisationId! });
 
   const handleView = (locationId: string) => {
-    navigate(`/admin/organisations/${organisationId}/service-delivery-locations/${locationId}`);
+    navigate(ROUTES.admin.organisations.locations.view(organisationId, locationId));
   };
 
   const handleEdit = (locationId: string) => {
-    navigate(`/admin/organisations/${organisationId}/service-delivery-locations/${locationId}/edit`);
+    navigate(ROUTES.admin.organisations.locations.edit(organisationId, locationId));
   };
 
   const handleCreate = () => {
-    navigate(`/admin/organisations/${organisationId}/service-delivery-locations/create`);
+    navigate(ROUTES.admin.organisations.locations.create(organisationId));
   };
 
 
@@ -33,9 +34,9 @@ const ListLocations = (): React.ReactElement => {
     <LoadingSpinner loading={orgLoading} label="Loading">
       <GeneralLayout
         breadcrumbs={[
-          { label: 'Home', link: '/admin/home' },
-          { label: 'Local Authorities', link: '/admin/organisations' },
-          { label: orgData?.data.name ?? '', link: `/admin/organisations/${organisationId}` },
+          { label: 'Home', link: ROUTES.admin.home },
+          { label: 'Local Authorities', link: ROUTES.admin.organisations.list },
+          { label: orgData?.data.name ?? '', link: ROUTES.admin.organisations.view(organisationId) },
         ]}
         currentPage="Sites">
         <ListLocationsComponent organisationId={organisationId!} handleView={handleView} handleEdit={handleEdit} handleCreate={handleCreate} />

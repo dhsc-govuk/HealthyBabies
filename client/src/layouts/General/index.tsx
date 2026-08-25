@@ -15,9 +15,11 @@ interface Props extends React.PropsWithChildren {
   endContent?: React.ReactElement;
   navigation?: { label: string; href: string }[];
   backLink?: { href: string; onClick?: () => void };
+  /** Set false when a child owns document.title (multi-step flows appending "Step X of Y"). */
+  manageTitle?: boolean;
 }
 
-const GeneralLayout = ({ children, breadcrumbs, currentPage, endContent, navigation, backLink }: Props): React.ReactElement => {
+const GeneralLayout = ({ children, breadcrumbs, currentPage, endContent, navigation, backLink, manageTitle = true }: Props): React.ReactElement => {
   return (
     <Box
       sx={{
@@ -29,7 +31,13 @@ const GeneralLayout = ({ children, breadcrumbs, currentPage, endContent, navigat
     >
       <GovUKSkipLink />
       <LayoutHeader navigation={navigation} />
-      <Content currentPage={currentPage} breadcrumbs={breadcrumbs ?? []} endContent={endContent} backLink={backLink} phaseBanner={<GovUKPhaseBanner phase="beta" />}>
+      <Content
+        currentPage={currentPage}
+        breadcrumbs={breadcrumbs ?? []}
+        endContent={endContent}
+        backLink={backLink}
+        manageTitle={manageTitle}
+        phaseBanner={<GovUKPhaseBanner phase="beta" />}>
         {children}
       </Content>
       <LayoutFooter />

@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { GlobalDataDto } from '../../../../../components/Global/Queries/globalData';
+import { API_ROUTES } from '../../../../../constants/apiRoutes';
 
 export interface CreateGlobalDataDto {
   entity: string;
@@ -8,4 +9,4 @@ export interface CreateGlobalDataDto {
 }
 
 export const createGlobalData = (data: CreateGlobalDataDto) =>
-  axios.post<GlobalDataDto>('/global-data', data);
+  axios.post<GlobalDataDto>(API_ROUTES.globalData.create, data);

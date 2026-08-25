@@ -1,4 +1,4 @@
-using System.Globalization;
+using Application.Common;
 using Domain.Services;
 
 namespace Application.Submissions.Helpers;
@@ -17,8 +17,11 @@ public static class ServiceQuarterlyInclusion
             return true;
         }
 
+        // SMD04 is stored day-first, as the client emits it. Reading it with InvariantCulture was
+        // month-first, so "03/10/2026" became 10 March and any day above 12 failed to parse at all —
+        // silently dropping a closed service from the collection (BLUM-7521 in a quieter form).
         var closedDateValue = service.GetAnswer(ClosedDateQuestionCode)?.Value;
-        if (!DateTime.TryParse(closedDateValue, CultureInfo.InvariantCulture, DateTimeStyles.AssumeLocal, out var closedDate))
+        if (!FormDateParser.TryParse(closedDateValue, out var closedDate))
         {
             return false;
         }

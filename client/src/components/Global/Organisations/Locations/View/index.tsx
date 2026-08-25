@@ -5,6 +5,7 @@ import { booleanToYesNo } from '../../../../../helpers/stringUtils';
 import { useQuery } from 'react-query';
 import { defaultStaleTime, viewServiceDeliverySiteCacheKey } from '../../../../../helpers/queriesParams';
 import { getLocation, SiteAnswerDto } from '../Edit/queries';
+import { ROUTES } from '../../../../../constants/routes';
 
 interface Props {
   organisationId: string;
@@ -27,12 +28,12 @@ const ViewLocationDetails = ({ organisationId, locationId, apiBasePath, editPath
   });
 
   const handleEdit = () => {
-    const path = editPath || `/organisation-admin/core-data/delivery-locations/${locationId}/edit`;
+    const path = editPath || ROUTES.organisationAdmin.locations.edit(locationId);
     navigate(path);
   };
 
   const handleDelete = () => {
-    navigate(`/organisation-admin/core-data/delivery-locations/${locationId}/delete`);
+    navigate(ROUTES.organisationAdmin.locations.delete(locationId));
   };
 
   if (locLoading) {
@@ -76,6 +77,8 @@ const ViewLocationDetails = ({ organisationId, locationId, apiBasePath, editPath
       <h2 className="govuk-heading-m">Site Information</h2>
       <GovUKSummaryTable
         variant="card"
+        caption="Site information"
+        captionVisuallyHidden
         rows={rows}
         actions={[
           { label: 'Change', onClick: handleEdit },

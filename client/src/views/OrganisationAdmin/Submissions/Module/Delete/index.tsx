@@ -7,15 +7,7 @@ import { Paragraph } from '../../../../../components/GovUKComponents';
 import { getFormModule, deleteFormModule } from '../../queries';
 import { WarningPanel, WarningPanelTitle, WarningPanelBody, WarningPanelActions, WarningPanelLink } from '../../../../../styles/govuk-global';
 import usePageTitle from '../../../../../hooks/usePageTitle';
-
-const formatDate = (dateString: string): string => {
-  const date = new Date(dateString);
-  return date.toLocaleDateString('en-GB', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  });
-};
+import { ROUTES } from '../../../../../constants/routes';
 
 const DeleteModule = (): React.ReactElement => {
   usePageTitle('Delete module');
@@ -43,7 +35,7 @@ const DeleteModule = (): React.ReactElement => {
     onSuccess: () => {
       queryClient.invalidateQueries(['organisation-admin-submission', submissionId]);
       queryClient.invalidateQueries(['organisation-admin-module', submissionId, moduleId]);
-      navigate(`/organisation-admin/submissions/${submissionId}`, {
+      navigate(ROUTES.organisationAdmin.submissions.view(submissionId), {
         state: {
           successTitle: `${formModule?.name} data deleted`,
           successMessage: `${formModule?.name} data has been successfully deleted.`,
@@ -57,7 +49,7 @@ const DeleteModule = (): React.ReactElement => {
   };
 
   const handleCancel = () => {
-    navigate(`/organisation-admin/submissions/${submissionId}/modules/${moduleId}`);
+    navigate(ROUTES.organisationAdmin.submissions.module.view(submissionId, moduleId));
   };
 
   const isLoading = isLoadingModule || deleteMutation.isLoading;
@@ -76,7 +68,7 @@ const DeleteModule = (): React.ReactElement => {
     return (
       <GeneralLayout>
         <Paragraph>Form module not found.</Paragraph>
-        <a href={`/organisation-admin/submissions/${submissionId}`} className="govuk-link">
+        <a href={ROUTES.organisationAdmin.submissions.view(submissionId)} className="govuk-link">
           Back to submission
         </a>
       </GeneralLayout>
@@ -85,16 +77,15 @@ const DeleteModule = (): React.ReactElement => {
 
   return (
     <LoadingBox loading={isLoading}>
-      <GeneralLayout backLink={{ href: `/organisation-admin/submissions/${submissionId}/modules/${moduleId}` }}>
+      <GeneralLayout backLink={{ href: ROUTES.organisationAdmin.submissions.module.view(submissionId, moduleId) }}>
         <WarningPanel>
           <WarningPanelTitle>Are you sure you want to delete {formModule.name.toLowerCase()} data?</WarningPanelTitle>
           <WarningPanelBody>
-            Deleting {formModule.name.toLowerCase()} data will remove all saved information about {formModule.name.toLowerCase()} in the past 3 months, from{' '}
-            {formatDate(formModule.startDate)} to {formatDate(formModule.endDate)}.
+            Deleting {formModule.name.toLowerCase()} data will remove all saved information about {formModule.name.toLowerCase()} in the relevant quarter.
           </WarningPanelBody>
           <WarningPanelBody>This will not remove any saved {formModule.name.toLowerCase()} data from previous Management Information data collections.</WarningPanelBody>
           <WarningPanelBody>This cannot be undone.</WarningPanelBody>
-          <WarningPanelBody>If you want to keep this service&apos;s user data for the past quarter, you can go back.</WarningPanelBody>
+          <WarningPanelBody>If you want to keep this service&apos;s user data for the relevant quarter, you can go back.</WarningPanelBody>
           <WarningPanelActions>
             <Button onClick={handleDelete} disabled={isLoading} buttonColour="#ffffff" buttonTextColour="#1d70b8">
               Yes, I want to delete

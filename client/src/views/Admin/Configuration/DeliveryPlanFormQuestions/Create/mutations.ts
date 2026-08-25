@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { FormField, FormFieldOption } from '../../DataCollectionFormQuestions/Common/types';
+import { API_ROUTES } from '../../../../../constants/apiRoutes';
 
 export interface CreateFormFieldRequest {
   formModuleId: string;
@@ -18,6 +19,6 @@ export interface CreateFormFieldRequest {
 }
 
 export const createFormField = async (request: CreateFormFieldRequest): Promise<FormField> => {
-  const response = await axios.post<FormField>('/data-collection-form-questions', request);
+  const response = await axios.post<FormField>(API_ROUTES.dataCollectionFormQuestions.create, request);
   return response.data;
 };

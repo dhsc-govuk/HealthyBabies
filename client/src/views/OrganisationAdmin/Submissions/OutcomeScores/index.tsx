@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { useMutation, useQuery } from 'react-query';
 import { GeneralLayout } from '../../../../layouts';
-import { LoadingSpinner, GovUKButton, GovUKTag, GovUKNotificationBanner } from '../../../../components/GovUKComponents';
+import { LoadingSpinner, GovUKButton, GovUKLinkButton, GovUKTag, GovUKNotificationBanner, GovUKTableScroll } from '../../../../components/GovUKComponents';
 import { SpreadsheetIcon } from '../../../../components/Icons';
 import { getSubmissionStatusTagColour } from '../../../../helpers/submissionStatusColour';
 import {
@@ -10,12 +10,14 @@ import {
   createOutcomeScoreRecord,
   OutcomeScoreRecordDto,
   downloadBulkUploadTemplate,
+  downloadModuleExportCsv,
   type TemplateFormat,
   getBulkUploadTemplateFileName,
   ServiceRecordRequirementDto,
 } from '../queries';
 import '../ServiceUsers/styles.css';
 import usePageTitle from '../../../../hooks/usePageTitle';
+import { ROUTES } from '../../../../constants/routes';
 
 const downloadFile = (blob: Blob, filename: string) => {
   const url = window.URL.createObjectURL(blob);
@@ -60,7 +62,7 @@ const OutcomeScoresList = (): React.ReactElement => {
   const createRecordMutation = useMutation({
     mutationFn: () => createOutcomeScoreRecord(submissionId!, moduleId!),
     onSuccess: (response) => {
-      navigate(`/organisation-admin/submissions/${submissionId}/modules/${moduleId}/outcome-scores/${response.data.recordId}`);
+      navigate(ROUTES.organisationAdmin.submissions.outcomeScores.form(submissionId, moduleId, response.data.recordId));
     },
     onError: (error) => {
       console.error('Failed to create record:', error);
@@ -96,19 +98,19 @@ const OutcomeScoresList = (): React.ReactElement => {
   };
 
   const handleViewRecord = (recordId: string) => {
-    navigate(`/organisation-admin/submissions/${submissionId}/modules/${moduleId}/outcome-scores/${recordId}/view`);
+    navigate(ROUTES.organisationAdmin.submissions.outcomeScores.view(submissionId, moduleId, recordId));
   };
 
   const handleChangeRecord = (recordId: string) => {
-    navigate(`/organisation-admin/submissions/${submissionId}/modules/${moduleId}/outcome-scores/${recordId}/edit`);
+    navigate(ROUTES.organisationAdmin.submissions.outcomeScores.edit(submissionId, moduleId, recordId));
   };
 
   const handleDeleteRecord = (recordId: string) => {
-    navigate(`/organisation-admin/submissions/${submissionId}/modules/${moduleId}/outcome-scores/${recordId}/delete`);
+    navigate(ROUTES.organisationAdmin.submissions.outcomeScores.delete(submissionId, moduleId, recordId));
   };
 
   const handleBack = () => {
-    navigate(`/organisation-admin/submissions/${submissionId}`);
+    navigate(ROUTES.organisationAdmin.submissions.view(submissionId));
   };
 
   const handleDownloadTemplate = async (format: TemplateFormat = 'csv') => {
@@ -121,8 +123,19 @@ const OutcomeScoresList = (): React.ReactElement => {
     }
   };
 
+  // BLUM-7361: exports the actual submitted records, not the blank upload template - see
+  // downloadModuleExportCsv for why these are different endpoints.
+  const handleDownloadExport = async () => {
+    try {
+      const blob = await downloadModuleExportCsv(submissionId!, moduleId!);
+      downloadFile(blob, 'outcome_scores.csv');
+    } catch (error) {
+      console.error('Failed to download export:', error);
+    }
+  };
+
   const handleBulkUpload = () => {
-    navigate(`/organisation-admin/submissions/${submissionId}/modules/${moduleId}/outcome-scores/bulk-upload`);
+    navigate(ROUTES.organisationAdmin.submissions.outcomeScores.bulkUpload(submissionId, moduleId));
   };
 
   const uniqueServices = useMemo(() => {
@@ -140,9 +153,9 @@ const OutcomeScoresList = (): React.ReactElement => {
     <LoadingSpinner loading={isLoading} label="Loading outcome scores">
       <GeneralLayout
         breadcrumbs={[
-          { label: 'Home', link: '/organisation-admin/home' },
-          { label: 'Submissions', link: '/organisation-admin/submissions' },
-          { label: moduleData?.submissionName || 'Submission', link: `/organisation-admin/submissions/${submissionId}` },
+          { label: 'Home', link: ROUTES.organisationAdmin.home },
+          { label: 'Submissions', link: ROUTES.organisationAdmin.submissions.list },
+          { label: moduleData?.submissionName || 'Submission', link: ROUTES.organisationAdmin.submissions.view(submissionId) },
           { label: 'Outcome scores', link: '#' },
         ]}
         currentPage=""
@@ -169,7 +182,7 @@ const OutcomeScoresList = (): React.ReactElement => {
             <h2 className="govuk-heading-m">Tell us about outcome scores for your service users</h2>
             <p className="govuk-body">
               If services delivered by your local authority, or arranged on its behalf through the Best Start Family Hubs and Start for Life programme, collect scores before and
-              after an intervention, provide these outcome scores for service users in the past 3 months.
+              after an intervention, provide these outcome scores for service users in the relevant quarter.
             </p>
             <p className="govuk-body">You can submit your data in one of two ways:</p>
             <ul className="govuk-list govuk-list--bullet">
@@ -201,26 +214,14 @@ const OutcomeScoresList = (): React.ReactElement => {
                     <p className="govuk-body-s govuk-!-margin-bottom-2">Template</p>
                     <ul className="govuk-list govuk-!-margin-bottom-0">
                       <li>
-                        <a
-                          href="#"
-                          className="govuk-link"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            handleDownloadTemplate('csv');
-                          }}>
+                        <GovUKLinkButton onClick={() => handleDownloadTemplate('csv')}>
                           Download CSV template
-                        </a>
+                        </GovUKLinkButton>
                       </li>
                       <li>
-                        <a
-                          href="#"
-                          className="govuk-link"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            handleDownloadTemplate('xlsx');
-                          }}>
+                        <GovUKLinkButton onClick={() => handleDownloadTemplate('xlsx')}>
                           Download Excel template
-                        </a>
+                        </GovUKLinkButton>
                       </li>
                     </ul>
                   </div>
@@ -229,9 +230,9 @@ const OutcomeScoresList = (): React.ReactElement => {
             </div>
 
             <p className="govuk-body">
-              <a href="#" className="govuk-link">
+              <GovUKLinkButton>
                 ► Help with outcome scores
-              </a>
+              </GovUKLinkButton>
             </p>
 
             <hr className="govuk-section-break govuk-section-break--l govuk-section-break--visible" />
@@ -251,7 +252,9 @@ const OutcomeScoresList = (): React.ReactElement => {
                     </strong>
                   </div>
                 )}
+                <GovUKTableScroll label="Outcome scores table">
                 <table className="govuk-table">
+                  <caption className="govuk-visually-hidden">Outcome score records required per service</caption>
                   <thead className="govuk-table__head">
                     <tr className="govuk-table__row">
                       <th scope="col" className="govuk-table__header">
@@ -305,6 +308,7 @@ const OutcomeScoresList = (): React.ReactElement => {
                     </tr>
                   </tfoot>
                 </table>
+                </GovUKTableScroll>
               </div>
             )}
 
@@ -317,7 +321,7 @@ const OutcomeScoresList = (): React.ReactElement => {
                 <GovUKButton className="govuk-button govuk-button--secondary govuk-!-margin-bottom-0" onClick={handleBulkUpload}>
                   Upload with CSV
                 </GovUKButton>
-                <GovUKButton className="govuk-button govuk-button--secondary govuk-!-margin-bottom-0" onClick={() => handleDownloadTemplate('csv')}>
+                <GovUKButton className="govuk-button govuk-button--secondary govuk-!-margin-bottom-0" onClick={handleDownloadExport}>
                   Download copy in CSV
                 </GovUKButton>
               </div>
@@ -426,33 +430,15 @@ const OutcomeScoresList = (): React.ReactElement => {
                       {record.status === 'Draft' && <GovUKTag colour={getSubmissionStatusTagColour(record.status)}>{record.status}</GovUKTag>}
                     </div>
                     <div style={{ display: 'flex', gap: '15px' }}>
-                      <a
-                        href="#"
-                        className="govuk-link"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          handleViewRecord(record.recordId);
-                        }}>
+                      <GovUKLinkButton onClick={() => handleViewRecord(record.recordId)}>
                         View<span className="govuk-visually-hidden"> record {record.anonymisedId}</span>
-                      </a>
-                      <a
-                        href="#"
-                        className="govuk-link"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          handleChangeRecord(record.recordId);
-                        }}>
+                      </GovUKLinkButton>
+                      <GovUKLinkButton onClick={() => handleChangeRecord(record.recordId)}>
                         Change<span className="govuk-visually-hidden"> record {record.anonymisedId}</span>
-                      </a>
-                      <a
-                        href="#"
-                        className="govuk-link"
-                        onClick={(e) => {
-                          e.preventDefault();
-                          handleDeleteRecord(record.recordId);
-                        }}>
+                      </GovUKLinkButton>
+                      <GovUKLinkButton onClick={() => handleDeleteRecord(record.recordId)}>
                         Delete<span className="govuk-visually-hidden"> record {record.anonymisedId}</span>
-                      </a>
+                      </GovUKLinkButton>
                     </div>
                   </li>
                 ))}

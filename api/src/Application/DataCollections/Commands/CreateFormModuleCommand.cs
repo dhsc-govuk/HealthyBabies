@@ -1,3 +1,4 @@
+using System.Text.RegularExpressions;
 using Application.Common.Interfaces.Repositories;
 using Application.DataCollections.Exceptions;
 using Domain.DataCollections;
@@ -8,7 +9,6 @@ namespace Application.DataCollections.Commands;
 
 public record CreateFormModuleCommand : IRequest<Either<FormModuleException, DataCollectionFormModule>>
 {
-    public string Code { get; init; } = string.Empty;
     public string Name { get; init; } = string.Empty;
     public string? Description { get; init; }
     public string Type { get; init; } = string.Empty;
@@ -18,6 +18,8 @@ public class CreateFormModuleCommandHandler(
     IDataCollectionFormModuleRepository moduleRepository)
     : IRequestHandler<CreateFormModuleCommand, Either<FormModuleException, DataCollectionFormModule>>
 {
+    private static readonly Regex NonAlphanumeric = new(@"[^a-z0-9]+", RegexOptions.Compiled);
+
     public async Task<Either<FormModuleException, DataCollectionFormModule>> Handle(
         CreateFormModuleCommand request,
         CancellationToken cancellationToken)
@@ -28,17 +30,13 @@ public class CreateFormModuleCommandHandler(
             return new FormModuleInvalidTypeException(request.Type);
         }
 
-        var codeExists = await moduleRepository.ExistsByCode(request.Code, cancellationToken);
-        if (codeExists)
-        {
-            return new FormModuleDuplicateCodeException(request.Code);
-        }
+        var code = await GenerateUniqueCode(request.Name, cancellationToken);
 
         var sectionNumber = await moduleRepository.GetNextSectionNumber(cancellationToken);
 
         var module = DataCollectionFormModule.Create(
             DataCollectionFormModuleId.New(),
-            request.Code,
+            code,
             sectionNumber,
             request.Name,
             request.Description,
@@ -47,5 +45,22 @@ public class CreateFormModuleCommandHandler(
         await moduleRepository.AddAsync(module, cancellationToken);
 
         return module;
+    }
+
+    // The Code is the module's system-managed identifier - never accepted from the client (BLUM-7067).
+    // Slugified from Name, with a numeric suffix appended on collision so it stays unique.
+    private async Task<string> GenerateUniqueCode(string name, CancellationToken cancellationToken)
+    {
+        var baseCode = NonAlphanumeric.Replace(name.Trim().ToLowerInvariant(), "-").Trim('-');
+
+        var code = baseCode;
+        var suffix = 2;
+        while (await moduleRepository.ExistsByCode(code, cancellationToken))
+        {
+            code = $"{baseCode}-{suffix}";
+            suffix++;
+        }
+
+        return code;
     }
 }

@@ -4,26 +4,26 @@ import { useQuery, useMutation, useQueryClient } from 'react-query';
 import { LoadingBox } from 'govuk-react';
 import { GeneralLayout } from '../../../../layouts';
 import { GovUKButton, useGovUKNotification } from '../../../../components/GovUKComponents';
-import { getSubmissionById } from '../View/queries';
+import { getSubmissionById, updateSubmissionDates } from '../View/queries';
 import { processError } from '../../../../helpers/axiosErrorFallback';
-import axios from 'axios';
 import './styles.css';
 import usePageTitle from '../../../../hooks/usePageTitle';
+import { ROUTES } from '../../../../constants/routes';
 
-interface UpdateDataCollectionDto {
-  id: string;
-  name: string;
-  description: string | null;
-  startDate: string;
-  endDate: string;
-}
-
-const updateSubmissionDates = (dto: UpdateDataCollectionDto) =>
-  axios.put('/admin/data-collections/edit', dto);
-
+// End dates are stored as UK-local-midnight-as-UTC, so read and write them with local-time accessors.
+// Going through toISOString() here would disagree with formatDateDisplay below and shift the date by a
+// day during BST. For the same reason parseDateInput must not use new Date('YYYY-MM-DD'), which the
+// spec parses as UTC midnight rather than local midnight.
 const formatDateForInput = (dateString: string): string => {
   const date = new Date(dateString);
-  return date.toISOString().split('T')[0];
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${date.getFullYear()}-${month}-${day}`;
+};
+
+const parseDateInput = (value: string): Date => {
+  const [year, month, day] = value.split('-').map(Number);
+  return new Date(year, month - 1, day);
 };
 
 const formatDateDisplay = (dateString: string): string => {
@@ -65,7 +65,7 @@ function ChangeDueDate(): React.ReactElement {
         return Promise.reject(new Error('Missing data'));
       }
 
-      const newEndDate = new Date(dueDate);
+      const newEndDate = parseDateInput(dueDate);
       const startDate = new Date(submission.startDate);
 
       if (newEndDate <= startDate) {
@@ -73,19 +73,13 @@ function ChangeDueDate(): React.ReactElement {
         return Promise.reject(new Error('Due date must be after the start date'));
       }
 
-      return updateSubmissionDates({
-        id: submissionId!,
-        name: submission.name,
-        description: submission.description,
-        startDate: submission.startDate,
-        endDate: newEndDate.toISOString(),
-      });
+      return updateSubmissionDates(submissionId!, { endDate: newEndDate.toISOString() });
     },
     onSuccess: () => {
       setNotification({ type: 'success', title: 'Success', message: 'Due date updated successfully' });
       queryClient.invalidateQueries(['submission-view', submissionId]);
       queryClient.invalidateQueries(['submissions-list']);
-      navigate(`/admin/submissions/${submissionId}`);
+      navigate(ROUTES.admin.submissions.view(submissionId));
     },
     onError: (err) => {
       if (err instanceof Error && err.message === 'Due date must be after the start date') {
@@ -102,7 +96,7 @@ function ChangeDueDate(): React.ReactElement {
   };
 
   const handleCancel = () => {
-    navigate(`/admin/submissions/${submissionId}`);
+    navigate(ROUTES.admin.submissions.view(submissionId));
   };
 
   const hasChanged = submission ? dueDate !== formatDateForInput(submission.endDate) : false;
@@ -110,12 +104,11 @@ function ChangeDueDate(): React.ReactElement {
   return (
     <GeneralLayout
       breadcrumbs={[
-        { label: 'Home', link: '/admin/home' },
-        { label: 'Submissions', link: '/admin/submissions' },
-        { label: submission?.name || 'Submission', link: `/admin/submissions/${submissionId}` },
+        { label: 'Home', link: ROUTES.admin.home },
+        { label: 'Submissions', link: ROUTES.admin.submissions.list },
+        { label: submission?.name || 'Submission', link: ROUTES.admin.submissions.view(submissionId) },
         { label: 'Change due date', link: '' },
-      ]}
-    >
+      ]}>
       <LoadingBox loading={isLoading}>
         {submission && (
           <>
@@ -132,9 +125,7 @@ function ChangeDueDate(): React.ReactElement {
                 <label className="govuk-label govuk-label--m" htmlFor="due-date">
                   New due date
                 </label>
-                <div className="govuk-hint">
-                  The due date must be after the start date.
-                </div>
+                <div className="govuk-hint">The due date must be after the start date.</div>
                 {error && (
                   <p className="govuk-error-message">
                     <span className="govuk-visually-hidden">Error:</span> {error}
@@ -158,13 +149,12 @@ function ChangeDueDate(): React.ReactElement {
                   {isUpdating ? 'Saving...' : 'Save changes'}
                 </GovUKButton>
                 <a
-                  href={`/admin/submissions/${submissionId}`}
+                  href={ROUTES.admin.submissions.view(submissionId)}
                   className="govuk-link"
                   onClick={(e) => {
                     e.preventDefault();
                     handleCancel();
-                  }}
-                >
+                  }}>
                   Cancel
                 </a>
               </div>

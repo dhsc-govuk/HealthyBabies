@@ -3,8 +3,9 @@ import usePageTitle from '../../../hooks/usePageTitle';
 import { useNavigate, Link } from 'react-router-dom';
 import { roleToAreaMap, useAuthProvider } from '../../../components/AuthProvider';
 import { GovUKHeaderLogo } from '../../../components/Logos';
-import { GovUKBreadcrumbs, GovUKButton, GovUKSkipLink } from '../../../components/GovUKComponents';
+import { GovUKBreadcrumbs, GovUKButton, GovUKNotificationDisplay, GovUKSkipLink, useGovUKNotification } from '../../../components/GovUKComponents';
 import LayoutFooter from '../../../layouts/General/LayoutFooter';
+import { ROUTES } from '../../../constants/routes';
 import './styles.css';
 
 const ArrowIcon = () => (
@@ -17,18 +18,23 @@ const SignIn = () => {
   usePageTitle('Sign in');
   const navigate = useNavigate();
   const { signIn, userRole } = useAuthProvider();
+  const { setNotification } = useGovUKNotification();
   const [signingIn, setSigningIn] = useState<boolean>(false);
 
   useEffect(() => {
     if (userRole) {
       const area = roleToAreaMap(userRole);
-      return navigate(`/${area}/home`);
+      return navigate(ROUTES.areaHome(area));
     }
   }, [userRole, navigate]);
 
   const handleSignIn = () => {
     setSigningIn(true);
-    signIn();
+    signIn().catch((error) => {
+      console.error(error);
+      setSigningIn(false);
+      setNotification({ type: 'important', title: 'Error', message: 'Something went wrong signing in. Please try again.' });
+    });
   };
 
   const breadcrumbItems = [
@@ -56,6 +62,7 @@ const SignIn = () => {
           {/* Breadcrumbs */}
           <GovUKBreadcrumbs items={breadcrumbItems} />
           <div className="govuk-main-wrapper" style={{ paddingTop: '20px' }}>
+            <GovUKNotificationDisplay />
             <h1 className="govuk-heading-xl">Report data on Best Start Family Hubs and Healthy Babies</h1>
 
             <p className="govuk-body">
@@ -80,7 +87,7 @@ const SignIn = () => {
 
             <p className="govuk-body">
               By using this service, you acknowledge and agree with the{' '}
-              <Link to="/acceptable-use-policy" className="govuk-link">
+              <Link to={ROUTES.acceptableUsePolicy} className="govuk-link">
                 acceptable use policy
               </Link>
               .
@@ -94,7 +101,7 @@ const SignIn = () => {
             <h2 className="govuk-heading-m">If you cannot sign in to your account</h2>
             <p className="govuk-body">
               If you have problems signing in to your account,{' '}
-              <Link to="/help" className="govuk-link">
+              <Link to={ROUTES.help} className="govuk-link">
                 read our help guidance
               </Link>
               .

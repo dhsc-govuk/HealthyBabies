@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Application.Common;
 using Application.Organisations.Dtos;
 using Domain.Locations;
 using Domain.Organisations;
@@ -48,9 +49,9 @@ public static class LocationBulkUploadRecordHelper
 
             if (question.QuestionType == SiteFormQuestionType.Date)
             {
-                if (!DateTime.TryParse(value, out var parsedDate))
+                if (!FormDateParser.TryParse(value, out var parsedDate))
                 {
-                    errors.Add(new BulkUploadRowValidationError(question.Code, "Invalid date format. Expected: YYYY-MM-DD"));
+                    errors.Add(new BulkUploadRowValidationError(question.Code, "Invalid date format. Expected: YYYY-MM-DD or DD/MM/YYYY"));
                 }
                 else
                 {

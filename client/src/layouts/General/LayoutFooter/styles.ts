@@ -12,7 +12,7 @@ export const FooterRoot = styled(Box)(() => ({
 }));
 
 export const FooterContainer = styled(Box)(() => ({
-  maxWidth: '960px',
+  maxWidth: '1080px',
   margin: '0 auto',
   padding: '25px 15px 15px',
 }));

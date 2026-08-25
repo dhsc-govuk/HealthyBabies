@@ -1,0 +1,28 @@
+/* Back link rendered as a <button> for JavaScript-only navigation (e.g. stepping back within a
+   multi-step flow, where there is no URL to link to). It must be indistinguishable from the
+   anchor version, which needs two things the class alone does not give a button.
+
+   1. Only the button's own chrome is reset. padding-left is deliberately NOT reset:
+      .govuk-back-link sets padding-left: .875em to reserve space for the ::before chevron
+      (positioned at left: .1875em). A blanket `padding: 0` has equal specificity and loads
+      later, so it wins and collapses that space, dropping the chevron on top of the text.
+
+   2. The colour is restated because govuk-frontend applies it via .govuk-back-link:link, and
+      :link only ever matches an anchor with an href — a button matches none of it. :hover,
+      :focus and :active are not :link-scoped, so those states already work.
+
+   The font is likewise not reset: `font: inherit` would override .govuk-back-link's own
+   font-size (1rem) and render the link at body size. */
+.govuk-back-link--button {
+  padding-top: 0;
+  padding-right: 0;
+  padding-bottom: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  color: var(--_govuk-text-colour, #0b0c0c);
+}
+
+.govuk-back-link--button:disabled {
+  cursor: default;
+}

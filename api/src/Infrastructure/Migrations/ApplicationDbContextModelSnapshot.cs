@@ -348,6 +348,11 @@ namespace Infrastructure.Migrations
                         .HasColumnType("uuid")
                         .HasColumnName("reviewed_by_id");
 
+                    b.Property<string>("SectionsToReview")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("sections_to_review");
+
                     b.Property<int>("Status")
                         .HasColumnType("integer")
                         .HasColumnName("status");
@@ -387,6 +392,94 @@ namespace Infrastructure.Migrations
                         .HasDatabaseName("ix_data_collection_submissions_data_collection_organisation");
 
                     b.ToTable("data_collection_submissions", (string)null);
+                });
+
+            modelBuilder.Entity("Domain.DataCollections.DataCollectionSubmissionVersion", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Content")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("content");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at")
+                        .HasDefaultValueSql("timezone('utc', now())");
+
+                    b.Property<Guid?>("CreatedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("created_by_id");
+
+                    b.Property<Guid>("DataCollectionSubmissionId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("data_collection_submission_id");
+
+                    b.Property<Guid?>("LastModifiedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("last_modified_by_id");
+
+                    b.Property<DateTime?>("ResubmitBy")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("resubmit_by");
+
+                    b.Property<string>("ReviewNotes")
+                        .HasColumnType("varchar(2000)")
+                        .HasColumnName("review_notes");
+
+                    b.Property<DateTime>("ReviewedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("reviewed_at");
+
+                    b.Property<Guid>("ReviewedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("reviewed_by_id");
+
+                    b.Property<string>("SectionsToReview")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("sections_to_review");
+
+                    b.Property<DateTime?>("SubmittedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("submitted_at");
+
+                    b.Property<Guid?>("SubmittedById")
+                        .HasColumnType("uuid")
+                        .HasColumnName("submitted_by_id");
+
+                    b.Property<DateTime?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<int>("VersionNumber")
+                        .HasColumnType("integer")
+                        .HasColumnName("version_number");
+
+                    b.HasKey("Id")
+                        .HasName("pk_data_collection_submission_versions");
+
+                    b.HasIndex("CreatedById")
+                        .HasDatabaseName("ix_data_collection_submission_versions_created_by_id");
+
+                    b.HasIndex("LastModifiedById")
+                        .HasDatabaseName("ix_data_collection_submission_versions_last_modified_by_id");
+
+                    b.HasIndex("ReviewedById")
+                        .HasDatabaseName("ix_data_collection_submission_versions_reviewed_by_id");
+
+                    b.HasIndex("SubmittedById")
+                        .HasDatabaseName("ix_data_collection_submission_versions_submitted_by_id");
+
+                    b.HasIndex("DataCollectionSubmissionId", "VersionNumber")
+                        .IsUnique()
+                        .HasDatabaseName("ux_data_collection_submission_versions_submission_version");
+
+                    b.ToTable("data_collection_submission_versions", (string)null);
                 });
 
             modelBuilder.Entity("Domain.DataCollections.Forms.DataSource", b =>
@@ -2630,6 +2723,51 @@ namespace Infrastructure.Migrations
                     b.Navigation("LastModifiedBy");
 
                     b.Navigation("Organisation");
+
+                    b.Navigation("ReviewedBy");
+
+                    b.Navigation("SubmittedBy");
+                });
+
+            modelBuilder.Entity("Domain.DataCollections.DataCollectionSubmissionVersion", b =>
+                {
+                    b.HasOne("Domain.Users.User", "CreatedBy")
+                        .WithMany()
+                        .HasForeignKey("CreatedById")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_data_collection_submission_versions_users_created_by_id");
+
+                    b.HasOne("Domain.DataCollections.DataCollectionSubmission", "DataCollectionSubmission")
+                        .WithMany()
+                        .HasForeignKey("DataCollectionSubmissionId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_data_collection_submission_versions_data_collection_submissions");
+
+                    b.HasOne("Domain.Users.User", "LastModifiedBy")
+                        .WithMany()
+                        .HasForeignKey("LastModifiedById")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_data_collection_submission_versions_users_last_modified_by_id");
+
+                    b.HasOne("Domain.Users.User", "ReviewedBy")
+                        .WithMany()
+                        .HasForeignKey("ReviewedById")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_data_collection_submission_versions_users_reviewed_by");
+
+                    b.HasOne("Domain.Users.User", "SubmittedBy")
+                        .WithMany()
+                        .HasForeignKey("SubmittedById")
+                        .OnDelete(DeleteBehavior.SetNull)
+                        .HasConstraintName("fk_data_collection_submission_versions_users_submitted_by");
+
+                    b.Navigation("CreatedBy");
+
+                    b.Navigation("DataCollectionSubmission");
+
+                    b.Navigation("LastModifiedBy");
 
                     b.Navigation("ReviewedBy");
 

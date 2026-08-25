@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useId } from 'react';
+import { GovUKAutocomplete } from '../../../../GovUKComponents';
 import { SiteFormQuestionDto, SiteFormQuestionType } from '../../../SiteForms/types';
 import { CellError } from './types';
 import './styles.css';
@@ -38,14 +39,13 @@ const CellEditor: React.FC<CellEditorProps> = ({
     getValidCheckboxValues(value, question?.options)
   );
   const inputRef = useRef<HTMLInputElement>(null);
-  const selectRef = useRef<HTMLSelectElement>(null);
   const errorId = useId();
+  const fieldId = useId();
 
   useEffect(() => {
+    // Dropdown fields focus themselves via GovUKAutocomplete's autoFocus.
     if (inputRef.current) {
       inputRef.current.focus();
-    } else if (selectRef.current) {
-      selectRef.current.focus();
     }
   }, []);
 
@@ -93,23 +93,21 @@ const CellEditor: React.FC<CellEditorProps> = ({
       case SiteFormQuestionType.Radio:
       case SiteFormQuestionType.Select:
         return (
-          <select
-            ref={selectRef}
+          <GovUKAutocomplete
+            inline
+            autoFocus
+            showAllValues
+            autoselect
+            id={fieldId}
+            name={question.code || question.label}
+            label={question.label}
+            options={question.options}
             value={editValue}
-            onChange={(e) => setEditValue(e.target.value)}
+            onChange={setEditValue}
             onKeyDown={handleKeyDown}
-            className="cell-editor__select"
-            aria-label={question.label}
-            aria-invalid={!!error}
-            aria-describedby={error ? errorId : undefined}
-          >
-            <option value="">-- Select --</option>
-            {question.options.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
+            invalid={!!error}
+            describedBy={error ? errorId : undefined}
+          />
         );
 
       case SiteFormQuestionType.Checkbox:
@@ -122,6 +120,16 @@ const CellEditor: React.FC<CellEditorProps> = ({
                   checked={checkboxValues.includes(option.value)}
                   onChange={(e) => handleCheckboxChange(option.value, e.target.checked)}
                   className="cell-editor__checkbox-input"
+                  // Native checkboxes only respond to Space. Inside a cell editor that leaves
+                  // Enter as a dead key, so keyboard users cannot correct a flagged row.
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      handleCheckboxChange(option.value, !checkboxValues.includes(option.value));
+                    } else if (e.key === 'Escape') {
+                      onCancel();
+                    }
+                  }}
                 />
                 <span className="cell-editor__checkbox-label">{option.label}</span>
               </label>

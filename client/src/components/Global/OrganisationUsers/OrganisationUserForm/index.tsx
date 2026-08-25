@@ -3,6 +3,7 @@ import { Button, LoadingBox } from 'govuk-react';
 import { GovUKFieldset, GovUKAutocomplete, GovUKBackLink, H4, GovUKErrorSummary } from '../../../../components/GovUKComponents';
 import { validateEmailAddress } from '../../../../helpers/validators';
 import useErrorSummaryFocus from '../../../../hooks/useErrorSummaryFocus';
+import usePageTitle from '../../../../hooks/usePageTitle';
 import useStepFocus from '../../../../hooks/useStepFocus';
 import './styles.css';
 
@@ -41,6 +42,7 @@ export interface OrganisationUserFormProps {
   showOrganisation?: boolean;
   showRole?: boolean;
   hideBackLink?: boolean;
+  pageTitle?: string;
 }
 
 const roles = [
@@ -61,9 +63,17 @@ const OrganisationUserForm = ({
   showOrganisation = true,
   showRole = true,
   hideBackLink = false,
+  pageTitle,
 }: OrganisationUserFormProps): React.ReactElement => {
   const [step, setStep] = useState<'form' | 'review'>('form');
   const stepFocusRef = useStepFocus<HTMLDivElement>(step);
+
+  const stepLabel = pageTitle
+    ? step === 'form'
+      ? 'Step 1 of 2: User details'
+      : 'Step 2 of 2: Check your answers'
+    : undefined;
+  usePageTitle(pageTitle, false, stepLabel);
 
   const [formData, setFormData] = useState<OrganisationUserFormData>({
     firstName: initialData?.firstName ?? '',
@@ -231,7 +241,7 @@ const OrganisationUserForm = ({
                 make changes if anything needs updating.
               </p>
 
-              <dl className="govuk-summary-list govuk-summary-list--no-outer-border">
+              <dl className="govuk-summary-list govuk-summary-list--no-outer-border org-user-form__summary">
                 <div className="govuk-summary-list__row">
                   <dt className="govuk-summary-list__key">First name</dt>
                   <dd className="govuk-summary-list__value">{formData.firstName}</dd>

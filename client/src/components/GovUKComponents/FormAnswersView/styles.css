@@ -38,8 +38,9 @@
   color: #003078;
 }
 
+/* #b1b4b6 is only 2.08:1 against white; govuk-secondary-text-colour reaches 7.07:1. */
 .form-answers-view__action-divider {
-  color: #b1b4b6;
+  color: #505a5f;
 }
 
 .form-answers-view__table {
@@ -55,4 +56,32 @@
 .form-answers-view__value {
   text-align: left;
   vertical-align: top;
+}
+
+/* Reflow: two-column key/value table stacks vertically below the tablet breakpoint instead
+   of scrolling horizontally (WCAG 1.4.10). */
+@media (max-width: 640px) {
+  .form-answers-view__table,
+  .form-answers-view__table .govuk-table__body,
+  .form-answers-view__table .govuk-table__row,
+  .form-answers-view__table .form-answers-view__label,
+  .form-answers-view__table .form-answers-view__value {
+    display: block;
+    width: auto;
+  }
+
+  .form-answers-view__table .govuk-table__row {
+    border-bottom: 1px solid #b1b4b6;
+    padding: 10px 0;
+  }
+
+  .form-answers-view__table .form-answers-view__label,
+  .form-answers-view__table .form-answers-view__value {
+    border: 0;
+    padding: 0;
+  }
+
+  .form-answers-view__table .form-answers-view__label {
+    margin-bottom: 5px;
+  }
 }

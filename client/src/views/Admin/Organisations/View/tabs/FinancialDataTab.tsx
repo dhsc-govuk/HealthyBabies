@@ -1,13 +1,13 @@
 import React, { useState } from 'react';
 import { useQuery } from 'react-query';
 import { LoadingBox } from 'govuk-react';
-import { GovUKDetails } from '../../../../../components/GovUKComponents';
+import { GovUKDetails, GovUKTableScroll } from '../../../../../components/GovUKComponents';
 import { defaultStaleTime } from '../../../../../helpers/queriesParams';
 import { getOrganisationFinancialSummary } from '../queries';
-import { ALLOCATION_YEARS, ROLLOVER_YEAR, formatMoney, formatPercent, formatWholeMoney } from './constants';
-import StatCard from './StatCard';
-import SpendChart from './SpendChart';
-import './styles.css';
+import { ALLOCATION_YEARS, ROLLOVER_YEAR, formatMoney, formatPercent, formatWholeMoney } from '../../../../../components/Global/DeliveryPlanAnalytics/constants';
+import StatCard from '../../../../../components/Global/DeliveryPlanAnalytics/StatCard';
+import SpendChart from '../../../../../components/Global/DeliveryPlanAnalytics/SpendChart';
+import '../../../../../components/Global/DeliveryPlanAnalytics/styles.css';
 
 interface FinancialDataTabProps {
   organisationId: string;
@@ -100,6 +100,7 @@ const FinancialDataTab = ({ organisationId }: FinancialDataTabProps): React.Reac
             </div>
 
             <GovUKDetails summary="Show details with rollover spend">
+              <GovUKTableScroll label="Rollover spend table">
               <table className="govuk-table">
                 <caption className="govuk-table__caption govuk-table__caption--s">Rollover spend ({ROLLOVER_YEAR})</caption>
                 <tbody className="govuk-table__body">
@@ -141,13 +142,16 @@ const FinancialDataTab = ({ organisationId }: FinancialDataTabProps): React.Reac
                   </tr>
                 </tbody>
               </table>
+              </GovUKTableScroll>
             </GovUKDetails>
 
             <h2 className="govuk-heading-m govuk-!-margin-top-6">Forecasted vs allocated spend per strand</h2>
             <SpendChart data={summary.forecastByStrand} />
 
             <GovUKDetails summary="Show data table">
+              <GovUKTableScroll label="Forecasted vs allocated spend per strand table">
               <table className="govuk-table">
+                <caption className="govuk-visually-hidden">Forecasted and allocated spend per strand</caption>
                 <thead className="govuk-table__head">
                   <tr className="govuk-table__row">
                     <th scope="col" className="govuk-table__header">
@@ -173,6 +177,7 @@ const FinancialDataTab = ({ organisationId }: FinancialDataTabProps): React.Reac
                   ))}
                 </tbody>
               </table>
+              </GovUKTableScroll>
             </GovUKDetails>
           </>
         )}

@@ -1,5 +1,7 @@
 export { default as Home } from './Home';
 
+export { default as Summary } from '../DeliveryPlan/Summary';
+
 
 
 export { default as ListOrganisationUsers } from './Users/List';
@@ -76,6 +78,13 @@ export { default as OutcomeScoresBulkUpload } from './Submissions/BulkUpload/Out
 export { default as ActivitiesList } from '../DeliveryPlan/Submissions/Module/Activities';
 export { default as ActivityFormView } from '../DeliveryPlan/Submissions/Module/ActivityForm';
 export { default as ActivityDelete } from '../DeliveryPlan/Submissions/Module/Activities/DeleteActivity';
+export { default as ActivityBulkUpload } from '../DeliveryPlan/Submissions/BulkUpload/ActivityBulkUpload';
+export { default as PreviousSubmissions } from '../DeliveryPlan/Submissions/PreviousSubmissions';
+export { default as VersionDetail } from '../DeliveryPlan/Submissions/PreviousSubmissions/VersionDetail';
+export { default as VersionSection } from '../DeliveryPlan/Submissions/PreviousSubmissions/VersionSection';
+export { default as VersionActivity } from '../DeliveryPlan/Submissions/PreviousSubmissions/VersionActivity';
+export { default as ReviewSection } from '../DeliveryPlan/Submissions/ReviewSection';
+export { default as ReviewActivity } from '../DeliveryPlan/Submissions/ReviewSection/ReviewActivity';
 
 
 

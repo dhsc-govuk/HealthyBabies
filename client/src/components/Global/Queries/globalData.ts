@@ -1,6 +1,7 @@
 import { useQuery } from 'react-query';
 import axios from 'axios';
 import { defaultStaleTime } from '../../../helpers/queriesParams';
+import { API_ROUTES } from '../../../constants/apiRoutes';
 
 export interface GlobalDataDto {
   id: string;
@@ -15,7 +16,7 @@ export interface GlobalDataEntityTypeDto {
 }
 
 export const getEntityTypes = () =>
-  axios.get<GlobalDataEntityTypeDto[]>('/global-data/entity-types');
+  axios.get<GlobalDataEntityTypeDto[]>(API_ROUTES.globalData.entityTypes);
 
 export const useEntityTypesQuery = () =>
   useQuery({
@@ -25,7 +26,7 @@ export const useEntityTypesQuery = () =>
   });
 
 export const getGlobalDataByEntity = (entity: string) =>
-  axios.get<GlobalDataDto[]>(`/global-data/entity/${entity}`);
+  axios.get<GlobalDataDto[]>(API_ROUTES.globalData.entity(entity));
 
 export const useGlobalDataByEntityQuery = (entity: string) =>
   useQuery({

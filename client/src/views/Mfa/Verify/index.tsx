@@ -34,6 +34,7 @@ import {
   StyledLink,
   BodyText,
 } from './styles';
+import { ROUTES } from '../../../constants/routes';
 
 const MfaVerify = (): React.ReactElement => {
   const navigate = useNavigate();
@@ -122,7 +123,7 @@ const MfaVerify = (): React.ReactElement => {
         }
       }
 
-      const homeRoute = role ? `/${roleToAreaMap(role as any)}/home` : '/sign-in';
+      const homeRoute = role ? ROUTES.areaHome(roleToAreaMap(role as any)) : ROUTES.signIn;
 
       navigate(redirectPath || homeRoute);
     } catch (err: any) {
@@ -170,7 +171,8 @@ const MfaVerify = (): React.ReactElement => {
         </ServiceBannerContainer>
       </ServiceBanner>
 
-      <MainContent component="main" role="main">
+      {/* id matches the skip-link target and lets useRouteFocus find the page content. */}
+      <MainContent component="main" role="main" id="main-content">
         <ContentContainer>
           <GovUKPhaseBanner phase="beta" />
 

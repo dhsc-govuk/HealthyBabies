@@ -1,4 +1,5 @@
 import React from 'react';
+import { ROUTES } from '../../../constants/routes';
 
 interface NavigationItem {
   href: string;
@@ -15,7 +16,7 @@ interface GovUKServiceNavigationProps {
 
 function GovUKServiceNavigation({ 
   serviceName, 
-  serviceUrl = '/',
+  serviceUrl = ROUTES.home,
   navigation,
   className = '' 
 }: GovUKServiceNavigationProps): React.ReactElement {

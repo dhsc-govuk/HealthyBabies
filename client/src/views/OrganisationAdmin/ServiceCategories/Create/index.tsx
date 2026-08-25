@@ -24,6 +24,7 @@ import {
   replaceCategoryNamePlaceholder,
 } from '../Common';
 import { encodeForWaf } from '../../../../helpers/stringUtils';
+import { ROUTES } from '../../../../constants/routes';
 
 interface LocationState {
   categoryCode: string;
@@ -42,7 +43,11 @@ const CreateServiceCategory = (): React.ReactElement => {
   const [errors, setErrors] = useState<ValidationErrors>({});
   const [submitAttempts, setSubmitAttempts] = useState(0);
   useErrorSummaryFocus(submitAttempts, Object.values(errors).some(Boolean));
-  usePageTitle('Add wider services category', Object.values(errors).some(Boolean));
+  const SC_CREATE_STEPS: Record<number, string> = {
+    1: 'Step 1 of 2: Add details',
+    2: 'Step 2 of 2: Check your answers',
+  };
+  usePageTitle('Add wider services category', Object.values(errors).some(Boolean), SC_CREATE_STEPS[currentStep]);
   const [serviceCategoryId, setServiceCategoryId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -93,7 +98,7 @@ const CreateServiceCategory = (): React.ReactElement => {
       queryClient.invalidateQueries(serviceCategoriesCacheKey());
       queryClient.invalidateQueries(['organisation-admin-submission']);
       queryClient.invalidateQueries(['wider-service-users-module']);
-      navigate('/organisation-admin/core-data/wider-service-categories', {
+      navigate(ROUTES.organisationAdmin.widerServiceCategories.list, {
         state: {
           notification: {
             type: 'success',
@@ -132,7 +137,7 @@ const CreateServiceCategory = (): React.ReactElement => {
     if (currentStep === 2) {
       setCurrentStep(1);
     } else {
-      navigate('/organisation-admin/core-data/wider-service-categories');
+      navigate(ROUTES.organisationAdmin.widerServiceCategories.list);
     }
   };
 
@@ -158,7 +163,7 @@ const CreateServiceCategory = (): React.ReactElement => {
       queryClient.invalidateQueries(serviceCategoriesCacheKey());
       queryClient.invalidateQueries(['organisation-admin-submission']);
       queryClient.invalidateQueries(['wider-service-users-module']);
-      navigate('/organisation-admin/core-data/wider-service-categories', {
+      navigate(ROUTES.organisationAdmin.widerServiceCategories.list, {
         state: {
           notification: {
             type: 'success',
@@ -175,7 +180,7 @@ const CreateServiceCategory = (): React.ReactElement => {
       queryClient.invalidateQueries(serviceCategoriesCacheKey());
       queryClient.invalidateQueries(['organisation-admin-submission']);
       queryClient.invalidateQueries(['wider-service-users-module']);
-      navigate('/organisation-admin/core-data/wider-service-categories', {
+      navigate(ROUTES.organisationAdmin.widerServiceCategories.list, {
         state: {
           notification: {
             type: 'success',
@@ -198,7 +203,7 @@ const CreateServiceCategory = (): React.ReactElement => {
     return (
       <GeneralLayout>
         <Paragraph>No category selected. Please go back and select a category to add.</Paragraph>
-        <Link to="/organisation-admin/core-data/wider-service-categories" className="govuk-link">
+        <Link to={ROUTES.organisationAdmin.widerServiceCategories.list} className="govuk-link">
           Back to categories
         </Link>
       </GeneralLayout>
@@ -314,7 +319,7 @@ const CreateServiceCategory = (): React.ReactElement => {
     <LoadingBox loading={isLoading}>
       <GeneralLayout
         backLink={{
-          href: '/organisation-admin/core-data/wider-service-categories',
+          href: ROUTES.organisationAdmin.widerServiceCategories.list,
           onClick: handleBack,
         }}>
         <div ref={stepFocusRef}>{currentStep === 1 ? renderStepOne() : renderStepTwo()}</div>

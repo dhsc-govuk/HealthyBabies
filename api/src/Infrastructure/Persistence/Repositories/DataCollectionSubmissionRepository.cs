@@ -35,6 +35,21 @@ public class DataCollectionSubmissionRepository(ApplicationDbContext dbContext)
         return entity ?? Option<DataCollectionSubmission>.None;
     }
 
+    public async Task<Option<DataCollectionSubmission>> GetByDataCollectionAndOrganisationWithUsersAsync(
+        DataCollectionId dataCollectionId,
+        OrganisationId organisationId,
+        CancellationToken cancellationToken = default)
+    {
+        var entity = await Context.DataCollectionSubmissions
+            .AsNoTracking()
+            .Include(x => x.SubmittedBy)
+            .Include(x => x.ReviewedBy)
+            .FirstOrDefaultAsync(
+                x => x.DataCollectionId == dataCollectionId && x.OrganisationId == organisationId,
+                cancellationToken);
+        return entity ?? Option<DataCollectionSubmission>.None;
+    }
+
     public async Task<Option<DataCollectionSubmission>> GetByDataCollectionAndOrganisationWithSectionsAsync(
         DataCollectionId dataCollectionId,
         OrganisationId organisationId,
@@ -47,6 +62,8 @@ public class DataCollectionSubmissionRepository(ApplicationDbContext dbContext)
                     .ThenInclude(fma => fma.FormModule)
             .Include(x => x.DataCollection)
                 .ThenInclude(dc => dc!.LocalAuthorities)
+            .Include(x => x.SubmittedBy)
+            .Include(x => x.ReviewedBy)
             .FirstOrDefaultAsync(
                 x => x.DataCollectionId == dataCollectionId && x.OrganisationId == organisationId,
                 cancellationToken);

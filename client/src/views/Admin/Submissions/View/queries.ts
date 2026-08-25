@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { SubmissionDataCollection, SubmissionStatus, getSubmissionStatus } from '../List/queries';
+import { API_ROUTES } from '../../../../constants/apiRoutes';
 
 export interface LocalAuthoritySubmission {
   id: string;
@@ -26,11 +27,13 @@ export interface ConsolidatedFile {
 
 export type LocalAuthorityFilterStatus = 'all' | 'submitted' | 'approved' | 'in-progress' | 'not-started' | 'rejected' | 'requires-changes';
 
-export const getSubmissionById = (id: string) =>
-  axios.get<SubmissionDataCollectionWithLAs>(`/admin/data-collections/${id}`);
+export const getSubmissionById = (id: string) => axios.get<SubmissionDataCollectionWithLAs>(API_ROUTES.admin.dataCollections.byId(id));
 
-export const getConsolidatedFiles = (dataCollectionId: string) =>
-  axios.get<ConsolidatedFile[]>(`/admin/data-collections/${dataCollectionId}/files`);
+// Returns the collection itself, not the submission view - this endpoint has no localAuthoritySubmissions.
+export const updateSubmissionDates = (id: string, dates: { startDate?: string; endDate?: string }) =>
+  axios.patch<SubmissionDataCollection>(API_ROUTES.admin.dataCollections.dates(id), dates);
+
+export const getConsolidatedFiles = (dataCollectionId: string) => axios.get<ConsolidatedFile[]>(API_ROUTES.admin.dataCollections.files(dataCollectionId));
 
 export const formatFileSize = (bytes: number): string => {
   if (bytes < 1024) return `${bytes} B`;
@@ -81,22 +84,11 @@ export type { SubmissionStatus };
 
 export type DownloadFormat = 'csv' | 'json';
 
-export const downloadConsolidatedSubmission = (
-  dataCollectionId: string,
-  format: DownloadFormat
-) =>
-  axios.get(
-    `/admin/data-collections/${dataCollectionId}/download/${format}`,
-    { responseType: 'blob' }
-  );
+export const downloadConsolidatedSubmission = (dataCollectionId: string, format: DownloadFormat) =>
+  axios.get(API_ROUTES.admin.dataCollections.download(dataCollectionId, format), { responseType: 'blob' });
 
-export const getConsolidatedDownloadFileName = (
-  dataCollectionId: string,
-  format: DownloadFormat
-): string => {
-  return format === 'csv'
-    ? `data_collection_${dataCollectionId}.zip`
-    : `data_collection_${dataCollectionId}.json`;
+export const getConsolidatedDownloadFileName = (dataCollectionId: string, format: DownloadFormat): string => {
+  return format === 'csv' ? `data_collection_${dataCollectionId}.zip` : `data_collection_${dataCollectionId}.json`;
 };
 
 export const getConsolidatedDownloadMimeType = (format: DownloadFormat): string => {

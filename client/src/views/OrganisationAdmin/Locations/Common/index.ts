@@ -1,15 +1,16 @@
 import { SiteFormQuestionDto, SiteFormQuestionType, SiteAnswerInputRequest, DateValidationRule } from '../../../../components/Global/SiteForms';
 import { ParsedAddress } from './addressLookupQueries';
 import { encodeNullableForWaf } from '../../../../helpers/stringUtils';
-import { evaluateConditionalRules } from '../../../../helpers/conditionalRules';
 import { validateDateParts } from '../../../../helpers/validateDate';
+import { evaluateConditionalRules } from '../../../../helpers/conditionalRules';
+
+// Question code for the site's official public name. The server rejects duplicates of this
+// value, so it is the field a duplicate-name error should link back to.
+export const SITE_NAME_QUESTION_CODE = 'FHS01';
 
 // A question is visible when its rich conditional_rules pass (if set), else the legacy single-parent
 // conditionalQuestionCode/conditionalValue exact-match. No conditions => always visible.
-export const isLocationQuestionVisible = (
-  question: SiteFormQuestionDto,
-  answers: Record<string, string | undefined>
-): boolean => {
+export const isLocationQuestionVisible = (question: SiteFormQuestionDto, answers: Record<string, string | undefined>): boolean => {
   if (question.conditionalRules) {
     return evaluateConditionalRules(question.conditionalRules, answers);
   }
@@ -101,10 +102,14 @@ export const validateLocation = (state: LocationFormState, questions: SiteFormQu
       continue;
     }
 
-    if (!isEmpty && question.questionType === SiteFormQuestionType.Date && question.dateValidationRule) {
+    // Structural validation always runs. Gating it on dateValidationRule meant a date
+    // question with no configured rule accepted impossible dates (e.g. 32/01/2024, 30/02/2024)
+    // and future dates outright. The rule now only selects the past/future policy, and an
+    // unset rule defaults to past-only, which is correct for a record of when a site opened.
+    if (!isEmpty && question.questionType === SiteFormQuestionType.Date) {
       const [day, month, year] = value.split('/');
       const result = validateDateParts(day, month, year, {
-        allowFuture: question.dateValidationRule !== DateValidationRule.NotInFuture,
+        allowFuture: question.dateValidationRule === DateValidationRule.NotInPast,
         disallowPast: question.dateValidationRule === DateValidationRule.NotInPast,
         legendText: question.label,
       });

@@ -13,6 +13,7 @@ public static class DataCollectionErrorFactory
             {
                 DataCollectionAlreadyExistsException => StatusCodes.Status409Conflict,
                 DataCollectionDoesNotExistException => StatusCodes.Status404NotFound,
+                DataCollectionInvalidDateRangeException => StatusCodes.Status400BadRequest,
                 DataCollectionUnknownException => StatusCodes.Status500InternalServerError,
                 _ => throw new NotImplementedException("DataCollection exception handler not implemented")
             }

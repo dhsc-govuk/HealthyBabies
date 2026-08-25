@@ -9,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Npgsql;
 
 namespace Infrastructure.Persistence;
 
@@ -18,9 +19,9 @@ public static class ConfigurePersistenceServices
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        var dataSource = PostgresDataSourceFactory.Build(
-            configuration.GetConnectionString("DefaultConnection")!,
-            configuration["Database:ManagedIdentityClientId"]);
+        var dataSourceBuilder = new NpgsqlDataSourceBuilder(configuration.GetConnectionString("DefaultConnection"));
+        dataSourceBuilder.EnableDynamicJson();
+        var dataSource = dataSourceBuilder.Build();
 
         services.AddDbContext<ApplicationDbContext>(
             options => options
@@ -90,6 +91,8 @@ public static class ConfigurePersistenceServices
         services.AddScoped<IOrganisationFinancialDataRepository>(provider => provider.GetRequiredService<OrganisationFinancialDataRepository>());
         services.AddScoped<IOrganisationFinancialDataQueries>(provider => provider.GetRequiredService<OrganisationFinancialDataRepository>());
 
+        services.AddScoped<IDeliveryOverviewQueries, DeliveryOverviewQueries>();
+
         services.AddScoped<GlobalDataRepository>();
         services.AddScoped<IGlobalDataRepository>(provider => provider.GetRequiredService<GlobalDataRepository>());
         services.AddScoped<IGlobalDataQueries>(provider => provider.GetRequiredService<GlobalDataRepository>());
@@ -117,6 +120,8 @@ public static class ConfigurePersistenceServices
         services.AddScoped<DataCollectionSubmissionRepository>();
         services.AddScoped<IDataCollectionSubmissionRepository>(provider => provider.GetRequiredService<DataCollectionSubmissionRepository>());
         services.AddScoped<IDataCollectionSubmissionQueries>(provider => provider.GetRequiredService<DataCollectionSubmissionRepository>());
+        services.AddScoped<DataCollectionSubmissionVersionRepository>();
+        services.AddScoped<IDataCollectionSubmissionVersionRepository>(provider => provider.GetRequiredService<DataCollectionSubmissionVersionRepository>());
         services.AddScoped<DataCollectionFormModuleRepository>();
         services.AddScoped<IDataCollectionFormModuleRepository>(provider => provider.GetRequiredService<DataCollectionFormModuleRepository>());
         services.AddScoped<IDataCollectionFormModuleQueries>(provider => provider.GetRequiredService<DataCollectionFormModuleRepository>());

@@ -44,5 +44,21 @@ export { DeliveryPlanFormQuestionsList, DeliveryPlanFormQuestionsCreate, Deliver
 export { DataCollectionsList, CreateDataCollection, ViewDataCollection, EditDataCollection, DeleteDataCollection, RevertToDraft, CloseDataCollection } from './DataCollections';
 export { SiteFormQuestionsList, CreateSiteFormQuestion, EditSiteFormQuestion } from './Configuration';
 
-export { SubmissionsList, SubmissionView, ChangeSubmissionStatus, ChangeSubmissionDueDate, LocalAuthorityView } from './Submissions';
+export {
+  SubmissionsList,
+  SubmissionView,
+  ChangeSubmissionStatus,
+  ChangeSubmissionDueDate,
+  LocalAuthorityView,
+  ReviewSectionView,
+  ReviewActivityView,
+  ReopenSubmission,
+  AcceptSubmission,
+  PreviousSubmissions,
+  VersionDetail,
+  VersionSection,
+  VersionActivity,
+} from './Submissions';
 export { default as CoreData } from './CoreData';
+
+export { default as DeliveryOverview } from './Trends/DeliveryOverview';

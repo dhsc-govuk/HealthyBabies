@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { OrganisationUserRole } from '../Common';
+import { API_ROUTES } from '../../../../../constants/apiRoutes';
 
 export interface OrganisationUserDto {
   id: string;
@@ -11,4 +12,4 @@ export interface OrganisationUserDto {
   mfaStatus: string | null;
 }
 
-export const getOrganisationUsers = (organisationId: string) => axios.get<OrganisationUserDto[]>(`/organisations/${organisationId}/users`);
+export const getOrganisationUsers = (organisationId: string) => axios.get<OrganisationUserDto[]>(API_ROUTES.organisations.users.list(organisationId));

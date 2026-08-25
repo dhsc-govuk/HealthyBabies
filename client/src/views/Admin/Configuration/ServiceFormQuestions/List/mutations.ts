@@ -1,7 +1,8 @@
 import axios from 'axios';
+import { API_ROUTES } from '../../../../../constants/apiRoutes';
 
 export const deleteServiceFormQuestion = (id: string) =>
-  axios.delete(`/service-form-questions/${id}`);
+  axios.delete(API_ROUTES.serviceFormQuestions.byId(id));
 
 export interface ReorderRequest {
   step: number;
@@ -9,4 +10,4 @@ export interface ReorderRequest {
 }
 
 export const reorderServiceFormQuestions = (data: ReorderRequest) =>
-  axios.post('/service-form-questions/reorder', data);
+  axios.post(API_ROUTES.serviceFormQuestions.reorder, data);

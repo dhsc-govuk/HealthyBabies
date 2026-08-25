@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useId } from 'react';
 import { Link as RouterLink, useLocation } from 'react-router-dom';
 import './styles.css';
 
@@ -23,6 +23,12 @@ interface GovUKSideNavigationProps {
 
 function GovUKSideNavigation({ label = 'Pages in this section', sections, items, activeSection }: GovUKSideNavigationProps): React.ReactElement {
   const location = useLocation();
+  // Below the tablet breakpoint the nav collapses behind a "Menu" button so it never
+  // becomes a scrollable region requiring two-dimensional scrolling (WCAG 1.4.10).
+  const [menuOpen, setMenuOpen] = useState(false);
+  const reactId = useId();
+  const navId = `app-subnav-${reactId}`;
+  const headingId = `app-subnav-heading-${reactId}`;
 
   const isActive = (href: string) => {
     if (href.startsWith('#')) {
@@ -85,21 +91,29 @@ function GovUKSideNavigation({ label = 'Pages in this section', sections, items,
   );
 
   return (
-    <nav className="app-subnav" aria-labelledby="app-subnav-heading">
-      <h2 className="govuk-visually-hidden" id="app-subnav-heading">
-        {label}
-      </h2>
-      {sections
-        ? sections.map((section, sectionIndex) => (
-            <React.Fragment key={sectionIndex}>
-              <h3 className={`app-subnav__theme${sectionIndex === 0 ? ' app-subnav__theme--first' : ''}`}>{section.heading}</h3>
-              {renderItems(section.items)}
-            </React.Fragment>
-          ))
-        : items
-        ? renderItems(items)
-        : null}
-    </nav>
+    <>
+      <button type="button" className="app-subnav__toggle" aria-controls={navId} aria-expanded={menuOpen} onClick={() => setMenuOpen((open) => !open)}>
+        Menu
+      </button>
+      <nav
+        id={navId}
+        className={`app-subnav app-subnav--collapsible${menuOpen ? ' app-subnav--open' : ''}`}
+        aria-labelledby={headingId}>
+        <h2 className="govuk-visually-hidden" id={headingId}>
+          {label}
+        </h2>
+        {sections
+          ? sections.map((section, sectionIndex) => (
+              <React.Fragment key={sectionIndex}>
+                <h3 className={`app-subnav__theme${sectionIndex === 0 ? ' app-subnav__theme--first' : ''}`}>{section.heading}</h3>
+                {renderItems(section.items)}
+              </React.Fragment>
+            ))
+          : items
+          ? renderItems(items)
+          : null}
+      </nav>
+    </>
   );
 }
 

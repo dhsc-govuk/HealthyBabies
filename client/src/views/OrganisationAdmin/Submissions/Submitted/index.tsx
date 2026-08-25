@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import { GeneralLayout } from '../../../../layouts';
 import { GovUKButton, GovUKPanel } from '../../../../components/GovUKComponents';
+import { ROUTES } from '../../../../constants/routes';
 
 interface LocationState {
   submissionName?: string;
@@ -18,8 +19,8 @@ const SubmissionSubmitted = (): React.ReactElement => {
   return (
     <GeneralLayout
       breadcrumbs={[
-        { label: 'Home', link: '/organisation-admin/home' },
-        { label: 'Submissions', link: '/organisation-admin/submissions' },
+        { label: 'Home', link: ROUTES.organisationAdmin.home },
+        { label: 'Submissions', link: ROUTES.organisationAdmin.submissions.list },
       ]}
       currentPage="Submission complete">
       <GovUKPanel title="Submission complete">
@@ -27,16 +28,16 @@ const SubmissionSubmitted = (): React.ReactElement => {
       </GovUKPanel>
 
       <h2 className="govuk-heading-m">What happens next</h2>
-      <p className="govuk-body">We have received your submission. You will receive a confirmation email shortly.</p>
+      <p className="govuk-body">We have received your submission.</p>
       <p className="govuk-body">
         If you have any questions, contact{' '}
-        <a href="mailto:support@example.gov.uk" className="govuk-link">
-          support@example.gov.uk
+        <a href="mailto:healthybabies.dataanddigital@dhsc.gov.uk" className="govuk-link">
+          healthybabies.dataanddigital@dhsc.gov.uk
         </a>
       </p>
 
       <div className="govuk-button-group" style={{ marginTop: '30px' }}>
-        <GovUKButton onClick={() => navigate('/organisation-admin/submissions')}>Return to my submissions</GovUKButton>
+        <GovUKButton onClick={() => navigate(ROUTES.organisationAdmin.submissions.list)}>Return to my submissions</GovUKButton>
       </div>
     </GeneralLayout>
   );

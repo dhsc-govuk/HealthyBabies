@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { API_ROUTES } from '../../../../../constants/apiRoutes';
 
 export interface OrganisationContactDto {
   id: string;
@@ -9,4 +10,4 @@ export interface OrganisationContactDto {
 }
 
 export const getContact = (organisationId: string, contactId: string) =>
-  axios.get<OrganisationContactDto>(`/organisations/${organisationId}/contacts/${contactId}`);
+  axios.get<OrganisationContactDto>(API_ROUTES.organisations.contacts.byId(organisationId, contactId));

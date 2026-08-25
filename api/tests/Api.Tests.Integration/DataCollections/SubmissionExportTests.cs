@@ -51,9 +51,10 @@ public class SubmissionExportTests(IntegrationTestWebFactory factory)
         response.Content.Headers.ContentType!.MediaType.Should().Be("application/zip");
 
         var entries = await ReadZipEntries(response);
-        entries.Should().HaveCount(2);
+        entries.Should().HaveCount(3);
         entries.Should().Contain(e => e.EndsWith($"_{DataCollectionFormModuleCodes.HealthyBabies}.csv"));
         entries.Should().Contain(e => e.EndsWith($"_{DataCollectionFormModuleCodes.ServiceUsers}.csv"));
+        entries.Should().Contain("submission.json");
     }
 
     [Fact]
@@ -115,7 +116,7 @@ public class SubmissionExportTests(IntegrationTestWebFactory factory)
     }
 
     private static string DownloadRoute(Guid dataCollectionId, Guid localAuthorityId) =>
-        $"admin/data-collections/{dataCollectionId}/local-authorities/{localAuthorityId}/download?format=csv";
+        $"admin/data-collections/{dataCollectionId}/local-authorities/{localAuthorityId}/download";
 
     private static async Task<IReadOnlyList<string>> ReadZipEntries(HttpResponseMessage response)
     {

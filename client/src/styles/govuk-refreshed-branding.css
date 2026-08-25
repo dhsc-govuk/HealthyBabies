@@ -60,7 +60,7 @@ a:not(.govuk-header__link):not(.govuk-footer__link):not(.govuk-skip-link):not(.g
   text-underline-offset: .1578em;
 }
 
-a:not(.govuk-header__link):not(.govuk-footer__link):not(.govuk-skip-link):not(.govuk-back-link):not(.govuk-breadcrumbs__link):not(.govuk-button):not(.govuk-tabs__tab):not(.govuk-service-navigation__link):not(.app-subnav__link):visited {
+a:not(.govuk-header__link):not(.govuk-footer__link):not(.govuk-skip-link):not(.govuk-back-link):not(.govuk-breadcrumbs__link):not(.govuk-button):not(.govuk-tabs__tab):not(.govuk-service-navigation__link):not(.app-subnav__link):not(.govuk-link--no-visited-state):visited {
   color: #4c2c92;
 }
 
@@ -200,6 +200,13 @@ a:not(.govuk-header__link):not(.govuk-footer__link):not(.govuk-skip-link):not(.g
   fill: #00703c !important;
 }
 
+.govuk-heading-xl,
+.govuk-heading-l,
+.govuk-heading-m,
+.govuk-heading-s {
+  outline: none;
+}
+
 /* GOV.UK Heading Styles - ensure consistent typography */
 .govuk-heading-xl {
   font-family: "GDS Transport", arial, sans-serif;
@@ -261,4 +268,179 @@ a:not(.govuk-header__link):not(.govuk-footer__link):not(.govuk-skip-link):not(.g
     font-size: 16px;
     line-height: 1.25;
   }
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Secondary (left-hand column) navigation — reflow at 320px / 400% zoom.
+
+   WCAG 1.4.10. Below the tablet breakpoint the sub-navigation collapses behind
+   an expandable "Menu" button, mirroring the primary service-navigation
+   pattern, so the sidebar never becomes a scrollable region that forces
+   two-dimensional scrolling (DAC_Scrollable_Regions_Usability_01).
+   ────────────────────────────────────────────────────────────────────────── */
+
+.app-subnav__toggle {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .app-subnav__toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    margin: 0 0 15px 0;
+    padding: 8px 10px 7px;
+    border: 2px solid #0b0c0c;
+    background-color: transparent;
+    color: #0b0c0c;
+    font-family: "GDS Transport", arial, sans-serif;
+    font-size: 19px;
+    line-height: 1.25;
+    font-weight: 700;
+    cursor: pointer;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .app-subnav__toggle:focus {
+    outline: 3px solid transparent;
+    background-color: #ffdd00;
+    box-shadow: 0 2px 0 #0b0c0c;
+  }
+
+  /* Arrow drawn the way govuk-frontend draws its own service-navigation arrow: a clip-path
+     defines the triangle rather than relying on transparent borders. In Windows High Contrast
+     Mode forced colours repaint every border opaque, which turns a transparent-border
+     triangle into a solid block — the clip-path keeps the shape (DAC_Styles_and_Layout_Usability_06). */
+  .app-subnav__toggle::after {
+    content: "";
+    display: inline-block;
+    width: 0;
+    height: 0;
+    margin-left: 5px;
+    border-style: solid;
+    border-color: transparent;
+    border-width: 7px 5px 0 5px;
+    border-top-color: currentcolor;
+    clip-path: polygon(0% 0%, 50% 100%, 100% 0%);
+  }
+
+  .app-subnav__toggle[aria-expanded="true"]::after {
+    border-width: 0 5px 7px 5px;
+    border-top-color: transparent;
+    border-bottom-color: currentcolor;
+    clip-path: polygon(50% 0%, 0% 100%, 100% 100%);
+  }
+
+  /* Collapsed by default at this width; the toggle reveals it. */
+  .app-subnav--collapsible {
+    display: none;
+  }
+
+  .app-subnav--collapsible.app-subnav--open {
+    display: block;
+  }
+
+  /* The desktop sub-nav reserves 100px below itself; as an expanded mobile menu that
+     leaves a large gap before the main content. */
+  .app-subnav--collapsible.app-subnav--open,
+  .app-subnav--collapsible.app-subnav--open.app-subnav {
+    margin-bottom: 20px;
+  }
+
+  /* A collapsed sub-nav must not keep its own scroll container. */
+  .app-subnav--collapsible {
+    max-height: none;
+    overflow: visible;
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Typeface: GDS Transport everywhere (DAC_Styles_and_Layout_Usability_01/03/05).
+
+   govuk-react components are styled-components whose typography helper uses the legacy
+   stack `"nta", Arial, sans-serif`. The nta webfont is not loaded in this service — only
+   GDS Transport is, via govuk-frontend — so every govuk-react component (Link, Button,
+   Table, InputField, Tag, …) silently falls back to Arial while govuk-frontend components
+   render in GDS Transport. That is the mismatch the report screenshots show on the Wider
+   service categories links.
+
+   Scoped to text-bearing elements rather than a blanket `*`, so icon fonts and SVG
+   (MUI icons use <span>/<i> and SVG) are untouched. !important is required because
+   styled-components inject their rules at runtime, after this stylesheet.
+   ────────────────────────────────────────────────────────────────────────── */
+
+a,
+button,
+input,
+select,
+textarea,
+label,
+legend,
+caption,
+p,
+li,
+dt,
+dd,
+th,
+td,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: "GDS Transport", arial, sans-serif !important;
+}
+
+/* Print uses a serif-free system stack, matching govuk-frontend's own print styles. */
+@media print {
+  a,
+  button,
+  input,
+  select,
+  textarea,
+  label,
+  legend,
+  caption,
+  p,
+  li,
+  dt,
+  dd,
+  th,
+  td,
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-family: sans-serif !important;
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Focus contrast for buttons that are not govuk-frontend buttons.
+
+   govuk-react renders its Button (and similar controls) as styled-components with generated
+   class names, so govuk-frontend's `.govuk-button:focus` rule never applies to them. Their
+   own focus style is a yellow outline — and for some components a yellow fill — with no
+   black, which measures ~1.35:1 against a white page and fails WCAG 1.4.11's 3:1 minimum.
+   This brings them up to the GOV.UK focus state rather than overriding it.
+
+   Anything carrying a `govuk-` class is excluded, because it is a design system component
+   that already defines its own compliant focus state — and those states are not all the same
+   shape. `.govuk-file-upload-button`, for example, layers a 2px border with an
+   `inset 0 0 0 2px` shadow to make a 4px black perimeter; overriding box-shadow here replaced
+   that inner ring with a bar underneath and halved the visible black. Matching on the prefix
+   rather than naming components one by one keeps this from silently breaking the next one.
+
+   !important is required because styled-components inject their rules into <head> at
+   runtime, after this stylesheet, at equal specificity.
+   ────────────────────────────────────────────────────────────────────────── */
+
+button:not([class*='govuk-']):focus,
+[role='button']:not([class*='govuk-']):focus {
+  outline: 3px solid #ffdd00 !important;
+  outline-offset: 0 !important;
+  box-shadow: 0 2px 0 #0b0c0c !important;
 }

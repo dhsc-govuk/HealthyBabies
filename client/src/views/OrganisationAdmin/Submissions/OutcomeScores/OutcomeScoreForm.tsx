@@ -1,12 +1,18 @@
 import React, { useState, useMemo, useCallback } from 'react';
+import { resolveSnapshotLabel } from '../../../../helpers/answerSnapshot';
+import { withServiceOptions } from '../../../../helpers/dynamicServiceOptions';
+import { sortFieldsForDisplay } from '../../../../helpers/formFieldOrdering';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from 'react-query';
 import { GeneralLayout } from '../../../../layouts';
 import { LoadingSpinner, GovUKButton, FormFieldRenderer, SummaryList } from '../../../../components/GovUKComponents';
 import useErrorSummaryFocus from '../../../../hooks/useErrorSummaryFocus';
 import useFormTelemetry from '../../../../hooks/useFormTelemetry';
+import useStepFocus from '../../../../hooks/useStepFocus';
 import { getOutcomeScoreRecord, getSubmission, saveOutcomeScoreRecord, FormModuleFieldDto } from '../queries';
 import { validateOutcomeScore } from '../validationUtils';
+import focusErrorTarget from '../../../../helpers/focusErrorTarget';
+import { ROUTES } from '../../../../constants/routes';
 
 type ViewMode = 'form' | 'summary';
 
@@ -43,6 +49,7 @@ const OutcomeScoreForm = (): React.ReactElement => {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [submitAttempts, setSubmitAttempts] = useState(0);
   useErrorSummaryFocus(submitAttempts, Object.keys(fieldErrors).length > 0);
+  const stepFocusRef = useStepFocus<HTMLDivElement>(`${viewMode}-${currentStep}`);
 
   const { data: submissionData } = useQuery({
     queryKey: ['organisation-admin-submission', submissionId],
@@ -104,7 +111,7 @@ const OutcomeScoreForm = (): React.ReactElement => {
       const selectedService = formData?.data?.availableServices?.find((s) => s.serviceId === selectedServiceId);
       const serviceName = selectedService?.serviceName || 'the service';
 
-      navigate(`/organisation-admin/submissions/${submissionId}/modules/${moduleId}/outcome-scores`, {
+      navigate(ROUTES.organisationAdmin.submissions.outcomeScores.list(submissionId, moduleId), {
         state: {
           notification: {
             type: 'success',
@@ -203,31 +210,9 @@ const OutcomeScoreForm = (): React.ReactElement => {
 
   const currentFields = useMemo(() => {
     if (!outcomeScoreForm || !currentSection) return [];
-    return outcomeScoreForm.fields
-      .filter((f) => f.stepNumber === currentSection.sectionNumber)
-      .filter(isFieldVisible)
-      .sort((a, b) => a.displayOrder - b.displayOrder)
-      .map((field) => {
-        // Handle dynamic options for service selection field
-        if (field.configuration) {
-          try {
-            const config = JSON.parse(field.configuration);
-            if (config.dynamicOptions === 'services' && outcomeScoreForm.availableServices) {
-              return {
-                ...field,
-                options: outcomeScoreForm.availableServices.map((s, index) => ({
-                  value: s.serviceId,
-                  label: s.serviceName,
-                  displayOrder: index + 1,
-                })),
-              };
-            }
-          } catch {
-            // Ignore parse errors
-          }
-        }
-        return field;
-      });
+    return sortFieldsForDisplay(outcomeScoreForm.fields.filter((f) => f.stepNumber === currentSection.sectionNumber).filter(isFieldVisible)).map((field) =>
+      withServiceOptions(field, outcomeScoreForm.availableServices)
+    );
   }, [outcomeScoreForm, currentSection, isFieldVisible]);
 
   const handleFieldChange = (code: string, value: string | string[] | null) => {
@@ -299,7 +284,7 @@ const OutcomeScoreForm = (): React.ReactElement => {
       setCurrentStep(currentStep - 1);
     } else {
       trackAbandoned();
-      navigate(`/organisation-admin/submissions/${submissionId}/modules/${moduleId}/outcome-scores`);
+      navigate(ROUTES.organisationAdmin.submissions.outcomeScores.list(submissionId, moduleId));
     }
   };
 
@@ -341,52 +326,49 @@ const OutcomeScoreForm = (): React.ReactElement => {
     const groupedFields: Record<string, { label: string; fields: Array<{ field: FormModuleFieldDto; displayValue: string }> }> = {};
     const fieldOrder: string[] = [];
 
-    outcomeScoreForm.fields
-      .filter(isFieldVisible)
-      .sort((a, b) => a.displayOrder - b.displayOrder)
-      .forEach((field) => {
-        const value = fieldValues[field.code];
-        let displayValue = '';
-        if (value !== null && value !== undefined && value !== '') {
-          if (Array.isArray(value)) {
-            const labels = value.map((v) => {
-              const option = field.options.find((o) => o.value === v);
-              return option?.label || v;
-            });
-            displayValue = labels.join(', ');
+    sortFieldsForDisplay(outcomeScoreForm.fields.filter(isFieldVisible)).forEach((field) => {
+      const value = fieldValues[field.code];
+      let displayValue = '';
+      if (value !== null && value !== undefined && value !== '') {
+        if (Array.isArray(value)) {
+          const labels = value.map((v) => {
+            const option = field.options.find((o) => o.value === v);
+            return option?.label || v;
+          });
+          displayValue = labels.join(', ');
+        } else {
+          // Check if it's a service selection field
+          if (field.code === 'PPS01' && outcomeScoreForm.availableServices) {
+            const service = outcomeScoreForm.availableServices.find((s) => s.serviceId === value);
+            displayValue = service?.serviceName || value;
           } else {
-            // Check if it's a service selection field
-            if (field.code === 'PPS01' && outcomeScoreForm.availableServices) {
-              const service = outcomeScoreForm.availableServices.find((s) => s.serviceId === value);
-              displayValue = service?.serviceName || value;
-            } else {
-              const option = field.options.find((o) => o.value === value);
-              displayValue = option?.label || value;
-            }
+            const option = field.options.find((o) => o.value === value);
+            displayValue = option?.label || value;
           }
         }
+      }
 
-        // Parse configuration to check for grouping
-        let groupKey = field.code;
-        let groupLabel = field.label;
-        if (field.configuration) {
-          try {
-            const config = JSON.parse(field.configuration);
-            if (config.group) {
-              groupKey = config.group;
-              groupLabel = config.groupLabel || field.label;
-            }
-          } catch {
-            // Ignore
+      // Parse configuration to check for grouping
+      let groupKey = field.code;
+      let groupLabel = field.label;
+      if (field.configuration) {
+        try {
+          const config = JSON.parse(field.configuration);
+          if (config.group) {
+            groupKey = config.group;
+            groupLabel = config.groupLabel || field.label;
           }
+        } catch {
+          // Ignore
         }
+      }
 
-        if (!groupedFields[groupKey]) {
-          groupedFields[groupKey] = { label: groupLabel, fields: [] };
-          fieldOrder.push(groupKey);
-        }
-        groupedFields[groupKey].fields.push({ field, displayValue });
-      });
+      if (!groupedFields[groupKey]) {
+        groupedFields[groupKey] = { label: groupLabel, fields: [] };
+        fieldOrder.push(groupKey);
+      }
+      groupedFields[groupKey].fields.push({ field, displayValue });
+    });
 
     // Convert grouped fields to summary items
     fieldOrder.forEach((groupKey) => {
@@ -399,7 +381,7 @@ const OutcomeScoreForm = (): React.ReactElement => {
             summaryItems.push({ label: group.label, value: '', isGroupHeader: true });
             // Add child fields as sub-answers
             group.fields.forEach(({ field, displayValue }) => {
-              summaryItems.push({ label: field.label, value: displayValue, isSubAnswer: true });
+              summaryItems.push({ label: resolveSnapshotLabel(field, fieldValues[field.code]), value: displayValue, isSubAnswer: true });
             });
             return;
           }
@@ -409,7 +391,7 @@ const OutcomeScoreForm = (): React.ReactElement => {
       }
       // Single field
       const { field, displayValue } = group.fields[0];
-      summaryItems.push({ label: field.label, value: displayValue });
+      summaryItems.push({ label: resolveSnapshotLabel(field, fieldValues[field.code]), value: displayValue });
     });
 
     const isSaving = saveMutation.isLoading;
@@ -499,7 +481,7 @@ const OutcomeScoreForm = (): React.ReactElement => {
         {/* Render grouped fields */}
         {Object.entries(groups).map(([groupKey, group]) => (
           <div key={groupKey} style={{ marginBottom: '10px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', paddingBottom: '15px' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '15px', justifyContent: 'space-between', alignItems: 'flex-start', paddingBottom: '15px' }}>
               <span style={{ fontWeight: 'bold', fontSize: '19px', maxWidth: '500px' }}>{group.groupLabel}</span>
               <span style={{ color: '#505a5f', fontSize: '16px', flexShrink: 0 }}>{group.groupCode}</span>
             </div>
@@ -547,7 +529,7 @@ const OutcomeScoreForm = (): React.ReactElement => {
         </span>
         <h1 className="govuk-heading-l">Add an outcome score record</h1>
         <p className="govuk-body" style={{ maxWidth: '600px' }}>
-          Tell us about outcome scores for a service user who used one of your services in the past 3 months. This information will be included in your quarterly Management
+          Tell us about outcome scores for a service user who used one of your services in the relevant quarter. This information will be included in your quarterly Management
           Information data collection.
         </p>
 
@@ -566,7 +548,7 @@ const OutcomeScoreForm = (): React.ReactElement => {
                   const summaryMessage = field ? `${field.label} – ${message}` : message;
                   return (
                     <li key={fieldCode}>
-                      <a href={`#${fieldCode}`}>{summaryMessage}</a>
+                      <a href={`#${fieldCode}`} onClick={(e) => focusErrorTarget(e, fieldCode)}>{summaryMessage}</a>
                     </li>
                   );
                 })}
@@ -591,15 +573,15 @@ const OutcomeScoreForm = (): React.ReactElement => {
     <LoadingSpinner loading={isLoading} label="Loading outcome score form">
       <GeneralLayout
         breadcrumbs={[
-          { label: 'Home', link: '/organisation-admin/home' },
-          { label: 'Submissions', link: '/organisation-admin/submissions' },
-          { label: dataCollectionName || 'Submission', link: `/organisation-admin/submissions/${submissionId}` },
-          { label: 'Outcome scores', link: `/organisation-admin/submissions/${submissionId}/modules/${moduleId}/outcome-scores` },
+          { label: 'Home', link: ROUTES.organisationAdmin.home },
+          { label: 'Submissions', link: ROUTES.organisationAdmin.submissions.list },
+          { label: dataCollectionName || 'Submission', link: ROUTES.organisationAdmin.submissions.view(submissionId) },
+          { label: 'Outcome scores', link: ROUTES.organisationAdmin.submissions.outcomeScores.list(submissionId, moduleId) },
           { label: outcomeScoreForm?.serviceName || 'Service', link: '#' },
         ]}
         currentPage=""
         backLink={{ href: '#', onClick: handleBack }}>
-        {viewMode === 'summary' ? renderSummary() : renderForm()}
+        <div ref={stepFocusRef}>{viewMode === 'summary' ? renderSummary() : renderForm()}</div>
       </GeneralLayout>
     </LoadingSpinner>
   );

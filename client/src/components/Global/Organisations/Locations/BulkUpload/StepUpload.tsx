@@ -1,4 +1,4 @@
-import React, { useRef, useCallback } from 'react';
+import React, { useRef, useCallback, useState } from 'react';
 import { GovUKButton } from '../../../../../components/GovUKComponents';
 import { validateUploadedFile } from '../../../../../helpers/fileValidation';
 import './styles.css';
@@ -21,6 +21,7 @@ const StepUpload: React.FC<StepUploadProps> = ({
   onContinue,
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
   const [localError, setLocalError] = React.useState<string | null>(null);
 
   const validateFile = useCallback(async (selectedFile: File): Promise<string | null> => {
@@ -49,9 +50,10 @@ const StepUpload: React.FC<StepUploadProps> = ({
   );
 
   const handleDrop = useCallback(
-    async (event: React.DragEvent<HTMLDivElement>) => {
+    async (event: React.DragEvent<HTMLButtonElement>) => {
       event.preventDefault();
       event.stopPropagation();
+      setIsDragging(false);
 
       const droppedFile = event.dataTransfer.files[0];
       setLocalError(null);
@@ -71,9 +73,16 @@ const StepUpload: React.FC<StepUploadProps> = ({
     [onFileSelect, validateFile]
   );
 
-  const handleDragOver = useCallback((event: React.DragEvent<HTMLDivElement>) => {
+  const handleDragOver = useCallback((event: React.DragEvent<HTMLButtonElement>) => {
     event.preventDefault();
     event.stopPropagation();
+    setIsDragging(true);
+  }, []);
+
+  const handleDragLeave = useCallback((event: React.DragEvent<HTMLButtonElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setIsDragging(false);
   }, []);
 
   const displayError = localError || error;
@@ -90,7 +99,7 @@ const StepUpload: React.FC<StepUploadProps> = ({
 
       {/* File upload */}
       <div className="bulk-upload-file">
-        <label className="bulk-upload-file__label">Sites spreadsheet</label>
+        <label className="bulk-upload-file__label" id="csv-file-label" htmlFor="csv-file">Sites spreadsheet</label>
         <div className="bulk-upload-file__hint">
           <p style={{ marginBottom: '10px' }}>
             Upload the completed template with site information for all delivery locations.
@@ -132,35 +141,33 @@ const StepUpload: React.FC<StepUploadProps> = ({
           </span>
         )}
 
-        <div
-          className="bulk-upload-file__dropzone"
-          onDrop={handleDrop}
-          onDragOver={handleDragOver}
-        >
-          <p
-            className={`bulk-upload-file__status ${file ? 'bulk-upload-file__status--success' : ''}`}
-          >
-            {file ? file.name : 'No file chosen'}
-          </p>
-          <div className="bulk-upload-file__controls">
-            <button
-              type="button"
-              className="bulk-upload-file__button"
-              onClick={() => fileInputRef.current?.click()}
-            >
-              Choose file
-            </button>
-            <span className="bulk-upload-file__or-text">or drop file</span>
-          </div>
-          <input
-            ref={fileInputRef}
-            type="file"
+        {/* Official GOV.UK "enhanced" file upload: the whole area is one button that opens
+            the picker, with the real <input type="file"> hidden alongside. govuk-frontend ships
+            every state for this markup (--empty, --dragging, hover, focus, disabled), so the
+            focus ring is the design system's own black border plus yellow outline. */}
+        <div className="govuk-file-upload-wrapper">
+          <button
+            type="button"
             id="csv-file"
-            name="csv-file"
-            accept=".csv"
-            onChange={handleFileChange}
-            style={{ display: 'none' }}
-          />
+            className={`govuk-file-upload-button${file ? '' : ' govuk-file-upload-button--empty'}${isDragging ? ' govuk-file-upload-button--dragging' : ''}`}
+            aria-labelledby={'csv-file-label csv-file-comma csv-file'}
+            onClick={() => fileInputRef.current?.click()}
+            onDrop={handleDrop}
+            onDragOver={handleDragOver}
+            onDragEnter={handleDragOver}
+            onDragLeave={handleDragLeave}>
+            <span className="govuk-body govuk-file-upload-button__status" aria-live="polite">
+              {file ? file.name : 'No file chosen'}
+            </span>
+            <span className="govuk-visually-hidden" id="csv-file-comma">
+              ,{' '}
+            </span>
+            <span className="govuk-file-upload-button__pseudo-button-container">
+              <span className="govuk-button govuk-button--secondary govuk-file-upload-button__pseudo-button">Choose file</span>{' '}
+              <span className="govuk-body govuk-file-upload-button__instruction">or drop file</span>
+            </span>
+          </button>
+          <input ref={fileInputRef} className="govuk-file-upload" id="csv-file-input" name="csv-file" type="file" accept=".csv" onChange={handleFileChange} hidden />
         </div>
       </div>
 

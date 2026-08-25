@@ -7,6 +7,7 @@ import { getDataCollection, closeDataCollection } from '../List/queries';
 import { GovUKButton, useGovUKNotification } from '../../../../components/GovUKComponents';
 import { WarningPanel, WarningPanelTitle, WarningPanelBody, WarningPanelActions, WarningPanelAnchor } from '../../../../styles/govuk-global';
 import usePageTitle from '../../../../hooks/usePageTitle';
+import { ROUTES } from '../../../../constants/routes';
 
 const CloseDataCollection = (): React.ReactElement => {
   usePageTitle('Close data collection');
@@ -26,7 +27,7 @@ const CloseDataCollection = (): React.ReactElement => {
     onSuccess: () => {
       queryClient.invalidateQueries(['data-collections-list']);
       queryClient.invalidateQueries(['data-collection-full', dataCollectionId]);
-      navigate(`/admin/data-collections/${dataCollectionId}`, {
+      navigate(ROUTES.admin.dataCollections.view(dataCollectionId), {
         state: { successMessage: 'The data collection has been closed.' },
       });
     },
@@ -42,7 +43,7 @@ const CloseDataCollection = (): React.ReactElement => {
   };
 
   const handleGoBack = () => {
-    navigate(`/admin/data-collections/${dataCollectionId}`);
+    navigate(ROUTES.admin.dataCollections.view(dataCollectionId));
   };
 
   if (isError) {
@@ -50,13 +51,13 @@ const CloseDataCollection = (): React.ReactElement => {
       <SettingsLayout hideNavigation>
         <h1 className="govuk-heading-l">Error</h1>
         <p className="govuk-body">Unable to load data collection.</p>
-        <GovUKButton onClick={() => navigate('/admin/data-collections')}>Back to list</GovUKButton>
+        <GovUKButton onClick={() => navigate(ROUTES.admin.dataCollections.list)}>Back to list</GovUKButton>
       </SettingsLayout>
     );
   }
 
   return (
-    <SettingsLayout hideNavigation backLink={{ href: `/admin/data-collections/${dataCollectionId}`, onClick: handleGoBack }}>
+    <SettingsLayout hideNavigation backLink={{ href: ROUTES.admin.dataCollections.view(dataCollectionId), onClick: handleGoBack }}>
       <LoadingBox loading={isLoading || closing}>
         {dataCollection && (
           <WarningPanel>
@@ -73,7 +74,7 @@ const CloseDataCollection = (): React.ReactElement => {
                 Yes, I want to close
               </Button>
               <WarningPanelAnchor
-                href={`/admin/data-collections/${dataCollectionId}`}
+                href={ROUTES.admin.dataCollections.view(dataCollectionId)}
                 onClick={(e) => {
                   e.preventDefault();
                   handleGoBack();

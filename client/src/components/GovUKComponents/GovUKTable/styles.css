@@ -48,9 +48,12 @@
 }
 
 .govuk-table-filter__search-button:focus {
+  /* The yellow fill alone is ~1.35:1 against white; the black bar carries the contrast,
+     matching the GOV.UK button focus state (WCAG 1.4.11). */
   outline: 3px solid #ffdd00;
   outline-offset: 0;
   background-color: #ffdd00;
+  box-shadow: 0 2px 0 #0b0c0c;
 }
 
 .govuk-table-filter__search-button:focus svg circle,

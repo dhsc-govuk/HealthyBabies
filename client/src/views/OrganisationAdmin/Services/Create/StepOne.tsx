@@ -37,6 +37,7 @@ const StepOne = ({ state, dispatch, errors, questions }: StepOneProps): React.Re
       <Box sx={{ mt: 3 }}>
         <DynamicQuestionRenderer
           questions={stepOneQuestions}
+          allFormQuestions={questions}
           state={state}
           dispatch={dispatch}
           errors={errors}

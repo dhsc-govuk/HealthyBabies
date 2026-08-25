@@ -7,6 +7,7 @@ import { getDataCollection, deleteDataCollection } from '../List/queries';
 import { GovUKButton, useGovUKNotification } from '../../../../components/GovUKComponents';
 import { WarningPanel, WarningPanelTitle, WarningPanelBody, WarningPanelActions, WarningPanelAnchor } from '../../../../styles/govuk-global';
 import usePageTitle from '../../../../hooks/usePageTitle';
+import { ROUTES } from '../../../../constants/routes';
 
 const DeleteDataCollection = (): React.ReactElement => {
   usePageTitle('Delete data collection');
@@ -23,7 +24,7 @@ const DeleteDataCollection = (): React.ReactElement => {
   const { mutateAsync: deleteMutation, isLoading: deleting } = useMutation({
     mutationFn: () => deleteDataCollection(dataCollectionId!),
     onSuccess: () => {
-      navigate('/admin/data-collections', {
+      navigate(ROUTES.admin.dataCollections.list, {
         state: { successMessage: 'The data collection has been deleted.' },
       });
     },
@@ -39,7 +40,7 @@ const DeleteDataCollection = (): React.ReactElement => {
   };
 
   const handleGoBack = () => {
-    navigate(`/admin/data-collections/${dataCollectionId}`);
+    navigate(ROUTES.admin.dataCollections.view(dataCollectionId));
   };
 
   if (isError) {
@@ -47,13 +48,13 @@ const DeleteDataCollection = (): React.ReactElement => {
       <SettingsLayout hideNavigation>
         <h1 className="govuk-heading-l">Error</h1>
         <p className="govuk-body">Unable to load data collection.</p>
-        <GovUKButton onClick={() => navigate('/admin/data-collections')}>Back to list</GovUKButton>
+        <GovUKButton onClick={() => navigate(ROUTES.admin.dataCollections.list)}>Back to list</GovUKButton>
       </SettingsLayout>
     );
   }
 
   return (
-    <SettingsLayout hideNavigation backLink={{ href: `/admin/data-collections/${dataCollectionId}`, onClick: handleGoBack }}>
+    <SettingsLayout hideNavigation backLink={{ href: ROUTES.admin.dataCollections.view(dataCollectionId), onClick: handleGoBack }}>
       <LoadingBox loading={isLoading || deleting}>
         {dataCollection && (
           <WarningPanel>
@@ -71,7 +72,7 @@ const DeleteDataCollection = (): React.ReactElement => {
                 Yes, I want to delete
               </Button>
               <WarningPanelAnchor
-                href={`/admin/data-collections/${dataCollectionId}`}
+                href={ROUTES.admin.dataCollections.view(dataCollectionId)}
                 onClick={(e) => {
                   e.preventDefault();
                   handleGoBack();

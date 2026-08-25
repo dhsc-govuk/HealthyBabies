@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Button, LoadingBox } from 'govuk-react';
 import { GovUKFieldset, GovUKDateField, GovUKButton, GovUKBackLink, GovUKErrorSummary } from '../../../GovUKComponents';
+import useStepFocus from '../../../../hooks/useStepFocus';
 import useErrorSummaryFocus from '../../../../hooks/useErrorSummaryFocus';
 import './styles.css';
 
@@ -52,6 +53,7 @@ const DataCollectionForm = ({
   isEdit = false,
 }: DataCollectionFormProps): React.ReactElement => {
   const [step, setStep] = useState<'form' | 'review'>('form');
+  const stepFocusRef = useStepFocus<HTMLDivElement>(step);
 
   const [formData, setFormData] = useState<DataCollectionFormData>({
     name: initialData?.name ?? '',
@@ -137,6 +139,7 @@ const DataCollectionForm = ({
       <LoadingBox loading={isSaving}>
         <div className="dc-form-review">
           <GovUKBackLink onClick={handleBack}>Back</GovUKBackLink>
+          <div ref={stepFocusRef}>
           <h2 className="dc-form-review-title">Check your answers</h2>
 
           <dl className="govuk-summary-list govuk-summary-list--no-outer-border">
@@ -186,6 +189,7 @@ const DataCollectionForm = ({
               Save as draft and exit
             </GovUKButton>
           </div>
+          </div>
         </div>
       </LoadingBox>
     );
@@ -194,6 +198,7 @@ const DataCollectionForm = ({
   return (
     <form onSubmit={handleContinue} className="dc-form" noValidate>
       <GovUKBackLink onClick={onCancel}>Back</GovUKBackLink>
+      <div ref={stepFocusRef}>
 
       {errorList.length > 0 && <GovUKErrorSummary errors={errorList} />}
 
@@ -251,6 +256,7 @@ const DataCollectionForm = ({
         <GovUKButton className="govuk-button govuk-button--secondary" onClick={() => handleSubmit(true)} type="button">
           Save as draft and exit
         </GovUKButton>
+      </div>
       </div>
     </form>
   );

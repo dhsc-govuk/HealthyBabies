@@ -10,6 +10,8 @@ import { encodeForWaf, encodeNullableForWaf } from '../../../../helpers/stringUt
 import { getDataCollectionWithLocalAuthorities, DataCollectionResponse, getDataCollectionFormModules } from '../List/queries';
 import { getOrganisations } from '../../Organisations/List/queries';
 import usePageTitle from '../../../../hooks/usePageTitle';
+import { ROUTES } from '../../../../constants/routes';
+import { API_ROUTES } from '../../../../constants/apiRoutes';
 
 interface UpdateDataCollectionRequest {
   id: string;
@@ -24,7 +26,7 @@ interface UpdateDataCollectionRequest {
   saveAsDraft: boolean;
 }
 
-const updateDataCollection = (data: UpdateDataCollectionRequest) => axios.put<DataCollectionResponse>(`/admin/data-collections/${data.id}/edit`, data);
+const updateDataCollection = (data: UpdateDataCollectionRequest) => axios.put<DataCollectionResponse>(API_ROUTES.admin.dataCollections.editById(data.id), data);
 
 const formatDateForGovUK = (dateString: string): string => {
   const date = new Date(dateString);
@@ -75,7 +77,7 @@ const EditDataCollection = (): React.ReactElement => {
       queryClient.invalidateQueries(['data-collection', dataCollectionId]);
       queryClient.invalidateQueries(['data-collection-edit', dataCollectionId]);
       queryClient.invalidateQueries(['data-collections-list']);
-      navigate(`/admin/data-collections/${dataCollectionId}`);
+      navigate(ROUTES.admin.dataCollections.view(dataCollectionId));
     },
     onError: (error) => {
       processError(error, (e) => setNotification({ type: 'important', title: 'Error', message: e }));
@@ -113,7 +115,13 @@ const EditDataCollection = (): React.ReactElement => {
         endDate: formatDateForGovUK(dcData.data.endDate),
         formModuleIds: dcData.data.formModules?.map((fm) => fm.id) ?? [],
         isSubmittedByAllLocalAuthorities: dcData.data.isSubmittedByAllLocalAuthorities,
-        localAuthorityIds: dcData.data.localAuthorities?.map((la) => la.id) ?? [],
+        // On a collection open to all local authorities the assignment rows are due date
+        // extensions, not scope (BLUM-7626), so they must not seed the selection - prefilling them
+        // let the "select at least one" check pass on a toggle to specific authorities and quietly
+        // scoped the collection to whoever happened to hold an extension.
+        localAuthorityIds: dcData.data.isSubmittedByAllLocalAuthorities
+          ? []
+          : (dcData.data.localAuthorities?.map((la) => la.id) ?? []),
       }
     : undefined;
 
@@ -142,7 +150,7 @@ const EditDataCollection = (): React.ReactElement => {
           availableFormModules={availableFormModules}
           onSubmit={(data) => handleSubmit(data, false)}
           onSaveAsDraft={(data) => handleSubmit(data, true)}
-          onCancel={() => navigate(`/admin/data-collections/${dataCollectionId}`)}
+          onCancel={() => navigate(ROUTES.admin.dataCollections.view(dataCollectionId))}
           submitLabel="Confirm and save"
           isEdit={true}
         />

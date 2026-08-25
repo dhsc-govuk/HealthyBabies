@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { ServiceFormQuestion, ServiceFormQuestionOption } from '../Common/types';
+import { API_ROUTES } from '../../../../../constants/apiRoutes';
 
 export interface CreateServiceFormQuestionRequest {
   code: string;
@@ -19,4 +20,4 @@ export interface CreateServiceFormQuestionRequest {
   options: ServiceFormQuestionOption[];
 }
 
-export const createServiceFormQuestion = (data: CreateServiceFormQuestionRequest) => axios.post<ServiceFormQuestion>('/service-form-questions', data);
+export const createServiceFormQuestion = (data: CreateServiceFormQuestionRequest) => axios.post<ServiceFormQuestion>(API_ROUTES.serviceFormQuestions.create, data);

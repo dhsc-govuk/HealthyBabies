@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { OrganisationUserRole } from '../Common';
+import { API_ROUTES } from '../../../../../constants/apiRoutes';
 
 export interface EditOrganisationUserDto {
   id?: string;
@@ -11,4 +12,4 @@ export interface EditOrganisationUserDto {
 }
 
 export const updateOrganisationUser = (organisationId: string, user: EditOrganisationUserDto) =>
-  axios.put<EditOrganisationUserDto>(`/organisations/${organisationId}/users/edit`, user);
+  axios.put<EditOrganisationUserDto>(API_ROUTES.organisations.users.edit(organisationId), user);

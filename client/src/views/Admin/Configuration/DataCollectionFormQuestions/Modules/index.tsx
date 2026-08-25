@@ -46,6 +46,7 @@ import {
 } from './mutations';
 import { FormModule, FormModuleType, FormSection, formModuleTypeOptions } from '../Common/types';
 import usePageTitle from '../../../../../hooks/usePageTitle';
+import { ROUTES } from '../../../../../constants/routes';
 
 const TABS = [
   { label: 'Management Information', type: 'management-information', href: '#management-information' },
@@ -69,7 +70,7 @@ const DataCollectionFormModules = (): React.ReactElement => {
   const [moduleToDelete, setModuleToDelete] = useState<FormModule | null>(null);
   const [sectionToDelete, setSectionToDelete] = useState<FormSection | null>(null);
 
-  const [moduleForm, setModuleForm] = useState<CreateModuleRequest>({ code: '', name: '', description: '', type: TABS[0].type });
+  const [moduleForm, setModuleForm] = useState<CreateModuleRequest & { code: string }>({ code: '', name: '', description: '', type: TABS[0].type });
   const [sectionForm, setSectionForm] = useState<CreateSectionRequest>({ title: '', description: '', helpText: '', helpUrl: '' });
 
   const { data: modules = [] } = useQuery({
@@ -235,7 +236,6 @@ const DataCollectionFormModules = (): React.ReactElement => {
       });
     } else {
       createModuleMutation.mutate({
-        code: moduleForm.code,
         name: moduleForm.name,
         description: moduleForm.description || undefined,
         type: moduleForm.type,
@@ -312,7 +312,7 @@ const DataCollectionFormModules = (): React.ReactElement => {
               </Typography>
             )}
 
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
               <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
                 Sections
               </Typography>
@@ -371,8 +371,8 @@ const DataCollectionFormModules = (): React.ReactElement => {
                 onClick={() => {
                   const basePath =
                     module.type === 'delivery-plan'
-                      ? '/admin/configuration/delivery-plan-form-questions'
-                      : '/admin/configuration/data-collection-form-questions';
+                      ? ROUTES.admin.configuration.deliveryPlanFormQuestions.list
+                      : ROUTES.admin.configuration.dataCollectionFormQuestions.list;
                   navigate(`${basePath}?moduleId=${module.id}`);
                 }}>
                 Manage Questions
@@ -385,9 +385,9 @@ const DataCollectionFormModules = (): React.ReactElement => {
   return (
     <SettingsLayout
       breadcrumbs={[
-        { label: 'Home', link: '/admin/home' },
-        { label: 'Settings', link: '/admin/settings' },
-        { label: 'Data Collection Form', link: '/admin/configuration/data-collection-form-questions' },
+        { label: 'Home', link: ROUTES.admin.home },
+        { label: 'Settings', link: ROUTES.admin.settings },
+        { label: 'Data Collection Form', link: ROUTES.admin.configuration.dataCollectionFormQuestions.list },
       ]}>
       <PageHeaderContainer>
         <PageTitle>Form Modules</PageTitle>
@@ -423,15 +423,16 @@ const DataCollectionFormModules = (): React.ReactElement => {
         <DialogTitle>{editingModule ? 'Edit Module' : 'Create Module'}</DialogTitle>
         <DialogContent>
           <Box sx={{ pt: 1 }}>
-            <TextField
-              fullWidth
-              label="Code"
-              value={moduleForm.code}
-              onChange={(e) => setModuleForm({ ...moduleForm, code: e.target.value })}
-              disabled={!!editingModule}
-              helperText="Unique identifier (e.g., 'my-module')"
-              sx={{ mb: 2 }}
-            />
+            {editingModule && (
+              <TextField
+                fullWidth
+                label="Code"
+                value={moduleForm.code}
+                disabled
+                helperText="System-generated unique identifier — cannot be changed"
+                sx={{ mb: 2 }}
+              />
+            )}
             <FormControl fullWidth sx={{ mb: 2 }}>
               <InputLabel id="module-type-label">Type</InputLabel>
               <Select
@@ -467,7 +468,7 @@ const DataCollectionFormModules = (): React.ReactElement => {
           <Button variant="secondary" onClick={() => setModuleDialogOpen(false)}>
             Cancel
           </Button>
-          <Button onClick={handleSaveModule} disabled={!moduleForm.code || !moduleForm.name}>
+          <Button onClick={handleSaveModule} disabled={!moduleForm.name}>
             {editingModule ? 'Save Changes' : 'Create Module'}
           </Button>
         </DialogActions>

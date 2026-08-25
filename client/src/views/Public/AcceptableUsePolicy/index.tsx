@@ -3,6 +3,7 @@ import usePageTitle from '../../../hooks/usePageTitle';
 import { GovUKHeaderLogo } from '../../../components/Logos';
 import { GovUKBackLink, GovUKSkipLink } from '../../../components/GovUKComponents';
 import LayoutFooter from '../../../layouts/General/LayoutFooter';
+import { ROUTES } from '../../../constants/routes';
 import './styles.css';
 
 const AcceptableUsePolicy = () => {
@@ -11,7 +12,7 @@ const AcceptableUsePolicy = () => {
 
   const goToSignIn = (e: React.MouseEvent) => {
     e.preventDefault();
-    navigate('/sign-in');
+    navigate(ROUTES.signIn);
   };
 
   return (
@@ -30,7 +31,7 @@ const AcceptableUsePolicy = () => {
       <main className="acceptable-use-policy-page__main" id="main-content" role="main">
         <div className="govuk-width-container">
           <div className="govuk-main-wrapper">
-            <GovUKBackLink href="/sign-in">
+            <GovUKBackLink href={ROUTES.signIn}>
               Back
             </GovUKBackLink>
 
@@ -88,14 +89,14 @@ const AcceptableUsePolicy = () => {
               <li>Any Data classified as SECRET or TOP SECRET.</li>
               <li>
                 Take responsibility for notifying DHSC when there are changes to job roles resulting in changes needed to access controls via{' '}
-                <a className="govuk-link" href="mailto:support@example.gov.uk">
-                  support@example.gov.uk
+                <a className="govuk-link" href="mailto:healthybabies.dataanddigital@dhsc.gov.uk">
+                  healthybabies.dataanddigital@dhsc.gov.uk
                 </a>
               </li>
               <li>
                 Report any concerns regarding incorrect access controls immediately to{' '}
-                <a className="govuk-link" href="mailto:support@example.gov.uk">
-                  support@example.gov.uk
+                <a className="govuk-link" href="mailto:healthybabies.dataanddigital@dhsc.gov.uk">
+                  healthybabies.dataanddigital@dhsc.gov.uk
                 </a>{' '}
                 and engage promptly with the team if they have raised data protection issues with you.
               </li>
@@ -131,7 +132,7 @@ const AcceptableUsePolicy = () => {
             </ol>
 
             <p className="govuk-body">
-              <a href="/sign-in" className="govuk-link" onClick={goToSignIn}>
+              <a href={ROUTES.signIn} className="govuk-link" onClick={goToSignIn}>
                 Return to the start page
               </a>
             </p>

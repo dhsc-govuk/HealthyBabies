@@ -1,6 +1,8 @@
 import React from 'react';
 import { useParams } from 'react-router-dom';
-import BulkUpload from './index';
+import BulkUpload from '../../../../components/Global/BulkUpload';
+import { downloadBulkUploadTemplate, validateBulkUpload, processStagedBulkUpload, checkOutcomeScoreDuplicates } from '../queries';
+import { ROUTES } from '../../../../constants/routes';
 
 const OutcomeScoresBulkUpload: React.FC = () => {
   const { submissionId, moduleId } = useParams<{
@@ -12,7 +14,13 @@ const OutcomeScoresBulkUpload: React.FC = () => {
     <BulkUpload
       moduleType="outcome-scores"
       moduleName="Outcome scores"
-      backUrl={`/organisation-admin/submissions/${submissionId}/modules/${moduleId}/outcome-scores`}
+      backUrl={ROUTES.organisationAdmin.submissions.outcomeScores.list(submissionId, moduleId)}
+      api={{
+        downloadTemplate: downloadBulkUploadTemplate,
+        validate: validateBulkUpload,
+        processStaged: processStagedBulkUpload,
+        checkOutcomeScoreDuplicates,
+      }}
     />
   );
 };

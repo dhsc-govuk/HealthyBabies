@@ -12,6 +12,7 @@ import {
   SubmissionDataCollection,
   SubmissionStatus,
 } from './queries';
+import { ROUTES } from '../../../../constants/routes';
 
 const formatDate = (dateString: string): string => {
   const date = new Date(dateString);
@@ -45,8 +46,8 @@ const mapOngoingCollectionToTaskItem = (
     id: collection.id,
     title: collection.name,
     hint: `Due date ${formatDate(collection.endDate)}`,
-    href: `/admin/submissions/${collection.id}`,
-    onClick: () => navigate(`/admin/submissions/${collection.id}`),
+    href: ROUTES.admin.submissions.view(collection.id),
+    onClick: () => navigate(ROUTES.admin.submissions.view(collection.id)),
     status: {
       text: status,
       tag: {
@@ -64,8 +65,8 @@ const mapPastCollectionToTaskItem = (
   return {
     id: collection.id,
     title: collection.name,
-    href: `/admin/submissions/${collection.id}`,
-    onClick: () => navigate(`/admin/submissions/${collection.id}`),
+    href: ROUTES.admin.submissions.view(collection.id),
+    onClick: () => navigate(ROUTES.admin.submissions.view(collection.id)),
     status: {
       text: 'Closed',
     },
@@ -113,7 +114,7 @@ function SubmissionsList(): React.ReactElement {
 
   return (
     <GeneralLayout
-      breadcrumbs={[{ label: 'Home', link: '/admin/home' }]}
+      breadcrumbs={[{ label: 'Home', link: ROUTES.admin.home }]}
       currentPage="Submissions"
     >
       <p className="govuk-body">

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import CreateOrganisationUsersComponent from '../../../../components/Global/Organisations/Users/Create';
 import { useAuthProvider } from '../../../../components/AuthProvider';
 import { SettingsLayout } from '../../../../layouts';
+import { ROUTES } from '../../../../constants/routes';
 
 const CreateOrganisationUsers = (): React.ReactElement => {
   const navigate = useNavigate();
@@ -12,17 +13,17 @@ const CreateOrganisationUsers = (): React.ReactElement => {
   const organisationId = user?.organisation_id;
 
   const handleFinish = (_organisationId: string, userId: string) => {
-    navigate(`/organisation-admin/la-users/${userId}`);
+    navigate(ROUTES.organisationAdmin.laUsers.view(userId));
   };
 
   return (
     <SettingsLayout
       breadcrumbs={[
-        { label: 'Home', link: '/organisation-admin/home' },
-        { label: 'LA users', link: '/organisation-admin/la-users' },
+        { label: 'Home', link: ROUTES.organisationAdmin.home },
+        { label: 'LA users', link: ROUTES.organisationAdmin.laUsers.list },
       ]}
       currentPage="Add LA user">
-      <CreateOrganisationUsersComponent organisationId={organisationId!} handleFinish={handleFinish} onCancel={() => navigate('/organisation-admin/la-users')} />
+      <CreateOrganisationUsersComponent organisationId={organisationId!} handleFinish={handleFinish} onCancel={() => navigate(ROUTES.organisationAdmin.laUsers.list)} />
     </SettingsLayout>
   );
 };

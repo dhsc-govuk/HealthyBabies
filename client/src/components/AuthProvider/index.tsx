@@ -99,7 +99,7 @@ interface AuthContextItems {
   setting: OrganisationSettingDto | null;
   organisationId: string | null;
   locationId: string | null;
-  signIn: () => void;
+  signIn: () => Promise<void>;
   signOut: () => Promise<void>;
 }
 
@@ -167,14 +167,12 @@ const AuthProvider = ({ children }: Props): React.ReactElement => {
     locationId: user?.location_id ?? null,
 
     signIn: () => {
-      instance
-        .loginRedirect({
-          ...loginRequest,
-          redirectUri: import.meta.env.BASE_URL || '/',
-          prompt: 'login',
-          extraQueryParameters: { domain_hint: appConfig.ad_domain_hint },
-        })
-        .catch((error) => console.log(error));
+      return instance.loginRedirect({
+        ...loginRequest,
+        redirectUri: import.meta.env.BASE_URL || '/',
+        prompt: 'login',
+        extraQueryParameters: { domain_hint: appConfig.ad_domain_hint },
+      });
     },
     signOut: async () => {
       try {

@@ -23,6 +23,10 @@ public interface IServiceQueries
 
     Task<IReadOnlyList<Service>> GetAllForExport(CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<Service>> GetForExportByOrganisationIdAsync(
+        OrganisationId organisationId,
+        CancellationToken cancellationToken = default);
+
     Task<int> Count(
         Permission permission,
         CancellationToken cancellationToken = default);

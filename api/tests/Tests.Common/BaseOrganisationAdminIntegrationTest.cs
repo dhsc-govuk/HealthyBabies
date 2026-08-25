@@ -22,14 +22,29 @@ public abstract class BaseOrganisationAdminIntegrationTest : IClassFixture<Organ
         _scope = factory.Services.CreateScope();
 
         Context = _scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-        Client = factory.WithWebHostBuilderAuthMock()
-            .CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false, });
+
+        // Deliberately NOT factory.WithWebHostBuilder(...): this constructor runs once per test, and each
+        // WithWebHostBuilder call mints a new WebApplicationFactory whose host runs the real entry point,
+        // re-running InitializeDb and SeedData against the same container - and the derived factories are
+        // held alive by the parent until the class fixture disposes, so none of it is reclaimed mid-run.
+        // The TestScheme registration that used to live here now sits in
+        // OrganisationAdminIntegrationTestWebFactory.ConfigureWebHost, so the class fixture boots exactly
+        // one host and both Client and Server below just reuse it.
+        Client = factory.CreateClient(new WebApplicationFactoryClientOptions { AllowAutoRedirect = false, });
 
         Client.DefaultRequestHeaders.Authorization =
             new AuthenticationHeaderValue(scheme: "TestScheme");
 
-        Server = factory.WithWebHostBuilderAuthMock().Server;
+        Server = factory.Server;
         Cache = _scope.ServiceProvider.GetRequiredService<IInMemoryCache>();
+    }
+
+    // Restores the app's startup seed for classes that truncate every table and then read seeded rows
+    // back. Call it from the class's own InitializeAsync; see TestSeeding for why it is opt-in.
+    protected async Task SeedApplicationDataAsync()
+    {
+        await _scope.SeedApplicationDataAsync();
+        Context.ChangeTracker.Clear();
     }
 
     internal async Task<int> SaveChangesAsync()

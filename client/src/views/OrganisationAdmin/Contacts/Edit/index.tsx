@@ -11,6 +11,7 @@ import ContactSteps from '../Common/components/ContactSteps';
 import { updateContact } from './mutations';
 import { getContact } from './queries';
 import { defaultStaleTime } from '../../../../helpers/queriesParams';
+import { ROUTES } from '../../../../constants/routes';
 
 type UrlParams = {
   contactId: string;
@@ -56,7 +57,7 @@ const EditContact = (): React.ReactElement => {
       setNotification({ type: 'success', title: 'Success', message: 'Contact updated successfully' });
       queryClient.invalidateQueries(['organisation-contacts', organisationId]);
       queryClient.invalidateQueries(['organisation-contact', contactId]);
-      navigate('/organisation-admin/contacts');
+      navigate(ROUTES.organisationAdmin.contacts.list);
     },
     onError(error, _variables, _context) {
       processError(error, (e) => setNotification({ type: 'important', title: 'Error', message: e }));
@@ -79,18 +80,20 @@ const EditContact = (): React.ReactElement => {
     <LoadingSpinner loading={contactLoading || saving} label={contactLoading ? 'Loading contact' : 'Saving changes'}>
       <GeneralLayout
         breadcrumbs={[
-          { label: 'Home', link: '/organisation-admin/home' },
-          { label: 'Contacts', link: '/organisation-admin/contacts' },
+          { label: 'Home', link: ROUTES.organisationAdmin.home },
+          { label: 'Contacts', link: ROUTES.organisationAdmin.contacts.list },
           { label: 'Edit', link: '' },
         ]}
-        currentPage="Edit">
+        currentPage="Edit contact"
+        manageTitle={false}>
         <ContactSteps
           completeLabel="Save"
           contact={contact}
           dispatch={dispatchContact}
           handleSave={handleSave}
           roles={roles}
-          onCancel={() => navigate('/organisation-admin/contacts')}
+          onCancel={() => navigate(ROUTES.organisationAdmin.contacts.list)}
+          pageTitle="Edit contact"
         />
       </GeneralLayout>
     </LoadingSpinner>

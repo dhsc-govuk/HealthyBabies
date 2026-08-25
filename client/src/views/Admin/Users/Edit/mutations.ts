@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { API_ROUTES } from '../../../../constants/apiRoutes';
 
 export interface UpdateAdminDto {
   id: string | undefined;
@@ -10,4 +11,4 @@ export interface UpdateAdminDto {
   isActive: boolean;
 }
 
-export const updateAdmin = (user: UpdateAdminDto) => axios.put<UpdateAdminDto>('admin/users/organisation-users/edit', user);
+export const updateAdmin = (user: UpdateAdminDto) => axios.put<UpdateAdminDto>(API_ROUTES.admin.users.organisationUsers.edit, user);

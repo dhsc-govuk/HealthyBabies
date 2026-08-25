@@ -1,0 +1,123 @@
+version: "2.4"
+services:
+  traefik:
+    image: "traefik:v2.4"
+    container_name: "${APP_PREFIX}-traefik"
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+    ports:
+      - "80:80"
+      - "8080:8080"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+  family-hubs-pgserver:
+    image: postgres:15.1-alpine
+    container_name: ${APP_PREFIX}-pgserver
+    user: postgres
+    ports:
+      - "5432:5432"
+    restart: unless-stopped
+    volumes:
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      ALLOW_IP_RANGE: 0.0.0.0/0
+      POSTGRES_DB_EXTENSION: uuid-ossp
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "PGPASSWORD=${POSTGRES_PASSWORD} pg_isready --username=${POSTGRES_USER} --dbname=${POSTGRES_DB_NAME}",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  family-hubs-api:
+    image: ${APP_PREFIX}-api
+    container_name: ${APP_PREFIX}-api
+    build:
+      context: ./api
+      dockerfile: src/Api/Dockerfile
+    ports:
+      - "5000:8080"
+    depends_on:
+      - "family-hubs-pgserver"
+    restart: unless-stopped
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__DefaultConnection: Host=family-hubs-pgserver;port=5432;Database=${POSTGRES_DB_NAME};User Id=${POSTGRES_USER};Password=${POSTGRES_PASSWORD};
+      # Entra External ID — the "API" app registration. See README "Entra ID setup" for how to create these.
+      AzureAd__Instance: ${AD_INSTANCE}
+      AzureAd__TenantId: ${AD_TENANT_ID}
+      AzureAd__ClientId: ${AD_CLIENT_ID_API}
+      AzureAd__Domain: ${AD_DOMAIN}
+      AzureAd__ClientSecret: ${AD_CLIENT_SECRET}
+      # Microsoft Graph — reuses the same API app registration's credentials (client-credentials flow)
+      Graph__ApplicationId: ${AD_CLIENT_ID_API}
+      Graph__ApplicationObjectId: ${GRAPH_APPLICATION_OBJECT_ID}
+      Graph__EnterpriseApplicationObjectId: ${GRAPH_ENTERPRISE_APPLICATION_OBJECT_ID}
+      Graph__DefaultUserPassword: ${GRAPH_DEFAULT_USER_PASSWORD}
+      Graph__UseDefaultPassword: "true"
+      # First admin account, auto-seeded into the database on startup — see README "Default admin user"
+      DefaultAdminUser__Email: ${DEFAULT_ADMIN_EMAIL}
+      DefaultAdminUser__SubId: ${DEFAULT_ADMIN_SUBID}
+      # Optional locally — leave blank to skip Blob-backed features (submission file uploads, bulk-upload
+      # staging, Data Protection key persistence). See README "Azure Blob Storage setup".
+      AzureBlob__ConnectionString: ${AZURE_BLOB_CONNECTION_STRING}
+      ConnectionStrings__BlobStorage: ${AZURE_BLOB_CONNECTION_STRING}
+      ApplicationInsights__ConnectionString: ${APPINSIGHTS_CONNECTION_STRING}
+      # Skips the custom TOTP MFA challenge locally — do not set this in any deployed environment.
+      Mfa__BypassForTesting: "true"
+      Cors__AllowedOrigins__0: http://${APP_PREFIX}-client.localtest.me
+      Cors__AllowedOrigins__1: http://localhost:3000
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.family-hubs-api.rule=Host(`${APP_PREFIX}-api.localtest.me`)"
+      - "traefik.http.routers.family-hubs-api.entrypoints=web"
+      - "traefik.http.services.family-hubs-api.loadbalancer.server.port=8080"
+  family-hubs-client:
+    image: ${APP_PREFIX}-client
+    container_name: ${APP_PREFIX}-client
+    build:
+      context: .
+      dockerfile: client/Dockerfile.dev
+    volumes:
+      - ./client:/app
+      - /app/node_modules
+    ports:
+      - "3000:3000"
+    depends_on:
+      - "family-hubs-api"
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      CHOKIDAR_USEPOLLING: "true"
+      # Client-side runtime config consumed by client/src/config.ts — see README "Client configuration"
+      VITE_API_URL: http://${APP_PREFIX}-api.localtest.me/
+      VITE_AD_TENANT_ID: ${AD_TENANT_ID}
+      VITE_AD_AUTHORITY: ${AD_AUTHORITY}
+      VITE_AD_CLIENT_ID: ${AD_CLIENT_ID_CLIENT}
+      VITE_AD_SCOPE: ${AD_SCOPE}
+      VITE_AD_REDIRECT_URI: /
+      VITE_AD_DOMAIN_HINT: ${AD_DOMAIN}
+      VITE_APP_INSIGHTS_CONNECTION_STRING: ${APPINSIGHTS_CONNECTION_STRING}
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.family-hubs-client.rule=Host(`${APP_PREFIX}-client.localtest.me`)"
+      - "traefik.http.routers.family-hubs-client.entrypoints=web"
+      - "traefik.http.services.family-hubs-client.loadbalancer.server.port=3000"
+      - "traefik.http.routers.family-hubs-client.middlewares=client-security-headers"
+      # Security headers for the React SPA — applied at the Traefik layer so they
+      # cover all static-file responses served by the client container.
+      - "traefik.http.middlewares.client-security-headers.headers.frameDeny=true"
+      - "traefik.http.middlewares.client-security-headers.headers.contentTypeNosniff=true"
+      - "traefik.http.middlewares.client-security-headers.headers.referrerPolicy=strict-origin-when-cross-origin"
+      - "traefik.http.middlewares.client-security-headers.headers.customResponseHeaders.X-Permitted-Cross-Domain-Policies=none"
+      - "traefik.http.middlewares.client-security-headers.headers.customResponseHeaders.Permissions-Policy=accelerometer=(), camera=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), payment=(), usb=()"
+      - "traefik.http.middlewares.client-security-headers.headers.customResponseHeaders.Cache-Control=no-store, max-age=0"
+      - "traefik.http.middlewares.client-security-headers.headers.customResponseHeaders.Pragma=no-cache"
+      - "traefik.http.middlewares.client-security-headers.headers.customResponseHeaders.Content-Security-Policy=default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self'; connect-src 'self' http://${APP_PREFIX}-api.localtest.me ws://${APP_PREFIX}-api.localtest.me https://login.microsoftonline.com https://*.microsoftonline.com https://*.msftauth.net https://dc.services.visualstudio.com https://*.applicationinsights.azure.com https://*.monitor.azure.com; frame-src https://login.microsoftonline.com https://*.microsoftonline.com; frame-ancestors 'none'; object-src 'none'; base-uri 'self'; form-action 'self'"

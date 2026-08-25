@@ -41,8 +41,8 @@ export interface QuestionFormState {
   helpText: string;
   conditionalQuestionCode: string;
   conditionalValue: string;
-  conditionalRules: string;
   dateValidationRule: string;
+  conditionalRules: string;
   options: SiteFormQuestionOption[];
 }
 
@@ -94,8 +94,8 @@ export const initialFormState: QuestionFormState = {
   helpText: '',
   conditionalQuestionCode: '',
   conditionalValue: '',
-  conditionalRules: '',
   dateValidationRule: '',
+  conditionalRules: '',
   options: [],
 };
 

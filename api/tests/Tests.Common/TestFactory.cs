@@ -7,6 +7,7 @@ using Infrastructure.Caching;
 using Infrastructure.Graph;
 using Infrastructure.Identity;
 using Infrastructure.Persistence;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
@@ -54,11 +55,22 @@ public class IntegrationTestWebFactory : WebApplicationFactory<Program>, IAsyncL
         {
             RegisterDatabase(services);
             RegisterUserServices(services);
+            RegisterTestAuthentication(services);
             RegisterTestServices(services);
             RegisterEmailNotificationServices(services);
             RegisterHangfireServices(services);
             RegisterMfaServices(services);
         });
+    }
+
+    // Registered here rather than through WithWebHostBuilder in BaseIntegrationTest's constructor. That
+    // constructor runs once per test, and each WithWebHostBuilder call mints a new WebApplicationFactory
+    // whose host runs the real entry point - so the app was booting, re-running InitializeDb and SeedData
+    // once per test (twice, in fact: once for Client and once for Server) instead of once per test class.
+    private static void RegisterTestAuthentication(IServiceCollection services)
+    {
+        services.AddAuthentication(defaultScheme: "TestScheme")
+            .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>("TestScheme", _ => { });
     }
 
     private void RegisterEmailNotificationServices(IServiceCollection services)

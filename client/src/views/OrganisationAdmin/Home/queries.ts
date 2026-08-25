@@ -1,8 +1,9 @@
 import axios from 'axios';
+import { API_ROUTES } from '../../../constants/apiRoutes';
 
 
 
-export const getHome = () => axios.get<GetHomeResponse>('organisation-admin/totals');
+export const getHome = () => axios.get<GetHomeResponse>(API_ROUTES.organisationAdmin.totals);
 
 
 

@@ -1,12 +1,12 @@
 import React from 'react';
 import { Box, Typography } from '@mui/material';
 import { useQuery } from 'react-query';
-import { evaluateConditionalRules } from '../../../../helpers/conditionalRules';
 import axios from 'axios';
 import { SummaryList } from '../../../../components/GovUKComponents';
 import { ServiceFormQuestionDto } from '../../../../components/Global/Services';
-import { ServiceFormState, shouldSkipServiceCharacteristics } from '../Common';
+import { ServiceFormState, getEffectiveServiceAnswers, isServiceQuestionVisible, shouldSkipServiceCharacteristics } from '../Common';
 import { useAuthProvider } from '../../../../components/AuthProvider';
+import { API_ROUTES } from '../../../../constants/apiRoutes';
 import './StepThree.css';
 
 interface LocationDto {
@@ -70,31 +70,13 @@ const getDisplayValue = (
   return value;
 };
 
-const isQuestionVisible = (
-  question: ServiceFormQuestionDto,
-  answers: Record<string, string | undefined>
-): boolean => {
-  if (question.conditionalRules) {
-    return evaluateConditionalRules(question.conditionalRules, answers);
-  }
-  if (!question.conditionalQuestionCode || !question.conditionalValue) {
-    return true;
-  }
-  const parentValue = answers[question.conditionalQuestionCode] || '';
-  const conditionalValues = question.conditionalValue.split(',').map((v) => v.trim());
-
-  // For checkbox parent questions, check if any of the selected values match any conditional value
-  const parentSelectedValues = parentValue.split(',').map((v) => v.trim());
-  return conditionalValues.some((cv) => parentSelectedValues.includes(cv));
-};
-
 const StepThree = ({ state, questions }: StepThreeProps): React.ReactElement => {
   const { organisationId } = useAuthProvider();
 
   // Fetch locations for SMD19 display
   const { data: locationsData } = useQuery(
     ['locations', organisationId],
-    () => axios.get<LocationDto[]>(`/organisations/${organisationId}/locations`),
+    () => axios.get<LocationDto[]>(API_ROUTES.organisations.locations.list(organisationId)),
     {
       enabled: !!organisationId,
       staleTime: 5 * 60 * 1000,
@@ -104,6 +86,10 @@ const StepThree = ({ state, questions }: StepThreeProps): React.ReactElement => 
   const locations = locationsData?.data ?? [];
 
   const skipStepTwo = shouldSkipServiceCharacteristics(state);
+
+  // Summarise against the pruned answers so a question left behind by a changed ancestor (SMD10 after
+  // SMD08 moves off parenting) is neither listed nor given a value here.
+  const effectiveAnswers = getEffectiveServiceAnswers(questions, state.answers);
 
   // Sort questions by step and display order, excluding step 2 when skipped
   const sortedQuestions = [...questions]
@@ -128,9 +114,9 @@ const StepThree = ({ state, questions }: StepThreeProps): React.ReactElement => 
     if (question.code === 'SMD01') continue;
 
     // Check if question should be visible based on conditional logic
-    if (!isQuestionVisible(question, state.answers)) continue;
+    if (!isServiceQuestionVisible(question, effectiveAnswers)) continue;
 
-    const value = state.answers[question.code];
+    const value = effectiveAnswers[question.code];
     summaryItems.push({
       label: question.label,
       value: getDisplayValue(question, value, locations),

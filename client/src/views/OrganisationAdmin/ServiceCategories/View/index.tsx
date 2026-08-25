@@ -6,6 +6,7 @@ import { GeneralLayout } from '../../../../layouts';
 import { SummaryList, Paragraph } from '../../../../components/GovUKComponents';
 import { getServiceCategory, serviceCategoryCacheKey } from '../../../../components/Global/ServiceCategories';
 import { replaceCategoryNamePlaceholder } from '../Common';
+import { ROUTES } from '../../../../constants/routes';
 import './styles.css';
 
 const ViewServiceCategory = (): React.ReactElement => {
@@ -33,7 +34,7 @@ const ViewServiceCategory = (): React.ReactElement => {
     return (
       <GeneralLayout>
         <Paragraph>Service category not found.</Paragraph>
-        <Link to="/organisation-admin/core-data/wider-service-categories" className="govuk-link">
+        <Link to={ROUTES.organisationAdmin.widerServiceCategories.list} className="govuk-link">
           Back to categories
         </Link>
       </GeneralLayout>
@@ -50,8 +51,8 @@ const ViewServiceCategory = (): React.ReactElement => {
   return (
     <GeneralLayout
       breadcrumbs={[
-        { label: 'Home', link: '/organisation-admin/home' },
-        { label: 'Wider service categories', link: '/organisation-admin/core-data/wider-service-categories' },
+        { label: 'Home', link: ROUTES.organisationAdmin.home },
+        { label: 'Wider service categories', link: ROUTES.organisationAdmin.widerServiceCategories.list },
       ]}
       currentPage={serviceCategory.categoryName}>
       <span className="govuk-caption-l">Wider services category</span>
@@ -65,11 +66,11 @@ const ViewServiceCategory = (): React.ReactElement => {
       <div className="service-category-view__card">
         <div className="service-category-view__card-header">
           <div className="service-category-view__actions">
-            <Link to={`/organisation-admin/core-data/wider-service-categories/${serviceCategoryId}/edit`} className="govuk-link">
+            <Link to={ROUTES.organisationAdmin.widerServiceCategories.edit(serviceCategoryId)} className="govuk-link">
               Change
             </Link>
             <span className="service-category-view__separator">|</span>
-            <Link to={`/organisation-admin/core-data/wider-service-categories/${serviceCategoryId}/delete`} className="govuk-link">
+            <Link to={ROUTES.organisationAdmin.widerServiceCategories.delete(serviceCategoryId)} className="govuk-link">
               Delete
             </Link>
           </div>

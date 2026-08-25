@@ -26,6 +26,11 @@ public class ServiceFormValidationTests(OrganisationAdminIntegrationTestWebFacto
 
     public async Task InitializeAsync()
     {
+        // This class reshapes seeded ServiceFormQuestions rows and its DisposeAsync truncates them, so
+        // every test after the first needs the seed put back. The class fixture only seeds once, when it
+        // boots its host.
+        await SeedApplicationDataAsync();
+
         var organisation = Organisation.New(
             id: OrganisationAdminUsersData.OrganisationId,
             name: "Test Organisation",
@@ -178,6 +183,84 @@ public class ServiceFormValidationTests(OrganisationAdminIntegrationTestWebFacto
     {
         // Arrange
         var futureDate = DateTime.UtcNow.Date.AddDays(30).ToString("yyyy-MM-dd");
+        var request = new UpdateServiceStepOneRequest(
+            Name: B64(_service.Name),
+            Answers: [new AnswerInputRequest("SMD05", B64(futureDate))],
+            AdvanceStep: false);
+
+        // Act
+        var response = await Client.PutAsJsonAsync($"services/{_service.Id.Value}/step-one", request);
+
+        // Assert
+        response.IsSuccessStatusCode.Should().BeTrue(await response.Content.ReadAsStringAsync());
+    }
+
+    // The four tests above submit ISO, which parses the same under any culture. The UI submits
+    // DD/MM/YYYY, and reading that month-first is what made BLUM-7521 reject a valid future date.
+    // The cases below cover the format the client actually sends.
+    //
+    // The rejection cases deliberately use a day above 12: read month-first there is no such month,
+    // so the value fails to parse and the old code skipped the rule entirely and returned 200.
+    // That makes them fail against the defect on any host, without pinning the culture.
+    [Fact]
+    public async Task ShouldRejectStepOne_WhenPlannedDateIsInThePast_AndSubmittedAsDayFirst()
+    {
+        // Arrange
+        var request = new UpdateServiceStepOneRequest(
+            Name: B64(_service.Name),
+            Answers: [new AnswerInputRequest("SMD05", B64("20/01/2020"))],
+            AdvanceStep: false);
+
+        // Act
+        var response = await Client.PutAsJsonAsync($"services/{_service.Id.Value}/step-one", request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var content = await response.Content.ReadAsStringAsync();
+        content.Should().Contain("must not be a date in the past");
+    }
+
+    [Fact]
+    public async Task ShouldRejectStepOne_WhenDateClosedIsInTheFuture_AndSubmittedAsDayFirst()
+    {
+        // Arrange
+        var futureDate = $"25/12/{DateTime.UtcNow.Year + 5}";
+        var request = new UpdateServiceStepOneRequest(
+            Name: B64(_service.Name),
+            Answers: [new AnswerInputRequest("SMD04", B64(futureDate))],
+            AdvanceStep: false);
+
+        // Act
+        var response = await Client.PutAsJsonAsync($"services/{_service.Id.Value}/step-one", request);
+
+        // Assert
+        response.StatusCode.Should().Be(HttpStatusCode.BadRequest);
+        var content = await response.Content.ReadAsStringAsync();
+        content.Should().Contain("must not be a date in the future");
+    }
+
+    [Fact]
+    public async Task ShouldAcceptStepOne_WhenPlannedDateIsInTheFuture_AndSubmittedAsDayFirst()
+    {
+        // Arrange - the ticket's own scenario: a valid future planned date in the client's format
+        var futureDate = DateTime.UtcNow.Date.AddYears(1).ToString("dd/MM/yyyy");
+        var request = new UpdateServiceStepOneRequest(
+            Name: B64(_service.Name),
+            Answers: [new AnswerInputRequest("SMD05", B64(futureDate))],
+            AdvanceStep: false);
+
+        // Act
+        var response = await Client.PutAsJsonAsync($"services/{_service.Id.Value}/step-one", request);
+
+        // Assert
+        response.IsSuccessStatusCode.Should().BeTrue(await response.Content.ReadAsStringAsync());
+    }
+
+    [Fact]
+    public async Task ShouldAcceptStepOne_WhenPlannedDateCarriesALegacyTimePortion()
+    {
+        // Arrange - older rows hold values like "9/9/2025 12:00:00 AM"; re-saving must not reject them
+        var futureDate = $"25/12/{DateTime.UtcNow.Year + 5} 12:00:00 AM";
         var request = new UpdateServiceStepOneRequest(
             Name: B64(_service.Name),
             Answers: [new AnswerInputRequest("SMD05", B64(futureDate))],

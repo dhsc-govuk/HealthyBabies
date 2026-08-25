@@ -6,6 +6,7 @@ import { GeneralLayout } from '../../../../../../layouts';
 import { deleteActivity } from '../../../queries';
 import { getModuleContent } from '../../moduleContent';
 import { WarningPanel, WarningPanelTitle, WarningPanelBody, WarningPanelActions, WarningPanelLink } from '../../../../../../styles/govuk-global';
+import { ROUTES } from '../../../../../../constants/routes';
 
 interface LocationState {
   activityName?: string;
@@ -26,10 +27,9 @@ const DeleteActivity = (): React.ReactElement => {
   const activityName = state?.activityName;
   const content = getModuleContent(state?.moduleCode);
 
-  const apiBase = routerLocation.pathname.startsWith('/organisation-admin') ? 'organisation-admin' : 'delivery-plan';
-  const basePath = `/${apiBase}`;
-  const activitiesUrl = `${basePath}/submissions/${submissionId}/modules/${moduleId}/activities`;
-  const viewUrl = `${basePath}/submissions/${submissionId}/modules/${moduleId}/activities/${activityId}/view`;
+  const apiBase = routerLocation.pathname.startsWith(ROUTES.organisationAdmin.root) ? 'organisation-admin' : 'delivery-plan';
+  const activitiesUrl = ROUTES.areaSubmissions.activities.list(apiBase, submissionId, moduleId);
+  const viewUrl = ROUTES.areaSubmissions.activities.view(apiBase, submissionId, moduleId, activityId);
 
   const deleteMutation = useMutation({
     mutationFn: () => deleteActivity(submissionId!, moduleId!, activityId!, apiBase),

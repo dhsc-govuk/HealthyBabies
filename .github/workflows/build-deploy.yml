@@ -7,7 +7,7 @@ name: Build and Deploy to Azure Container Apps
 #   - Build: Build & test API and Client
 #   - Dev: Auto-deploy on push to main
 #   - Tst: Auto-deploys after dev deployment succeeds
-#   - Prd: Auto-deploys after tst deployment succeeds
+#   - Prd: Manual only (workflow_dispatch with environment=prd) - never auto-deployed on push to main
 #
 # Image Strategy:
 #   - API: Built directly from source in each environment's ACR
@@ -508,13 +508,13 @@ jobs:
           echo "- **Client URL:** https://${CLIENT_FQDN}" >> $GITHUB_STEP_SUMMARY
 
   # =============================================================================
-  # PRODUCTION: Build & Push Images to ACR (auto after tst deploy)
+  # PRODUCTION: Build & Push Images to ACR (manual only - workflow_dispatch)
   # =============================================================================
   push-images-prd:
     name: Push Images to ACR (Production)
     runs-on: ${{ vars.PROJECTLABEL }}-selfhosted-runner
     needs: [build-api, build-client]
-    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || inputs.environment == 'prd'
+    if: inputs.environment == 'prd'
     environment: prd
 
     outputs:
@@ -587,13 +587,13 @@ jobs:
             ./client
 
   # =============================================================================
-  # PRODUCTION: Deploy to Azure Container Apps
+  # PRODUCTION: Deploy to Azure Container Apps (manual only - workflow_dispatch)
   # =============================================================================
   deploy-prd:
     name: Deploy to Production
     runs-on: ${{ vars.PROJECTLABEL }}-selfhosted-runner
     needs: push-images-prd
-    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || inputs.environment == 'prd'
+    if: inputs.environment == 'prd'
     environment: prd
 
     steps:

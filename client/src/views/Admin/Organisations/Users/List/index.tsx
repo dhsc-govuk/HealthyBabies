@@ -8,6 +8,7 @@ import ListOrganisationUsersComponent from '../../../../../components/Global/Org
 import { SettingsLayout } from '../../../../../layouts';
 import { PageHeaderContainer, PageTitle } from '../../../../../styles/govuk-global';
 import usePageTitle from '../../../../../hooks/usePageTitle';
+import { ROUTES } from '../../../../../constants/routes';
 
 type UrlParams = {
   organisationId: string;
@@ -25,24 +26,24 @@ const ListOrganisationUsers = (): React.ReactElement => {
   });
 
   const handleView = (userId: string) => {
-    navigate(`/admin/organisations/${organisationId}/users/${userId}`);
+    navigate(ROUTES.admin.organisations.users.view(organisationId, userId));
   };
 
   const handleEdit = (userId: string) => {
-    navigate(`/admin/organisations/${organisationId}/users/${userId}/edit`);
+    navigate(ROUTES.admin.organisations.users.edit(organisationId, userId));
   };
 
   const handleCreate = () => {
-    navigate(`/admin/organisations/${organisationId}/users/create`);
+    navigate(ROUTES.admin.organisations.users.create(organisationId));
   };
 
   return (
     <LoadingSpinner loading={orgLoading} label="Loading">
       <SettingsLayout
         breadcrumbs={[
-          { label: 'Home', link: '/admin/home' },
-          { label: 'Local Authorities', link: '/admin/organisations' },
-          { label: orgData?.data.name ?? '', link: `/admin/organisations/${organisationId}` },
+          { label: 'Home', link: ROUTES.admin.home },
+          { label: 'Local Authorities', link: ROUTES.admin.organisations.list },
+          { label: orgData?.data.name ?? '', link: ROUTES.admin.organisations.view(organisationId) },
         ]}>
         <PageHeaderContainer>
           <PageTitle>Local Authority Users</PageTitle>

@@ -20,7 +20,8 @@ interface GovUKCheckboxProps {
   hint?: string;
   disabled?: boolean;
   required?: boolean;
-  size?: 'small';
+  /** Standard size by default; pass 'small' for the 'Smaller checkboxes' variant. */
+  size?: 'small' | 'large';
   onChange?: (values: (string | number)[]) => void;
 }
 
@@ -56,11 +57,23 @@ function GovUKCheckbox({
 
   return (
     <div className={`govuk-form-group ${error ? 'govuk-form-group--error' : ''}`} style={{ position: 'relative' }}>
-      <fieldset className="govuk-fieldset" aria-describedby={[hint ? `${id}-hint` : '', error ? `${id}-error` : ''].filter(Boolean).join(' ') || undefined}>
-        <legend className={`govuk-fieldset__legend govuk-fieldset__legend--${legendSize}`}>
-          {questionCode && <span className="govuk-visually-hidden">Question ID: {questionCode}: </span>}
-          {legend}
-        </legend>
+      <fieldset
+        className="govuk-fieldset"
+        aria-describedby={[hint ? `${id}-hint` : '', error ? `${id}-error` : ''].filter(Boolean).join(' ') || undefined}
+        aria-labelledby={questionCode ? `${id}-question-code ${id}-legend` : undefined}>
+        <legend id={`${id}-legend`} className={`govuk-fieldset__legend govuk-fieldset__legend--${legendSize}`}>{legend}</legend>
+
+        {/* Identifier sits inside the fieldset after the legend (never nested in it), but is
+            wired into the group's accessible NAME via aria-labelledby rather than its
+            description: a group's description is not reliably announced, whereas its name
+            demonstrably is — that is how the legend itself gets read out. This also matches the
+            label-based fields, where the code sits inside the <label> and so forms part of the
+            control's name. */}
+        {questionCode && (
+          <span id={`${id}-question-code`} className="govuk-visually-hidden">
+            Question ID: {questionCode}:{' '}
+          </span>
+        )}
 
         {hint && (
           <div className="govuk-hint" id={`${id}-hint`}>

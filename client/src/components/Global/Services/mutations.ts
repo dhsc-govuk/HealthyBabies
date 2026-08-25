@@ -6,21 +6,22 @@ import {
   UpdateServiceStepTwoRequest,
 } from './types';
 import { sanitizeCsvForUpload, zipCsvForUpload, zipFileForUpload } from '../../../helpers/csvUpload';
+import { API_ROUTES } from '../../../constants/apiRoutes';
 
 export const createService = (request: CreateServiceRequest) =>
-  axios.post<ServiceDto>('/services/create', request);
+  axios.post<ServiceDto>(API_ROUTES.services.create, request);
 
 export const updateServiceStepOne = (serviceId: string, request: UpdateServiceStepOneRequest) =>
-  axios.put<ServiceDto>(`/services/${serviceId}/step-one`, request);
+  axios.put<ServiceDto>(API_ROUTES.services.stepOne(serviceId), request);
 
 export const updateServiceStepTwo = (serviceId: string, request: UpdateServiceStepTwoRequest) =>
-  axios.put<ServiceDto>(`/services/${serviceId}/step-two`, request);
+  axios.put<ServiceDto>(API_ROUTES.services.stepTwo(serviceId), request);
 
 export const completeService = (serviceId: string) =>
-  axios.post<ServiceDto>(`/services/${serviceId}/complete`);
+  axios.post<ServiceDto>(API_ROUTES.services.complete(serviceId));
 
 export const deleteService = (serviceId: string) =>
-  axios.delete(`/services/${serviceId}`);
+  axios.delete(API_ROUTES.services.byId(serviceId));
 
 // Bulk upload types
 export interface ServiceMatchResult {
@@ -125,10 +126,19 @@ const toUploadFile = async (file: File): Promise<File> => {
 };
 
 export const downloadServicesTemplate = (format: TemplateFormat = 'csv') =>
-  axios.get('/services/bulk-upload/template', {
+  axios.get(API_ROUTES.services.bulkUpload.template, {
     params: { format },
     responseType: 'blob',
   });
+
+// BLUM-7251: the LA's own submitted services data, as opposed to downloadServicesTemplate above
+// (a blank/re-upload template) - scoped server-side to the caller's own organisation.
+export const downloadServicesExport = async (): Promise<Blob> => {
+  const response = await axios.get(API_ROUTES.organisationAdmin.coreData.servicesDownload, {
+    responseType: 'blob',
+  });
+  return response.data;
+};
 
 export const getServicesTemplateFileName = (format: TemplateFormat): string => {
   return format === 'xlsx' ? 'services_upload_template.xlsx' : 'services_upload_template.csv';
@@ -141,13 +151,13 @@ export const getServicesTemplateMimeType = (format: TemplateFormat): string => {
 };
 
 export const matchServicesByName = (serviceNames: string[]) =>
-  axios.post<ServiceMatchResult[]>('/services/bulk-upload/match', { serviceNames });
+  axios.post<ServiceMatchResult[]>(API_ROUTES.services.bulkUpload.match, { serviceNames });
 
 export const validateBulkUpload = async (file: File) => {
   const formData = new FormData();
   formData.append('file', await toUploadFile(file));
 
-  return axios.post<BulkUploadServicesValidationResultDto>('/services/bulk-upload/validate', formData, {
+  return axios.post<BulkUploadServicesValidationResultDto>(API_ROUTES.services.bulkUpload.validate, formData, {
     headers: {
       'Content-Type': 'multipart/form-data',
     },
@@ -155,4 +165,4 @@ export const validateBulkUpload = async (file: File) => {
 };
 
 export const processStagedBulkUpload = (request: ProcessStagedBulkUploadServicesRequest) =>
-  axios.post<BulkUploadServicesResultDto>('/services/bulk-upload/staged', request);
+  axios.post<BulkUploadServicesResultDto>(API_ROUTES.services.bulkUpload.staged, request);

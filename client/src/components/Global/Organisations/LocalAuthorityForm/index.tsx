@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Button, LoadingBox } from 'govuk-react';
 import { GovUKBackLink } from '../../../GovUKComponents';
+import useStepFocus from '../../../../hooks/useStepFocus';
 import './styles.css';
 
 export interface ContactPerson {
@@ -52,6 +53,7 @@ const LocalAuthorityForm = ({
   onStepChange,
 }: LocalAuthorityFormProps): React.ReactElement => {
   const [step, setStep] = useState<'form' | 'review'>('form');
+  const stepFocusRef = useStepFocus<HTMLDivElement>(step);
 
   const [formData, setFormData] = useState<LocalAuthorityFormData>({
     name: initialData?.name ?? '',
@@ -173,6 +175,7 @@ const LocalAuthorityForm = ({
       <LoadingBox loading={isSaving}>
         <div className="la-form-review">
           <GovUKBackLink onClick={handleBack}>Back</GovUKBackLink>
+          <div ref={stepFocusRef}>
 
           <h1 className="govuk-heading-l">Add a local authority</h1>
 
@@ -208,6 +211,7 @@ const LocalAuthorityForm = ({
               Confirm and create
             </Button>
           </div>
+          </div>
         </div>
       </LoadingBox>
     );
@@ -216,6 +220,7 @@ const LocalAuthorityForm = ({
   return (
     <form onSubmit={handleContinue} className="la-form">
       <GovUKBackLink onClick={onCancel}>Back</GovUKBackLink>
+      <div ref={stepFocusRef}>
 
       <h1 className="govuk-heading-l">{isEdit ? 'Edit local authority' : 'Add a local authority'}</h1>
 
@@ -346,6 +351,7 @@ const LocalAuthorityForm = ({
 
       <div className="la-form-actions">
         <Button type="submit">Continue</Button>
+      </div>
       </div>
     </form>
   );

@@ -1,9 +1,11 @@
 import React, { useReducer, useCallback, useState, useEffect, useMemo } from 'react';
 import { useMutation, useQuery } from 'react-query';
 import { usePapaParse } from 'react-papaparse';
-import { LoadingSpinner, useGovUKNotification } from '../../../../../components/GovUKComponents';
+import { LoadingSpinner, GovUKBackLink, useGovUKNotification } from '../../../../../components/GovUKComponents';
 import useErrorSummaryFocus from '../../../../../hooks/useErrorSummaryFocus';
+import usePageTitle from '../../../../../hooks/usePageTitle';
 import useStepFocus from '../../../../../hooks/useStepFocus';
+import useStepUrlSync from '../../../../../hooks/useStepUrlSync';
 import { getSiteFormQuestions, siteFormQuestionsCacheKey } from '../../../SiteForms';
 import { downloadTemplate, matchLocationsByName, validateBulkUpload, processStagedBulkUpload, TemplateFormat, getTemplateFileName, getTemplateMimeType } from './mutations';
 import { processError } from '../../../../../helpers/axiosErrorFallback';
@@ -33,6 +35,8 @@ interface Props {
   apiBasePath?: string;
 }
 
+const BULK_UPLOAD_STEP_ORDER = ['upload', 'preview', 'check', 'update'] as const;
+
 const BulkUploadComponent = ({ organisationId, handleFinish }: Props): React.ReactElement => {
   const { readString } = usePapaParse();
   const { setNotification } = useGovUKNotification();
@@ -45,6 +49,23 @@ const BulkUploadComponent = ({ organisationId, handleFinish }: Props): React.Rea
 
   const totalRowErrors = useMemo(() => state.rows.reduce((sum, row) => sum + row.errors.length, 0), [state.rows]);
   const hasCheckErrors = state.currentStep === 'check' && totalRowErrors > 0;
+
+  const LOCATION_BULK_UPLOAD_STEPS: Record<typeof state.currentStep, string> = {
+    upload: 'Step 1 of 4: Upload file',
+    preview: 'Step 2 of 4: Preview data',
+    check: 'Step 3 of 4: Check your data',
+    update: 'Step 4 of 4: Update locations',
+  };
+  usePageTitle('Bulk upload locations', hasCheckErrors, LOCATION_BULK_UPLOAD_STEPS[state.currentStep]);
+
+  // Give each step its own history entry so browser Back returns to the previous step rather
+  // than leaving the flow. The title (and so the announcement) follows the restored step.
+  useStepUrlSync({
+    step: state.currentStep,
+    steps: BULK_UPLOAD_STEP_ORDER,
+    onStepChange: (nextStep) => dispatch({ type: BulkUploadActionType.SET_STEP, payload: nextStep }),
+    isResumable: state.rows.length > 0,
+  });
   useErrorSummaryFocus(submitAttempts, hasCheckErrors);
 
   useEffect(() => {
@@ -225,6 +246,19 @@ const BulkUploadComponent = ({ organisationId, handleFinish }: Props): React.Rea
     dispatch({ type: BulkUploadActionType.SET_STEP, payload: step });
   };
 
+  // One back control for the whole flow: one step back from any step after the first, and out
+  // of the flow from the first. This component owns it because the host page's layout cannot
+  // see the current step. Previously each step was handed an onBack it never rendered.
+  const handleBack = () => {
+    const i = BULK_UPLOAD_STEP_ORDER.indexOf(state.currentStep as (typeof BULK_UPLOAD_STEP_ORDER)[number]);
+    const previous = BULK_UPLOAD_STEP_ORDER[i - 1];
+    if (i > 0 && previous) {
+      goToStep(previous as BulkUploadState['currentStep']);
+      return;
+    }
+    handleFinish();
+  };
+
   const handleUploadContinue = useCallback(() => {
     if (state.file) {
       const reader = new FileReader();
@@ -342,6 +376,7 @@ const BulkUploadComponent = ({ organisationId, handleFinish }: Props): React.Rea
 
   return (
     <>
+      <GovUKBackLink onClick={handleBack}>Back</GovUKBackLink>
       <div ref={stepFocusRef} style={{ maxWidth: '960px', margin: '0 auto', paddingBottom: '40px' }}>
         {/* Step content */}
         {state.currentStep === 'upload' && (
@@ -363,7 +398,6 @@ const BulkUploadComponent = ({ organisationId, handleFinish }: Props): React.Rea
             rows={state.rows}
             onDelimiterChange={handleDelimiterChange}
             onOpenFullScreen={() => setFullScreenOpen(true)}
-            onBack={() => goToStep('upload')}
             onContinue={handlePreviewContinue}
           />
         )}
@@ -374,9 +408,9 @@ const BulkUploadComponent = ({ organisationId, handleFinish }: Props): React.Rea
             labels={state.labels}
             rows={state.rows}
             questions={questions}
+            fileName={state.file?.name ?? 'upload.csv'}
             onCellEdit={handleCellEdit}
             onOpenFullScreen={() => setFullScreenOpen(true)}
-            onBack={() => goToStep('preview')}
             onContinue={handleCheckContinue}
           />
         )}
@@ -387,7 +421,6 @@ const BulkUploadComponent = ({ organisationId, handleFinish }: Props): React.Rea
             updateResult={updateResult}
             isLoading={updatingLocations}
             onToggleSelection={handleToggleSelection}
-            onBack={() => goToStep('check')}
             onSubmit={handleSubmit}
             onFinish={handleFinishClick}
           />

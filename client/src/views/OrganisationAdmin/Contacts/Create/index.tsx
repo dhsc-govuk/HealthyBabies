@@ -11,6 +11,7 @@ import { createContact } from './mutations';
 import { defaultStaleTime } from '../../../../helpers/queriesParams';
 import { getContactRoles } from '../Common/queries';
 import { encodeForWaf } from '../../../../helpers/stringUtils';
+import { ROUTES } from '../../../../constants/routes';
 
 const CreateContact = (): React.ReactElement => {
   const navigate = useNavigate();
@@ -37,7 +38,7 @@ const CreateContact = (): React.ReactElement => {
     onSuccess(_data, _variables, _context) {
       setNotification({ type: 'success', title: 'Success', message: 'Contact created successfully' });
       queryClient.invalidateQueries(['organisation-contacts', organisationId]);
-      navigate('/organisation-admin/contacts');
+      navigate(ROUTES.organisationAdmin.contacts.list);
     },
     onError(error, _variables, _context) {
       processError(error, (e) => setNotification({ type: 'important', title: 'Error', message: e }));
@@ -59,18 +60,20 @@ const CreateContact = (): React.ReactElement => {
     <LoadingSpinner loading={isLoading} label="Creating contact">
       <GeneralLayout
         breadcrumbs={[
-          { label: 'Home', link: '/organisation-admin/home' },
-          { label: 'Contacts', link: '/organisation-admin/contacts' },
+          { label: 'Home', link: ROUTES.organisationAdmin.home },
+          { label: 'Contacts', link: ROUTES.organisationAdmin.contacts.list },
           { label: 'Create', link: '' },
         ]}
-        currentPage="Create">
+        currentPage="Create contact"
+        manageTitle={false}>
         <ContactSteps
           completeLabel="Create"
           contact={contact}
           dispatch={dispatchContact}
           handleSave={handleSave}
           roles={roles}
-          onCancel={() => navigate('/organisation-admin/contacts')}
+          onCancel={() => navigate(ROUTES.organisationAdmin.contacts.list)}
+          pageTitle="Create contact"
         />
       </GeneralLayout>
     </LoadingSpinner>

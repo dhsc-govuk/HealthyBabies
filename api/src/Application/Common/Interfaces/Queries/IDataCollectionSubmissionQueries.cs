@@ -19,6 +19,15 @@ public interface IDataCollectionSubmissionQueries
         OrganisationId organisationId,
         CancellationToken cancellationToken = default);
 
+    /// <summary>
+    /// As GetByDataCollectionAndOrganisationAsync, but eager-loads SubmittedBy and ReviewedBy so
+    /// the review details can be rendered without a second round trip.
+    /// </summary>
+    Task<Option<DataCollectionSubmission>> GetByDataCollectionAndOrganisationWithUsersAsync(
+        DataCollectionId dataCollectionId,
+        OrganisationId organisationId,
+        CancellationToken cancellationToken = default);
+
     Task<Option<DataCollectionSubmission>> GetByDataCollectionAndOrganisationWithSectionsAsync(
         DataCollectionId dataCollectionId,
         OrganisationId organisationId,

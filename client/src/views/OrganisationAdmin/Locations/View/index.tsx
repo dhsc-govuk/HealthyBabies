@@ -5,6 +5,7 @@ import { GeneralLayout } from '../../../../layouts';
 import ViewLocationComponent from '../../../../components/Global/Organisations/Locations/View';
 import { useAuthProvider } from '../../../../components/AuthProvider';
 import { useLocationQuery } from '../../../../components/Global/Queries/locations';
+import { ROUTES } from '../../../../constants/routes';
 
 type UrlParams = {
   locationId: string;
@@ -20,8 +21,8 @@ const ViewLocation = (): React.ReactElement => {
     <LoadingSpinner loading={locLoading} label="Loading">
       <GeneralLayout
         breadcrumbs={[
-          { label: 'Home', link: '/organisation-admin/home' },
-          { label: 'Delivery locations', link: `/organisation-admin/core-data/delivery-locations` },
+          { label: 'Home', link: ROUTES.organisationAdmin.home },
+          { label: 'Delivery locations', link: ROUTES.organisationAdmin.locations.list },
         ]}
         currentPage={locationData?.data.name ?? ''}>
         <ViewLocationComponent organisationId={organisationId!} locationId={locationId!} />

@@ -1,3 +1,6 @@
+using Application.Common.Dtos;
+using Application.DataCollections.Dtos;
+
 namespace Application.Submissions.Dtos;
 
 public record SubmissionDto(
@@ -8,7 +11,8 @@ public record SubmissionDto(
     DateTime EndDate,
     string Status,
     int DaysRemaining,
-    bool IsWindowClosed);
+    bool IsWindowClosed,
+    string Type);
 
 public record SubmissionDetailDto(
     Guid Id,
@@ -19,7 +23,16 @@ public record SubmissionDetailDto(
     string Status,
     int DaysRemaining,
     bool IsWindowClosed,
-    IReadOnlyList<SubmissionFormModuleDto> FormModules);
+    string Type,
+    IReadOnlyList<SubmissionFormModuleDto> FormModules,
+    int PreviousVersionCount,
+    DateTime? ReviewedAt = null,
+    string? ReviewNotes = null,
+    string? ReviewedBy = null,
+    string? SubmittedBy = null,
+    string? SubmittedByEmail = null,
+    DateTime? SubmittedAt = null,
+    IReadOnlyList<ReviewSectionSummaryDto>? Sections = null);
 
 public record SubmissionFormModuleDto(
     Guid Id,
@@ -29,7 +42,8 @@ public record SubmissionFormModuleDto(
     string? Description,
     string Status,
     bool AllowsMultipleActivities,
-    IReadOnlyList<SubmissionSectionDto> Sections);
+    IReadOnlyList<SubmissionSectionDto> Sections,
+    bool IsFlaggedForReview);
 
 public record SubmissionSectionDto(
     Guid Id,
@@ -83,7 +97,9 @@ public record FormModuleDetailDto(
     int TotalSteps,
     bool AllowsMultipleActivities,
     IReadOnlyList<FormModuleSectionDto> Sections,
-    IReadOnlyList<FormModuleFieldDto> Fields);
+    IReadOnlyList<FormModuleFieldDto> Fields,
+    /// <summary>True once the round is submitted or its window has closed — the form must render read-only.</summary>
+    bool IsReadOnly);
 
 public record FormModuleSectionDto(
     Guid Id,
@@ -104,6 +120,8 @@ public record FormModuleFieldDto(
     int? StepNumber,
     string? Value,
     string? DisplayValue,
+    /// <summary>The question label captured when this answer was saved; null for rows with no snapshot, where callers fall back to <see cref="Label"/>.</summary>
+    string? QuestionLabel,
     string? ConditionalRules,
     string? Configuration,
     string? Placeholder,
@@ -248,7 +266,9 @@ public record ActivitiesModuleDetailDto(
     string? Description,
     string Status,
     bool AllowsMultipleActivities,
-    IReadOnlyList<ActivityRecordDto> Activities);
+    IReadOnlyList<ActivityRecordDto> Activities,
+    /// <summary>True once the round is submitted or its window has closed — the form must render read-only.</summary>
+    bool IsReadOnly);
 
 public record ActivityRecordDto(
     Guid ActivityId,
@@ -267,7 +287,28 @@ public record ActivityFormDetailDto(
     string ActivityName,
     string Status,
     IReadOnlyList<FormModuleSectionDto> Sections,
-    IReadOnlyList<FormModuleFieldDto> Fields);
+    IReadOnlyList<FormModuleFieldDto> Fields,
+    IReadOnlyList<AvailableServiceDto> AvailableServices,
+    IReadOnlyList<StrandSpendSummaryDto> StrandSpend,
+    /// <summary>True once the round is submitted or its window has closed — the form must render read-only.</summary>
+    bool IsReadOnly);
+
+/// <summary>
+/// The strand's running spend position for one financial year, so the form can show how much of the
+/// allocation is left before this activity is even saved.
+/// </summary>
+/// <param name="ForecastFieldKey">The forecast field this total is drawn from, e.g. DG11.</param>
+/// <param name="SpentByOtherActivities">Total from every OTHER activity in the strand this round.</param>
+/// <param name="IsCap">Rollover Spend has a hard ceiling rather than a ±10% band.</param>
+public record StrandSpendSummaryDto(
+    string YearRange,
+    string ForecastFieldKey,
+    decimal Allocation,
+    decimal SpentByOtherActivities,
+    decimal LowerBound,
+    decimal UpperBound,
+    decimal RemainingToUpperBound,
+    bool IsCap);
 
 public record CreateActivityRequest;
 
@@ -284,18 +325,12 @@ public record BulkUploadValidationResultDto(
     IReadOnlyList<BulkUploadRowValidationDto> RowValidations,
     IReadOnlyList<BulkUploadFieldMetadataDto> FieldMetadata,
     Guid StagingId,
+    // The column that names the thing each row is about - "ServiceName" for service users, "PPS01"
+    // for outcome scores, and the strand's configured activity-name field for activity modules.
+    // The upload wizard needs it to match rows against existing records, and derived it itself
+    // before this; it has no way to know a strand's name field is not simply its first column.
+    string? NameFieldCode = null,
     string? ModuleError = null);
-
-public record BulkUploadRowValidationDto(
-    int RowNumber,
-    string? ServiceName,
-    bool IsValid,
-    IReadOnlyList<BulkUploadFieldErrorDto> Errors);
-
-public record BulkUploadFieldErrorDto(
-    string FieldCode,
-    string FieldLabel,
-    string ErrorMessage);
 
 public record BulkUploadFieldMetadataDto(
     string FieldCode,
@@ -304,10 +339,6 @@ public record BulkUploadFieldMetadataDto(
     IReadOnlyList<BulkUploadFieldOptionDto> Options,
     string? ConditionalRules,
     string? Configuration);
-
-public record BulkUploadFieldOptionDto(
-    string Value,
-    string Label);
 
 public record BulkUploadResultDto(
     bool Success,
@@ -321,6 +352,14 @@ public record BulkUploadRowResultDto(
     string? ServiceName,
     bool IsSuccess,
     string? ErrorMessage);
+
+// BLUM-7454 migration import - wraps BulkUploadResultDto with the LA/module/date context needed to
+// build a pilot report from many ImportMigratedActivitiesCommand calls (one per LA per module).
+public record MigrationImportResultDto(
+    string OrganisationName,
+    string ModuleCode,
+    DateTime SubmittedAtUtc,
+    BulkUploadResultDto Result);
 
 public record ProcessStagedBulkUploadRequestDto(
     Guid StagingId,
@@ -348,6 +387,12 @@ public record CheckServiceUserDuplicatesRequestDto(IReadOnlyList<ServiceUserRowC
 public record ServiceUserRowCheckDto(int RowIndex, string ServiceName);
 
 public record ServiceUserDuplicateCheckDto(int RowIndex, string ServiceName, bool HasExistingData);
+
+public record CheckActivityDuplicatesRequestDto(IReadOnlyList<ActivityRowCheckDto> Rows);
+
+public record ActivityRowCheckDto(int RowIndex, string ActivityName);
+
+public record ActivityDuplicateCheckDto(int RowIndex, string ActivityName, bool HasExistingData);
 
 // Admin data-collection submission integrity DTOs (BLUM-7047)
 public record SubmissionIntegrityDto(

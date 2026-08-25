@@ -1,3 +1,4 @@
+using Application.Common.Dtos;
 using Application.SiteForms.Dtos;
 
 namespace Application.Organisations.Dtos;
@@ -56,28 +57,16 @@ public record BulkUploadLocationsValidationResultDto(
     int ValidRows,
     int InvalidRows,
     IReadOnlyList<BulkUploadRowValidationDto> RowValidations,
-    IReadOnlyList<BulkUploadFieldMetadataDto> FieldMetadata,
+    IReadOnlyList<BulkUploadLocationFieldMetadataDto> FieldMetadata,
     Guid StagingId);
 
-public record BulkUploadRowValidationDto(
-    int RowNumber,
-    string? SiteName,
-    bool IsValid,
-    IReadOnlyList<BulkUploadFieldErrorDto> Errors);
-
-public record BulkUploadFieldErrorDto(
-    string FieldCode,
-    string FieldLabel,
-    string ErrorMessage);
-
-public record BulkUploadFieldMetadataDto(
+// Locations' conditional-field model is a single question/value comparison, unlike the richer
+// JSON-rules model in Application.Submissions.Dtos.BulkUploadFieldMetadataDto - named distinctly
+// rather than merged since the two aren't interchangeable.
+public record BulkUploadLocationFieldMetadataDto(
     string FieldCode,
     string FieldType,
     bool IsRequired,
     IReadOnlyList<BulkUploadFieldOptionDto> Options,
     string? ConditionalQuestionCode,
     string? ConditionalValue);
-
-public record BulkUploadFieldOptionDto(
-    string Value,
-    string Label);

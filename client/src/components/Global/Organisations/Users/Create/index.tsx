@@ -45,7 +45,7 @@ const CreateOrganisationUsersComponent = ({ organisationId, handleFinish, onCanc
 
   return (
     <LoadingSpinner loading={saving} label="Saving Changes">
-      <UserSteps completeLabel="Create" user={organisationAdmin} dispatch={dispatchOrganisationAdmin} handleSave={handleSave} showRoleSelect={true} onCancel={onCancel} />
+      <UserSteps completeLabel="Create" user={organisationAdmin} dispatch={dispatchOrganisationAdmin} handleSave={handleSave} showRoleSelect={true} onCancel={onCancel} pageTitle="Create organisation admin user" />
     </LoadingSpinner>
   );
 };

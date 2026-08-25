@@ -32,7 +32,7 @@
 .view-service-caption {
   font-size: 24px;
   line-height: 30px;
-  font-weight: 300;
+  font-weight: 400;
   color: #505a5f;
 }
 
@@ -101,9 +101,10 @@
   color: #003078;
 }
 
+/* #b1b4b6 is only 2.08:1 against white; govuk-secondary-text-colour reaches 7.07:1. */
 .view-service-action-separator {
-  color: #b1b4b6;
-  font-weight: 300;
+  color: #505a5f;
+  font-weight: 400;
 }
 
 /* Summary rows - GOV.UK summary list style */
@@ -134,6 +135,6 @@
   flex: 1;
   font-size: 19px;
   line-height: 25px;
-  font-weight: 300;
+  font-weight: 400;
   color: #0b0c0c;
 }

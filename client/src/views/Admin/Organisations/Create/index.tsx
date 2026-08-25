@@ -8,6 +8,7 @@ import { LocalAuthorityForm, LocalAuthorityFormData } from '../../../../componen
 import { useGovUKNotification } from '../../../../components/GovUKComponents';
 import usePageTitle from '../../../../hooks/usePageTitle';
 import { encodeForWaf } from '../../../../helpers/stringUtils';
+import { ROUTES } from '../../../../constants/routes';
 
 const OrganisationCreate = (): React.ReactElement => {
   usePageTitle('Add local authority');
@@ -19,7 +20,7 @@ const OrganisationCreate = (): React.ReactElement => {
     mutationKey: ['admin-organisations-create'],
     mutationFn: createOrganisation,
     onSuccess() {
-      navigate('/admin/organisations', { state: { created: true } });
+      navigate(ROUTES.admin.organisations.list, { state: { created: true } });
     },
     onError(error) {
       processError(error, (e) => setNotification({ type: 'important', title: 'Error', message: e }));
@@ -45,7 +46,7 @@ const OrganisationCreate = (): React.ReactElement => {
       <LocalAuthorityForm
         isSaving={saving}
         onSubmit={handleSubmit}
-        onCancel={() => navigate('/admin/organisations')}
+        onCancel={() => navigate(ROUTES.admin.organisations.list)}
         submitLabel="Confirm and create"
         onStepChange={setCurrentStep}
       />

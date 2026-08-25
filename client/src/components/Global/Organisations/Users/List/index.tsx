@@ -55,7 +55,8 @@ const ListOrganisationUsersComponent = ({ organisationId, handleView, handleEdit
     },
     {
       key: 'actions',
-      header: '',
+      header: 'Actions',
+      headerVisuallyHidden: true,
       align: 'right',
       render: (user) => (
         <div className="govuk-table__actions">
@@ -82,7 +83,7 @@ const ListOrganisationUsersComponent = ({ organisationId, handleView, handleEdit
 
   return (
     <LoadingSpinner loading={usersLoading} label="Loading">
-      <GovUKTable<OrganisationUserDto> data={usersData?.data ?? []} columns={columns} keyExtractor={(user) => user.id} searchable={false} emptyMessage="No users found" />
+      <GovUKTable<OrganisationUserDto> caption="Organisation users" data={usersData?.data ?? []} columns={columns} keyExtractor={(user) => user.id} searchable={false} emptyMessage="No users found" />
     </LoadingSpinner>
   );
 };

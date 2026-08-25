@@ -18,13 +18,17 @@ const TableViewComponent = ({ items, activeFiltered, handleView, handleEdit, set
   const rows = items.map((item) => {
     return {
       key: item.id,
+      // Every row repeats the same two labels, so on their own they give a screen reader no
+      // way to tell which user each button acts on. hiddenText names the user (WCAG 2.4.4).
       actions: [
         {
           label: 'View',
+          hiddenText: item.fullName,
           onClick: () => handleView(item.id),
         },
         {
           label: 'Edit',
+          hiddenText: item.fullName,
           onClick: () => handleEdit(item.id),
         },
       ],
@@ -96,9 +100,10 @@ const TableViewComponent = ({ items, activeFiltered, handleView, handleEdit, set
               <StyledTd key={col.key}>{col.label}</StyledTd>
             ))}
             <StyledTd>
-              {row.actions.map((action: { label: string; onClick: () => void }) => (
+              {row.actions.map((action: { label: string; hiddenText?: string; onClick: () => void }) => (
                 <ActionButton key={action.label} onClick={action.onClick}>
                   {action.label}
+                  {action.hiddenText && <span className="govuk-visually-hidden"> {action.hiddenText}</span>}
                 </ActionButton>
               ))}
             </StyledTd>

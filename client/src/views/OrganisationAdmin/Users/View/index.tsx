@@ -8,6 +8,7 @@ import { viewOrganisationUsersCacheKey } from '../../../../helpers/queriesParams
 import ViewComponent from '../../../../components/Global/Users/View';
 import { useAuthProvider } from '../../../../components/AuthProvider';
 import { SettingsLayout } from '../../../../layouts';
+import { ROUTES } from '../../../../constants/routes';
 
 type UrlParams = {
   userId: string;
@@ -26,15 +27,15 @@ const ViewOrganisationUsers = (): React.ReactElement => {
   });
 
   const handleEdit = () => {
-    navigate(`/organisation-admin/la-users/${userId}/edit`);
+    navigate(ROUTES.organisationAdmin.laUsers.edit(userId));
   };
 
   return (
     <LoadingSpinner loading={userLoading} label="Loading">
       <SettingsLayout
         breadcrumbs={[
-          { label: 'Home', link: '/organisation-admin/home' },
-          { label: 'LA users', link: '/organisation-admin/la-users' },
+          { label: 'Home', link: ROUTES.organisationAdmin.home },
+          { label: 'LA users', link: ROUTES.organisationAdmin.laUsers.list },
         ]}
         currentPage={stringFromArray([userData?.data.firstName ?? '', userData?.data.lastName ?? ''])}>
         {userData && (

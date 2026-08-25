@@ -9,7 +9,6 @@ interface StepPreviewProps {
   rows: RowData[];
   onDelimiterChange: (delimiter: Delimiter) => void;
   onOpenFullScreen: () => void;
-  onBack: () => void;
   onContinue: () => void;
 }
 
@@ -46,29 +45,35 @@ const StepPreview: React.FC<StepPreviewProps> = ({
       </div>
 
       {/* Delimiter selection */}
-      <div className="bulk-upload-delimiter">
-        <label className="bulk-upload-delimiter__label">Delimiter</label>
-        <span className="bulk-upload-delimiter__hint">
+      <fieldset className="bulk-upload-delimiter" aria-describedby="service-delimiter-hint">
+        <legend className="bulk-upload-delimiter__label">Delimiter</legend>
+        <span className="bulk-upload-delimiter__hint" id="service-delimiter-hint">
           A delimiter is a character that separates values in a CSV file. It tells the application
           how to split your data into columns. Select the delimiter that shows your data in a table
           correctly.
         </span>
         <div className="bulk-upload-delimiter__options">
-          {DELIMITER_OPTIONS.map((option) => (
-            <label key={option.value} className="bulk-upload-radio-small">
-              <input
-                type="radio"
-                name="delimiter"
-                value={option.value}
-                checked={delimiter === option.value}
-                onChange={() => onDelimiterChange(option.value)}
-                className="bulk-upload-radio-small__input"
-              />
-              <span className="bulk-upload-radio-small__label">{option.label}</span>
-            </label>
-          ))}
+          {DELIMITER_OPTIONS.map((option, index) => {
+            const optionId = `service-delimiter-${index}`;
+            return (
+              <div key={option.value} className="bulk-upload-radio-small">
+                <input
+                  id={optionId}
+                  type="radio"
+                  name="delimiter"
+                  value={option.value}
+                  checked={delimiter === option.value}
+                  onChange={() => onDelimiterChange(option.value)}
+                  className="bulk-upload-radio-small__input"
+                />
+                <label className="bulk-upload-radio-small__label" htmlFor={optionId}>
+                  {option.label}
+                </label>
+              </div>
+            );
+          })}
         </div>
-      </div>
+      </fieldset>
 
       {/* Table section */}
       <div className="bulk-upload-table-section">
@@ -76,7 +81,7 @@ const StepPreview: React.FC<StepPreviewProps> = ({
           <p className="bulk-upload-table-label">Service users spreadsheet preview</p>
           <button
             type="button"
-            className="bulk-upload-button bulk-upload-button--secondary"
+            className="govuk-button govuk-button--secondary govuk-!-margin-bottom-0"
             onClick={onOpenFullScreen}
           >
             Open full screen
@@ -85,6 +90,7 @@ const StepPreview: React.FC<StepPreviewProps> = ({
 
         <div className="bulk-upload-table__wrapper">
           <table className="bulk-upload-table">
+            <caption className="govuk-visually-hidden">Services spreadsheet preview</caption>
             <thead>
               <tr>
                 <th className="bulk-upload-table__row-number">#</th>
@@ -119,7 +125,7 @@ const StepPreview: React.FC<StepPreviewProps> = ({
       <div>
         <button
           type="button"
-          className="bulk-upload-button"
+          className="govuk-button"
           onClick={onContinue}
           disabled={rows.length === 0}
         >

@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { API_ROUTES } from '../../../../constants/apiRoutes';
 
 export interface Organisation {
   id: string;
@@ -7,4 +8,4 @@ export interface Organisation {
   isActive: boolean;
 }
 
-export const getOrganisations = () => axios.get<Organisation[]>('/organisations');
+export const getOrganisations = () => axios.get<Organisation[]>(API_ROUTES.organisations.list);

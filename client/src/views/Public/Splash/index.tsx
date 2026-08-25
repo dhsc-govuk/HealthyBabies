@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { styled } from '@mui/material/styles';
 import { Fade } from '@mui/material';
 import { Logo } from '../../../components/Logos';
+import { ROUTES } from '../../../constants/routes';
 
 const Root = styled('div')(({ theme }) => ({
   height: '100%',
@@ -35,7 +36,7 @@ const Splash = (): React.ReactElement => {
     let mounted = true;
     if (mounted) {
       setTimeout(() => {
-        navigate('/sign-in', { replace: true });
+        navigate(ROUTES.signIn, { replace: true });
       }, 5000);
     }
     return () => {

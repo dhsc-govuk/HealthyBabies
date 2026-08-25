@@ -10,6 +10,7 @@ import { PageHeaderContainer, PageHeaderActions, PageTitle } from '../../../../.
 import { Dialog, DialogTitle, DialogContent, DialogContentText, DialogActions } from '@mui/material';
 import './styles.css';
 import usePageTitle from '../../../../../hooks/usePageTitle';
+import { ROUTES } from '../../../../../constants/routes';
 
 type UrlParams = {
   lookupId: string;
@@ -34,7 +35,7 @@ const ViewLookupData = (): React.ReactElement => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['global-data-list'] });
       setNotification({ type: 'success', title: 'Success', message: 'Lookup data deleted successfully' });
-      navigate('/admin/configuration/lookup-data');
+      navigate(ROUTES.admin.configuration.lookupData.list);
     },
     onError: () => {
       setNotification({ type: 'important', title: 'Error', message: 'Failed to delete lookup data' });
@@ -42,7 +43,7 @@ const ViewLookupData = (): React.ReactElement => {
   });
 
   const handleEdit = () => {
-    navigate(`/admin/configuration/lookup-data/${lookupId}/edit`);
+    navigate(ROUTES.admin.configuration.lookupData.edit(lookupId));
   };
 
   const handleDelete = () => {
@@ -59,9 +60,9 @@ const ViewLookupData = (): React.ReactElement => {
   return (
     <SettingsLayout
       breadcrumbs={[
-        { label: 'Home', link: '/admin/home' },
-        { label: 'Settings', link: '/admin/settings' },
-        { label: 'Lookup Data', link: '/admin/configuration/lookup-data' },
+        { label: 'Home', link: ROUTES.admin.home },
+        { label: 'Settings', link: ROUTES.admin.settings },
+        { label: 'Lookup Data', link: ROUTES.admin.configuration.lookupData.list },
       ]}>
       <LoadingBox loading={isLoading}>
         {lookupData && (
@@ -74,20 +75,22 @@ const ViewLookupData = (): React.ReactElement => {
               </PageHeaderActions>
             </PageHeaderContainer>
 
-            <dl className="govuk-summary-list">
-              <div className="govuk-summary-list__row">
-                <dt className="govuk-summary-list__key">Entity</dt>
-                <dd className="govuk-summary-list__value">{lookupData.entity}</dd>
-              </div>
-              <div className="govuk-summary-list__row">
-                <dt className="govuk-summary-list__key">Value</dt>
-                <dd className="govuk-summary-list__value">{lookupData.value}</dd>
-              </div>
-              <div className="govuk-summary-list__row">
-                <dt className="govuk-summary-list__key">Description</dt>
-                <dd className="govuk-summary-list__value">{lookupData.description || '-'}</dd>
-              </div>
-            </dl>
+            <div className="lookup-data-view__summary">
+              <dl className="govuk-summary-list">
+                <div className="govuk-summary-list__row">
+                  <dt className="govuk-summary-list__key">Entity</dt>
+                  <dd className="govuk-summary-list__value">{lookupData.entity}</dd>
+                </div>
+                <div className="govuk-summary-list__row">
+                  <dt className="govuk-summary-list__key">Value</dt>
+                  <dd className="govuk-summary-list__value">{lookupData.value}</dd>
+                </div>
+                <div className="govuk-summary-list__row">
+                  <dt className="govuk-summary-list__key">Description</dt>
+                  <dd className="govuk-summary-list__value">{lookupData.description || '-'}</dd>
+                </div>
+              </dl>
+            </div>
           </>
         )}
       </LoadingBox>

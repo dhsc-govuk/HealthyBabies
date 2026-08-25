@@ -16,25 +16,28 @@ import {
   LogoutButton,
   govukWhite,
 } from './styles';
+import { ROUTES } from '../../../constants/routes';
 import './service-navigation.css';
 
 const adminNavigation = [
-  { label: 'Home', href: '/admin/home' },
-  { label: 'Trends', href: '/admin/trends' },
-  { label: 'Submissions', href: '/admin/submissions' },
-  { label: 'Settings', href: '/admin/settings' },
+  { label: 'Home', href: ROUTES.admin.home },
+  { label: 'Trends', href: ROUTES.admin.trends },
+  { label: 'Submissions', href: ROUTES.admin.submissions.list },
+  { label: 'Settings', href: ROUTES.admin.settings },
 ];
 
 const organisationAdminNavigation = [
-  { label: 'Core data', href: '/organisation-admin/core-data/delivery-locations' },
-  { label: 'Submissions', href: '/organisation-admin/submissions' },
-  { label: 'Guidance', href: '/organisation-admin/help' },
+  { label: 'Summary', href: ROUTES.organisationAdmin.summary },
+  { label: 'Core data', href: ROUTES.organisationAdmin.locations.list },
+  { label: 'Submissions', href: ROUTES.organisationAdmin.submissions.list },
+  { label: 'Guidance', href: ROUTES.organisationAdmin.help },
 ];
 
 const deliveryPlanNavigation = [
-  { label: 'Core data', href: '/delivery-plan/core-data' },
-  { label: 'Submissions', href: '/delivery-plan/submissions' },
-  { label: 'Guidance', href: '/delivery-plan/help' },
+  { label: 'Summary', href: ROUTES.deliveryPlan.summary },
+  { label: 'Core data', href: ROUTES.deliveryPlan.coreData },
+  { label: 'Submissions', href: ROUTES.deliveryPlan.submissions.list },
+  { label: 'Guidance', href: ROUTES.deliveryPlan.help },
 ];
 
 interface Props {
@@ -69,12 +72,12 @@ const LayoutHeader = ({
   }, []);
 
   const isActive = (href: string) => {
-    if (href === '/admin/settings') {
-      const settingsPaths = ['/admin/settings', '/admin/organisations', '/admin/departmental-users', '/admin/la-users', '/admin/data-collections', '/admin/forms', '/admin/guidance', '/admin/configuration', '/admin/core-data'];
+    if (href === ROUTES.admin.settings) {
+      const settingsPaths = [ROUTES.admin.settings, ROUTES.admin.organisations.list, ROUTES.admin.departmentalUsers.list, ROUTES.admin.laUsers.list, ROUTES.admin.dataCollections.list, ROUTES.admin.forms, ROUTES.admin.guidance, ROUTES.admin.configuration.root, ROUTES.admin.coreData];
       return settingsPaths.some(path => location.pathname.startsWith(path));
     }
-    if (href === '/organisation-admin/core-data/delivery-locations') {
-      return location.pathname.startsWith('/organisation-admin/core-data');
+    if (href === ROUTES.organisationAdmin.locations.list) {
+      return location.pathname.startsWith(ROUTES.organisationAdmin.coreData);
     }
     return location.pathname.startsWith(href);
   };
@@ -94,16 +97,16 @@ const LayoutHeader = ({
   };
 
   const homeUrl = userRole === EnumUserRole.ORGANISATION_ADMIN
-    ? '/organisation-admin/home'
+    ? ROUTES.organisationAdmin.home
     : userRole === EnumUserRole.DELIVERY_PLAN_LEAD
-      ? '/delivery-plan/home'
-      : '/admin/home';
+      ? ROUTES.deliveryPlan.home
+      : ROUTES.admin.home;
 
   return (
     <Box component="header" role="banner">
       {/* GOV.UK Header — blue bar with logo and user avatar */}
       <Header>
-        <HeaderContainer sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <HeaderContainer sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, justifyContent: 'space-between', alignItems: 'center' }}>
           <a href="/" className="govuk-header__link govuk-header__link--homepage" style={{ color: govukWhite, textDecoration: 'none' }}>
             <GovUKHeaderLogo />
           </a>

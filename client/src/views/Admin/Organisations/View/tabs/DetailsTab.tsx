@@ -44,7 +44,7 @@ const DetailsTab = ({ org, onEdit }: DetailsTabProps): React.ReactElement => (
       </Link>
     </p>
 
-    <dl className="govuk-summary-list">
+    <dl className="govuk-summary-list org-view-summary">
       <div className="govuk-summary-list__row">
         <dt className="govuk-summary-list__key">Name</dt>
         <dd className="govuk-summary-list__value">{org.name}</dd>

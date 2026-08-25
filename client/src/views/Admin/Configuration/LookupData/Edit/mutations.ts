@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { GlobalDataDto } from '../../../../../components/Global/Queries/globalData';
+import { API_ROUTES } from '../../../../../constants/apiRoutes';
 
 export interface UpdateGlobalDataDto {
   id: string;
@@ -9,4 +10,4 @@ export interface UpdateGlobalDataDto {
 }
 
 export const updateGlobalData = (data: UpdateGlobalDataDto) =>
-  axios.put<GlobalDataDto>(`/global-data/${data.id}`, data);
+  axios.put<GlobalDataDto>(API_ROUTES.globalData.byId(data.id), data);

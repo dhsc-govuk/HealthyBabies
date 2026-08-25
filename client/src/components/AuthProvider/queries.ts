@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { API_ROUTES } from '../../constants/apiRoutes';
 
 export interface GetMeResponse {
   id: string;
@@ -18,6 +19,6 @@ export interface MfaStatusResponse {
   recoveryCodesRemaining: number;
 }
 
-export const getProfile = () => axios.get<GetMeResponse>('profile/me');
+export const getProfile = () => axios.get<GetMeResponse>(API_ROUTES.profile.me);
 
-export const getMfaStatus = () => axios.get<MfaStatusResponse>('mfa/status');
+export const getMfaStatus = () => axios.get<MfaStatusResponse>(API_ROUTES.mfa.status);

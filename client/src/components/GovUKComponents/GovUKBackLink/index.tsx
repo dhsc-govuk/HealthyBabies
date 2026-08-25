@@ -1,5 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import './styles.css';
 
 interface GovUKBackLinkProps {
   href?: string;
@@ -9,9 +10,8 @@ interface GovUKBackLinkProps {
 
 /**
  * GOV.UK back link component.
- * Always renders as an anchor (<a>) for consistent GOV.UK styling and focus behaviour.
  * - When a real href is provided: renders as a React Router Link (SPA navigation)
- * - When no href or href="#" is provided: renders as an <a href="#"> with preventDefault (JS-only navigation, e.g. multi-step forms)
+ * - When no href or href="#" is provided: renders as a link-styled button for JavaScript-only navigation
  */
 function GovUKBackLink({ href, children = 'Back', onClick }: GovUKBackLinkProps): React.ReactElement {
   if (href && href !== '#') {
@@ -22,16 +22,14 @@ function GovUKBackLink({ href, children = 'Back', onClick }: GovUKBackLinkProps)
     );
   }
 
+  // Rendered as a real button (not an anchor with a placeholder href) so keyboard and
+  // assistive-technology semantics are correct. GovUKLinkButton is deliberately not used here:
+  // it applies `govuk-link` and `font: inherit`, which would paint the back link link-blue and
+  // at body font size instead of matching the anchor version above.
   return (
-    <a
-      href="#"
-      className="govuk-back-link"
-      onClick={(e) => {
-        e.preventDefault();
-        onClick?.(e);
-      }}>
+    <button type="button" className="govuk-back-link govuk-back-link--button" onClick={onClick}>
       {children}
-    </a>
+    </button>
   );
 }
 

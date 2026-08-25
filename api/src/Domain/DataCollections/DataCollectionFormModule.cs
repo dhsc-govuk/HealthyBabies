@@ -99,6 +99,13 @@ public class DataCollectionFormModule : AuditableEntity<DataCollectionFormModule
         UpdatedAt = DateTime.UtcNow;
     }
 
+    public void UpdateSectionNumber(int sectionNumber)
+    {
+        Guard.GreaterThan(sectionNumber, 0, nameof(sectionNumber));
+        SectionNumber = sectionNumber;
+        UpdatedAt = DateTime.UtcNow;
+    }
+
     public void UpdateDetails(string name, string? description)
     {
         Guard.NotNullOrEmptyOrWhiteSpace(name, nameof(name));
@@ -279,4 +286,7 @@ public static class DataCollectionFormModuleCodes
     public const string InfantFeeding = "infant-feeding";
     public const string HealthyBabiesOffer = "healthy-babies-offer";
     public const string RolloverSpend = "rollover-spend";
+    public const string PnmhAndPirRisk = "pnmh-and-pir-risk";
+    public const string InfantFeedingRisk = "infant-feeding-risk";
+    public const string HealthyBabiesOfferRisk = "healthy-babies-offer-risk";
 }

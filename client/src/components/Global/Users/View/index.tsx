@@ -99,7 +99,7 @@ const ViewComponent = ({
   return (
     <Grid container spacing={4}>
       <Grid item xs={12}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '15px', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '20px' }}>
           <div style={{ flex: 1 }} />
           <GovUKActionMenu items={actionMenuItems} />
         </div>

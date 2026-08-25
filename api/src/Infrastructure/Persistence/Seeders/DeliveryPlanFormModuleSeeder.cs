@@ -15,23 +15,27 @@ public static class DeliveryPlanFormModuleSeeder
 
         var existingModules = await context.DataCollectionFormModules
             .Include(m => m.Sections)
-            .Include(m => m.Fields)
+            .Include(m => m.Fields).ThenInclude(f => f.Options)
             .ToListAsync(cancellationToken);
 
         var modulesAdded = false;
 
-        // Delivery plan modules from the 2026 data map (Focus onwards, sections 1–9).
+        // Delivery plan modules from the 2026 data map (Focus onwards, sections 1–12).
+        // Field codes follow 'Delivery Plan Data Map 3007', last updated 01.07.2026 by Jasmine.
         var newModuleFactories = new (string Code, Func<UserId, DataCollectionFormModule> Factory)[]
         {
-            (DataCollectionFormModuleCodes.Focus,              CreateFocusModule),
-            (DataCollectionFormModuleCodes.DeliveryGrant,      CreateDeliveryGrantModule),
-            (DataCollectionFormModuleCodes.Parenting,          CreateParentingModule),
-            (DataCollectionFormModuleCodes.Hle,                CreateHleModule),
-            (DataCollectionFormModuleCodes.Send,               CreateSendModule),
-            (DataCollectionFormModuleCodes.PnmhAndPir,         CreatePnmhAndPirModule),
-            (DataCollectionFormModuleCodes.InfantFeeding,      CreateInfantFeedingModule),
-            (DataCollectionFormModuleCodes.HealthyBabiesOffer, CreateHealthyBabiesOfferModule),
-            (DataCollectionFormModuleCodes.RolloverSpend,      CreateRolloverSpendModule),
+            (DataCollectionFormModuleCodes.Focus,                  CreateFocusModule),
+            (DataCollectionFormModuleCodes.DeliveryGrant,          CreateDeliveryGrantModule),
+            (DataCollectionFormModuleCodes.Parenting,              CreateParentingModule),
+            (DataCollectionFormModuleCodes.Hle,                    CreateHleModule),
+            (DataCollectionFormModuleCodes.Send,                   CreateSendModule),
+            (DataCollectionFormModuleCodes.PnmhAndPir,             CreatePnmhAndPirModule),
+            (DataCollectionFormModuleCodes.PnmhAndPirRisk,         CreatePnmhAndPirRiskModule),
+            (DataCollectionFormModuleCodes.InfantFeeding,          CreateInfantFeedingModule),
+            (DataCollectionFormModuleCodes.InfantFeedingRisk,      CreateInfantFeedingRiskModule),
+            (DataCollectionFormModuleCodes.HealthyBabiesOffer,     CreateHealthyBabiesOfferModule),
+            (DataCollectionFormModuleCodes.HealthyBabiesOfferRisk, CreateHealthyBabiesOfferRiskModule),
+            (DataCollectionFormModuleCodes.RolloverSpend,          CreateRolloverSpendModule),
         };
 
         foreach (var (code, factory) in newModuleFactories)
@@ -48,6 +52,12 @@ public static class DeliveryPlanFormModuleSeeder
             await context.SaveChangesAsync(cancellationToken);
         }
 
+        // Keep delivery-plan module definitions (sections, fields, options) in sync with the seeder on
+        // every start, without ever deleting or bulk-recreating existing rows. Fields are matched to
+        // the seeder's definition by FieldKey — stable once RepairDeliveryPlanFieldKeyIdentity has run —
+        // and updated only where a property differs; a field the seeder no longer defines is removed
+        // only if nothing has answered it yet, otherwise it's left alone. A no-op run costs one read
+        // per module.
         var populators = new Dictionary<string, Action<DataCollectionFormModule>>
         {
             [DataCollectionFormModuleCodes.Focus] = PopulateFocusFields,
@@ -56,12 +66,15 @@ public static class DeliveryPlanFormModuleSeeder
             [DataCollectionFormModuleCodes.Hle] = PopulateHleFields,
             [DataCollectionFormModuleCodes.Send] = PopulateSendFields,
             [DataCollectionFormModuleCodes.PnmhAndPir] = PopulatePnmhAndPirFields,
+            [DataCollectionFormModuleCodes.PnmhAndPirRisk] = PopulatePnmhAndPirRiskFields,
             [DataCollectionFormModuleCodes.InfantFeeding] = PopulateInfantFeedingFields,
+            [DataCollectionFormModuleCodes.InfantFeedingRisk] = PopulateInfantFeedingRiskFields,
             [DataCollectionFormModuleCodes.HealthyBabiesOffer] = PopulateHealthyBabiesOfferFields,
+            [DataCollectionFormModuleCodes.HealthyBabiesOfferRisk] = PopulateHealthyBabiesOfferRiskFields,
             [DataCollectionFormModuleCodes.RolloverSpend] = PopulateRolloverSpendFields,
         };
 
-        // Defined here so the AllowsMultipleActivities loop below can use it.
+        // Defined here so both the upsert loop and the AllowsMultipleActivities loop below can use it.
         var multiActivityCodes = new HashSet<string>
         {
             DataCollectionFormModuleCodes.DeliveryGrant,
@@ -71,82 +84,169 @@ public static class DeliveryPlanFormModuleSeeder
             DataCollectionFormModuleCodes.PnmhAndPir,
             DataCollectionFormModuleCodes.InfantFeeding,
             DataCollectionFormModuleCodes.HealthyBabiesOffer,
+            DataCollectionFormModuleCodes.RolloverSpend,
         };
 
-        // Reconcile field-key and help-text renames for modules that already have submission data.
-        // Matches actual fields to expected fields by display order, so code renames in the seeder
-        // propagate to existing data without requiring a manual migration per change.
         foreach (var module in existingModules.Where(m => populators.ContainsKey(m.Code)))
         {
-            var hasSubmissionData = await context.FormSubmissions
-                .AnyAsync(fs => fs.FormModuleId == module.Id, cancellationToken);
-
-            if (!hasSubmissionData)
-            {
-                continue;
-            }
-
-            var shadow = DataCollectionFormModule.Create(
-                DataCollectionFormModuleId.New(), module.Code, 1, module.Code);
+            // The real module has Status=Published so AddSection/AddField would throw. Build a shadow
+            // module (Status=Draft) with the same ID so any newly-created sections/fields already carry
+            // the correct FormModuleId FK and can be inserted directly.
+            var shadow = DataCollectionFormModule.Create(module.Id, module.Code, module.SectionNumber, module.Name);
             populators[module.Code](shadow);
 
-            var expectedByOrder = shadow.Fields.ToDictionary(f => f.DisplayOrder, f => (f.FieldKey, f.HelpText));
-
             var changed = false;
-            var keyRenames = new List<(FormField Field, string NewKey)>();
-            foreach (var field in module.Fields)
+
+            var liveSectionsByNumber = module.Sections.ToDictionary(s => s.SectionNumber);
+            foreach (var expectedSection in shadow.Sections)
             {
-                if (!expectedByOrder.TryGetValue(field.DisplayOrder, out var expected))
+                if (liveSectionsByNumber.TryGetValue(expectedSection.SectionNumber, out var liveSection))
                 {
+                    if (liveSection.Title != expectedSection.Title || liveSection.Description != expectedSection.Description
+                        || liveSection.HelpText != expectedSection.HelpText || liveSection.HelpUrl != expectedSection.HelpUrl)
+                    {
+                        liveSection.UpdateDetails(expectedSection.Title, expectedSection.Description, expectedSection.HelpText, expectedSection.HelpUrl);
+                        changed = true;
+                    }
+
+                    // Sections are matched by number regardless of IsActive, so a number the seeder
+                    // reintroduces lands on the row that was deactivated when it was last retired.
+                    // Without this it would settle correct but permanently invisible. Deliberately
+                    // not mirrored for fields: an admin can deactivate a field through
+                    // UpdateFormFieldCommand, and since DeleteFormFieldCommand refuses to delete one
+                    // that has answers, that toggle is their only way to retire an answered question
+                    // — reactivating here would undo it on every restart. Sections have no such
+                    // competing writer.
+                    if (!liveSection.IsActive)
+                    {
+                        liveSection.Activate();
+                        changed = true;
+                    }
+                }
+                else
+                {
+                    context.FormSections.Add(expectedSection);
+                    liveSectionsByNumber[expectedSection.SectionNumber] = expectedSection;
+                    changed = true;
+                }
+            }
+
+            var liveFieldsByKey = module.Fields.ToDictionary(f => f.FieldKey);
+            var expectedFieldsByKey = shadow.Fields.ToDictionary(f => f.FieldKey);
+
+            foreach (var expected in shadow.Fields)
+            {
+                FormSectionId? expectedSectionId = null;
+                if (expected.FormSectionId is { } shadowSectionId)
+                {
+                    var sectionNumber = shadow.Sections.First(s => s.Id == shadowSectionId).SectionNumber;
+                    expectedSectionId = liveSectionsByNumber[sectionNumber].Id;
+                }
+
+                if (!liveFieldsByKey.TryGetValue(expected.FieldKey, out var live))
+                {
+                    expected.SetSection(expectedSectionId);
+                    context.FormFields.Add(expected);
+                    changed = true;
                     continue;
                 }
 
-                if (field.FieldKey != expected.FieldKey)
+                if (live.Label != expected.Label || live.DisplayOrder != expected.DisplayOrder || live.IsRequired != expected.IsRequired
+                    || live.Placeholder != expected.Placeholder || live.HelpText != expected.HelpText || live.DefaultValue != expected.DefaultValue)
                 {
-                    keyRenames.Add((field, expected.FieldKey));
+                    live.UpdateDetails(expected.Label, expected.DisplayOrder, expected.IsRequired, expected.Placeholder, expected.HelpText, expected.DefaultValue);
                     changed = true;
                 }
 
-                if (field.HelpText != expected.HelpText)
+                if (live.FieldType != expected.FieldType)
                 {
-                    field.UpdateHelpText(expected.HelpText);
+                    live.SetFieldType(expected.FieldType);
+                    changed = true;
+                }
+
+                if (live.ValidationRules != expected.ValidationRules)
+                {
+                    live.SetValidationRules(expected.ValidationRules);
+                    changed = true;
+                }
+
+                if (live.ConditionalRules != expected.ConditionalRules)
+                {
+                    live.SetConditionalRules(expected.ConditionalRules);
+                    changed = true;
+                }
+
+                if (live.Configuration != expected.Configuration)
+                {
+                    live.SetConfiguration(expected.Configuration);
+                    changed = true;
+                }
+
+                if (live.FormSectionId != expectedSectionId)
+                {
+                    live.SetSection(expectedSectionId);
+                    changed = true;
+                }
+
+                var liveOptionsByValue = live.Options.ToDictionary(o => o.Value);
+                foreach (var expectedOption in expected.Options)
+                {
+                    if (liveOptionsByValue.TryGetValue(expectedOption.Value, out var liveOption))
+                    {
+                        if (liveOption.Label != expectedOption.Label || liveOption.DisplayOrder != expectedOption.DisplayOrder || liveOption.IsDefault != expectedOption.IsDefault)
+                        {
+                            liveOption.UpdateDetails(expectedOption.Value, expectedOption.Label, expectedOption.DisplayOrder, expectedOption.IsDefault);
+                            changed = true;
+                        }
+                    }
+                    else
+                    {
+                        live.AddOption(expectedOption.Value, expectedOption.Label, expectedOption.DisplayOrder, expectedOption.IsDefault);
+                        changed = true;
+                    }
+                }
+            }
+
+            // A field the seeder no longer defines is removed once nothing has answered it, and
+            // deactivated — not removed — once something has, so the answers stay in the database
+            // while the question stops being asked. Retaining it active is what kept the
+            // pre-BLUM-7369 strand risk question on every PNMH/Infant Feeding/Healthy Babies
+            // activity form: it was required, so every completed activity pinned it (BLUM-7564).
+            foreach (var live in module.Fields.Where(f => !expectedFieldsByKey.ContainsKey(f.FieldKey)))
+            {
+                var hasValues = await context.FormFieldValues.IgnoreQueryFilters().AnyAsync(v => v.FormFieldId == live.Id, cancellationToken);
+                if (!hasValues)
+                {
+                    context.FormFieldOptions.RemoveRange(live.Options);
+                    context.FormFields.Remove(live);
+                    changed = true;
+                }
+                else if (live.IsActive)
+                {
+                    live.Deactivate();
                     changed = true;
                 }
             }
 
-            // Legacy rows can share a DisplayOrder, which maps two different fields onto the same
-            // target key here, or maps one field onto a key a different (already-correct, untouched)
-            // field still holds. Either way, applying the rename would violate the unique index no
-            // matter how it's staged, so leave those fields alone rather than crash the whole seeder.
-            var renamingFieldIds = keyRenames.Select(r => r.Field.Id).ToHashSet();
-            var keysHeldByOtherFields = module.Fields
-                .Where(f => !renamingFieldIds.Contains(f.Id))
-                .Select(f => f.FieldKey)
-                .ToHashSet();
-
-            var conflictingKeys = keyRenames
-                .GroupBy(r => r.NewKey)
-                .Where(g => g.Count() > 1 || keysHeldByOtherFields.Contains(g.Key))
-                .Select(g => g.Key)
-                .ToHashSet();
-            keyRenames = keyRenames.Where(r => !conflictingKeys.Contains(r.NewKey)).ToList();
-
-            if (keyRenames.Count > 0)
+            // A section number the seeder no longer defines (e.g. two sections merged into one) is
+            // removed once no field points to it any more — fields are reassigned above first — and
+            // deactivated once the only fields left pointing at it are retired ones. Without the
+            // second branch the form keeps a final wizard step with a stale heading and nothing in
+            // it. The remove branch stays keyed on any field, active or not: FormField.FormSectionId
+            // is OnDelete(SetNull), so deleting the section would strip the retained answer's
+            // section context.
+            var expectedSectionNumbers = shadow.Sections.Select(s => s.SectionNumber).ToHashSet();
+            foreach (var orphanedSection in module.Sections.Where(s => !expectedSectionNumbers.Contains(s.SectionNumber)))
             {
-                // Two fields can swap keys between each other. The unique index on (form_module_id,
-                // field_key) is checked per-statement rather than deferred to commit, so writing the
-                // target keys directly can collide with a row that hasn't been renamed yet — stage
-                // through a throwaway key first so no intermediate state can violate it.
-                foreach (var (field, _) in keyRenames)
+                if (!module.Fields.Any(f => f.FormSectionId == orphanedSection.Id))
                 {
-                    field.UpdateFieldKey($"__tmp_{field.Id}");
+                    context.FormSections.Remove(orphanedSection);
+                    changed = true;
                 }
-
-                await context.SaveChangesAsync(cancellationToken);
-
-                foreach (var (field, newKey) in keyRenames)
+                else if (orphanedSection.IsActive)
                 {
-                    field.UpdateFieldKey(newKey);
+                    orphanedSection.Deactivate();
+                    changed = true;
                 }
             }
 
@@ -195,6 +295,95 @@ public static class DeliveryPlanFormModuleSeeder
         if (activityFlagNeeded)
         {
             await context.SaveChangesAsync(cancellationToken);
+        }
+
+        // Renumber sections 7–12 to make room for the new strand-level risk modules, inserted next to
+        // their strand (PNMH and PIR Risk after PNMH and PIR, etc).
+        var targetSectionNumbers = new Dictionary<string, int>
+        {
+            [DataCollectionFormModuleCodes.InfantFeeding] = 8,
+            [DataCollectionFormModuleCodes.HealthyBabiesOffer] = 10,
+            [DataCollectionFormModuleCodes.RolloverSpend] = 12,
+        };
+
+        var sectionNumberChanged = false;
+        foreach (var module in existingModules)
+        {
+            if (targetSectionNumbers.TryGetValue(module.Code, out var targetSectionNumber) && module.SectionNumber != targetSectionNumber)
+            {
+                module.UpdateSectionNumber(targetSectionNumber);
+                sectionNumberChanged = true;
+            }
+        }
+
+        if (sectionNumberChanged)
+        {
+            await context.SaveChangesAsync(cancellationToken);
+        }
+
+        // Pair each strand with its standalone risk section. BLUM-7369 moved the strand-level risk
+        // question into modules of its own, but a module only reaches a submission through an
+        // assignment, and only an admin picking modules in the wizard writes those — so on a round
+        // created before the risk modules existed the question simply vanished. Done here rather
+        // than in an EF migration because migrations run before the seeder, so on an environment
+        // that has not yet seeded the risk modules a migration would find nothing to assign.
+        var riskModuleCodesByStrandCode = new Dictionary<string, string>
+        {
+            [DataCollectionFormModuleCodes.PnmhAndPir] = DataCollectionFormModuleCodes.PnmhAndPirRisk,
+            [DataCollectionFormModuleCodes.InfantFeeding] = DataCollectionFormModuleCodes.InfantFeedingRisk,
+            [DataCollectionFormModuleCodes.HealthyBabiesOffer] = DataCollectionFormModuleCodes.HealthyBabiesOfferRisk,
+        };
+
+        // Re-read rather than reuse existingModules: modules created by the factory loop at the top
+        // of this method are not in that list, so a first run would find no risk modules to pair.
+        var moduleIdsByCode = await context.DataCollectionFormModules
+            .AsNoTracking()
+            .ToDictionaryAsync(m => m.Code, m => m.Id, cancellationToken);
+
+        var strandRiskPairs = riskModuleCodesByStrandCode
+            .Where(pair => moduleIdsByCode.ContainsKey(pair.Key) && moduleIdsByCode.ContainsKey(pair.Value))
+            .Select(pair => (StrandId: moduleIdsByCode[pair.Key], RiskId: moduleIdsByCode[pair.Value]))
+            .ToList();
+
+        if (strandRiskPairs.Count > 0)
+        {
+            // Soft-deleted rounds are excluded by DataCollection's global query filter. Finished
+            // ones are skipped explicitly: a section nobody can still complete would sit at "Not
+            // started" forever on the DHSC review. IsClosed alone is too narrow a test for that —
+            // it is only the explicit admin flag, while what actually stops an LA is the deadline
+            // (GetEffectiveEndDate: the round's EndDate, or that LA's override where one is set).
+            // A round whose deadline is later extended or reopened picks the pairing up on the next
+            // start, since this runs on every boot.
+            // Compared against the start of today, not the current instant, because the deadline day
+            // itself stays open (IsClosedFor). DateTime.UtcNow.Date keeps Kind=Utc, which the
+            // timestamptz columns require.
+            var startOfToday = DateTime.UtcNow.Date;
+            var openDeliveryPlans = await context.DataCollections
+                .Include(dc => dc.FormModuleAssignments)
+                .Where(dc => dc.Type == DataCollectionType.DeliveryPlan
+                             && !dc.IsClosed
+                             && (dc.EndDate >= startOfToday
+                                 || dc.LocalAuthorities.Any(la => la.EndDate != null && la.EndDate >= startOfToday)))
+                .ToListAsync(cancellationToken);
+
+            var assignmentsAdded = false;
+            foreach (var dataCollection in openDeliveryPlans)
+            {
+                foreach (var (strandId, riskId) in strandRiskPairs)
+                {
+                    if (dataCollection.FormModuleAssignments.Any(a => a.FormModuleId == strandId)
+                        && dataCollection.FormModuleAssignments.All(a => a.FormModuleId != riskId))
+                    {
+                        dataCollection.AssignFormModule(riskId);
+                        assignmentsAdded = true;
+                    }
+                }
+            }
+
+            if (assignmentsAdded)
+            {
+                await context.SaveChangesAsync(cancellationToken);
+            }
         }
     }
 
@@ -264,7 +453,7 @@ public static class DeliveryPlanFormModuleSeeder
         f01.SetSection(sDg.Id);
         AddTf1PriorityOptions(f01);
 
-        var f02 = module.AddField("F02", "Describe the top priority for the Delivery Grant.", FieldType.Text, 2, false, null, "Required if 'Other' is selected above.");
+        var f02 = module.AddField("F02", "Describe the top priority for the Delivery Grant.", FieldType.Text, 2, true, null, "Required if 'Other' is selected above.");
         f02.SetSection(sDg.Id);
         f02.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"F01\",\"equals\":\"other\"},\"displayInline\":true,\"parentOption\":\"other\"}");
 
@@ -276,7 +465,7 @@ public static class DeliveryPlanFormModuleSeeder
         f04.SetSection(sP.Id);
         AddTf1PriorityOptions(f04);
 
-        var f05 = module.AddField("F05", "Describe the top priority for Parenting.", FieldType.Text, 5, false, null, "Required if 'Other' is selected above.");
+        var f05 = module.AddField("F05", "Describe the top priority for Parenting.", FieldType.Text, 5, true, null, "Required if 'Other' is selected above.");
         f05.SetSection(sP.Id);
         f05.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"F04\",\"equals\":\"other\"},\"displayInline\":true,\"parentOption\":\"other\"}");
 
@@ -288,7 +477,7 @@ public static class DeliveryPlanFormModuleSeeder
         f07.SetSection(sH.Id);
         AddTf1PriorityOptions(f07);
 
-        var f08 = module.AddField("F08", "Describe the top priority for HLE.", FieldType.Text, 8, false, null, "Required if 'Other' is selected above.");
+        var f08 = module.AddField("F08", "Describe the top priority for HLE.", FieldType.Text, 8, true, null, "Required if 'Other' is selected above.");
         f08.SetSection(sH.Id);
         f08.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"F07\",\"equals\":\"other\"},\"displayInline\":true,\"parentOption\":\"other\"}");
 
@@ -300,7 +489,7 @@ public static class DeliveryPlanFormModuleSeeder
         f10.SetSection(sSend.Id);
         AddTf1PriorityOptions(f10);
 
-        var f11 = module.AddField("F11", "Describe the top priority for SEND.", FieldType.Text, 11, false, null, "Required if 'Other' is selected above.");
+        var f11 = module.AddField("F11", "Describe the top priority for SEND.", FieldType.Text, 11, true, null, "Required if 'Other' is selected above.");
         f11.SetSection(sSend.Id);
         f11.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"F10\",\"equals\":\"other\"},\"displayInline\":true,\"parentOption\":\"other\"}");
 
@@ -312,7 +501,7 @@ public static class DeliveryPlanFormModuleSeeder
         f13.SetSection(sPn.Id);
         AddTf2PriorityOptions(f13);
 
-        var f14 = module.AddField("F14", "Describe the top priority for PNMH & PIR.", FieldType.Text, 14, false, null, "Required if 'Other' is selected above.");
+        var f14 = module.AddField("F14", "Describe the top priority for PNMH & PIR.", FieldType.Text, 14, true, null, "Required if 'Other' is selected above.");
         f14.SetSection(sPn.Id);
         f14.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"F13\",\"equals\":\"other\"},\"displayInline\":true,\"parentOption\":\"other\"}");
 
@@ -325,7 +514,7 @@ public static class DeliveryPlanFormModuleSeeder
         f16.SetSection(sIf.Id);
         AddTf2PriorityOptions(f16);
 
-        var f17 = module.AddField("F17", "Describe the top priority for Infant Feeding.", FieldType.Text, 17, false, null, "Required if 'Other' is selected above.");
+        var f17 = module.AddField("F17", "Describe the top priority for Infant Feeding.", FieldType.Text, 17, true, null, "Required if 'Other' is selected above.");
         f17.SetSection(sIf.Id);
         f17.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"F16\",\"equals\":\"other\"},\"displayInline\":true,\"parentOption\":\"other\"}");
 
@@ -338,7 +527,7 @@ public static class DeliveryPlanFormModuleSeeder
         f19.SetSection(sHbo.Id);
         AddTf2PriorityOptions(f19);
 
-        var f20 = module.AddField("F20", "Describe the top priority for Healthy Babies Offer.", FieldType.Text, 20, false, null, "Required if 'Other' is selected above.");
+        var f20 = module.AddField("F20", "Describe the top priority for Healthy Babies Offer.", FieldType.Text, 20, true, null, "Required if 'Other' is selected above.");
         f20.SetSection(sHbo.Id);
         f20.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"F19\",\"equals\":\"other\"},\"displayInline\":true,\"parentOption\":\"other\"}");
 
@@ -372,137 +561,143 @@ public static class DeliveryPlanFormModuleSeeder
 
     private static void PopulateDeliveryGrantFields(DataCollectionFormModule module)
     {
-        var s1 = module.AddSection(1, "Activity Information", "Core activity details.");
-        var s2 = module.AddSection(2, "Activity Details", "Theme, status and delivery information.");
-        var s3 = module.AddSection(3, "Funding", "Financial forecasts and actuals.");
-        var s4 = module.AddSection(4, "Progress and Risks", "Activity changes and risk management.");
+        // Activity ID has no section of its own — a single read-only auto-generated field isn't worth
+        // its own wizard step, so it's the first field of Activity Details instead.
+        var s2 = module.AddSection(1, "Activity Details", "Theme, status and delivery information.");
+        var s3 = module.AddSection(2, "Funding", "Financial forecasts and actuals.");
+        var s4 = module.AddSection(3, "Progress and Risks", "Activity changes and risk management.");
 
-        var dgId = module.AddField("DG_ID", "Activity ID", FieldType.ReadOnly, 1, false, null, "Assigned automatically as a unique reference for this activity.");
-        dgId.SetSection(s1.Id);
-
-        var dgName = module.AddField("DG_NAME", "What is the activity name?", FieldType.Text, 2, true, null, "Tell us what the activity is called. Activity names must be unique.");
-        dgName.SetSection(s1.Id);
-
-        var dgAbout = module.AddField("DG_ABOUT", "What is the activity about?", FieldType.Textarea, 3, false, null, "Briefly describe what you will deliver, do, or achieve as part of this activity.");
-        dgAbout.SetSection(s1.Id);
-
-        var dg01 = module.AddField("DG01", "Select the overarching theme or area of focus", FieldType.Select, 4, true);
+        var dg01 = module.AddField("DG01", "Activity ID", FieldType.ReadOnly, 1, false, null, "Assigned automatically as a unique reference for this activity.");
         dg01.SetSection(s2.Id);
-        dg01.AddOption("system_leadership", "System Leadership", 1);
-        dg01.AddOption("partnership_working", "Partnership working", 2);
-        dg01.AddOption("outreach", "Outreach", 3);
-        dg01.AddOption("best_start_sites", "Best Start Family Hub Sites", 4);
-        dg01.AddOption("connections", "Connections", 5);
-        dg01.AddOption("relationships", "Relationships", 6);
-        dg01.AddOption("access_inclusion", "Access and Inclusion", 7);
-        dg01.AddOption("staff", "Staff", 8);
-        dg01.AddOption("insights", "Insights", 9);
-        dg01.AddOption("data_digital", "Data and Digital", 10);
-        dg01.AddOption("other", "Other", 11);
 
-        var dg01a = module.AddField("DG01a", "Provide further details for the theme selected", FieldType.Text, 5, false, null, "Required if 'Other' is selected.");
-        dg01a.SetSection(s2.Id);
-        dg01a.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"DG01\",\"equals\":\"other\"},\"displayInline\":true,\"parentOption\":\"other\"}");
-
-        var dg02 = module.AddField("DG02", "Enter the name and description of all activities delivered within this theme", FieldType.Textarea, 6, true);
+        var dg02 = module.AddField("DG02", "Select the overarching theme or area of focus", FieldType.Select, 2, true);
         dg02.SetSection(s2.Id);
+        dg02.AddOption("system_leadership", "System Leadership", 1);
+        dg02.AddOption("partnership_working", "Partnership working", 2);
+        dg02.AddOption("outreach", "Outreach", 3);
+        dg02.AddOption("best_start_sites", "Best Start Family Hub Sites", 4);
+        dg02.AddOption("connections", "Connections", 5);
+        dg02.AddOption("relationships", "Relationships", 6);
+        dg02.AddOption("access_inclusion", "Access and Inclusion", 7);
+        dg02.AddOption("staff", "Staff", 8);
+        dg02.AddOption("insights", "Insights", 9);
+        dg02.AddOption("data_digital", "Data and Digital", 10);
+        dg02.AddOption("other", "Other", 11);
 
-        var dg03 = module.AddField("DG03", "Is this a new or continuing activity?", FieldType.Radio, 7, true);
+        var dg03 = module.AddField("DG03", "Provide further details for the theme selected", FieldType.Text, 3, true, null, "Required if 'Other' is selected.");
         dg03.SetSection(s2.Id);
-        dg03.SetConfiguration("{\"size\":\"small\"}");
-        dg03.AddOption("new", "New", 1);
-        dg03.AddOption("continuing", "Continuing", 2);
+        dg03.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"DG02\",\"equals\":\"other\"},\"displayInline\":true,\"parentOption\":\"other\"}");
 
-        var dg04 = module.AddField("DG04", "Select the activity status", FieldType.Select, 8, true);
+        var dg04 = module.AddField("DG04", "Enter the name and description of all activities delivered within this theme", FieldType.Textarea, 4, true);
         dg04.SetSection(s2.Id);
-        dg04.AddOption("started", "Started", 1);
-        dg04.AddOption("not_started", "Not started", 2);
-        dg04.AddOption("delayed", "Delayed", 3);
-        dg04.AddOption("completed", "Completed", 4);
 
-        var dg05 = module.AddField("DG05", "Select the delivery status", FieldType.Select, 9, true);
+        var dg05 = module.AddField("DG05", "Is this a new or continuing activity?", FieldType.Radio, 5, true);
         dg05.SetSection(s2.Id);
-        dg05.AddOption("on_track", "On track", 1);
-        dg05.AddOption("off_track", "Off track", 2);
+        dg05.SetConfiguration("{\"size\":\"small\"}");
+        dg05.AddOption("new", "New", 1);
+        dg05.AddOption("continuing", "Continuing", 2);
 
-        var dg06 = module.AddField("DG06", "Is this activity funded by other sources than Best Start Family Hubs and Healthy Babies?", FieldType.Radio, 10, true);
-        dg06.SetSection(s3.Id);
-        dg06.SetConfiguration("{\"size\":\"small\"}");
-        dg06.AddOption("yes", "Yes", 1);
-        dg06.AddOption("no", "No", 2);
+        var dg05_1 = module.AddField("DG05.1", "Is this activity funding service(s)?", FieldType.Radio, 6, true);
+        dg05_1.SetSection(s2.Id);
+        dg05_1.SetConfiguration("{\"size\":\"small\"}");
+        dg05_1.AddOption("yes", "Yes", 1);
+        dg05_1.AddOption("no", "No", 2);
 
-        var dg06a = module.AddField("DG06a", "Total amount of additional funding", FieldType.Currency, 11, false, null, "Required if additional funding sources are present.", "0");
-        dg06a.SetSection(s3.Id);
-        dg06a.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"DG06\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
-        dg06a.SetConfiguration("{\"group\":\"DG06_extra\",\"groupLabel\":\"Additional funding details\",\"prefix\":\"£\"}");
+        var dg05_2 = module.AddField("DG05.2", "Which service is the activity funding?", FieldType.Checkbox, 7, true, null, "Select every service this activity funds.");
+        dg05_2.SetSection(s2.Id);
+        dg05_2.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"DG05.1\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
+        dg05_2.SetConfiguration("{\"dynamicOptions\":\"services\"}");
 
-        var dg06b = module.AddField("DG06b", "Source of additional funding", FieldType.Text, 12, false, null, "Required if additional funding sources are present.");
-        dg06b.SetSection(s3.Id);
-        dg06b.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"DG06\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
-        dg06b.SetConfiguration("{\"group\":\"DG06_extra\"}");
+        var dg06 = module.AddField("DG06", "Select the activity status", FieldType.Select, 8, true);
+        dg06.SetSection(s2.Id);
+        dg06.AddOption("started", "Started", 1);
+        dg06.AddOption("not_started", "Not started", 2);
+        dg06.AddOption("delayed", "Delayed", 3);
+        dg06.AddOption("completed", "Completed", 4);
 
-        var dg07 = module.AddField("DG07", "How much Delivery Grant funding are you forecasting to spend on this activity in 2026-2027?", FieldType.Currency, 13, true, null, null, "0");
-        dg07.SetSection(s3.Id);
-        dg07.SetConfiguration("{\"prefix\":\"£\"}");
+        var dg07 = module.AddField("DG07", "Select the delivery status", FieldType.Select, 9, true);
+        dg07.SetSection(s2.Id);
+        dg07.AddOption("on_track", "On track", 1);
+        dg07.AddOption("off_track", "Off track", 2);
 
-        var dg08 = module.AddField("DG08", "Total Activity Budget (26/27)", FieldType.Calculation, 14, false, null, "DG06a + DG07");
+        var dg08 = module.AddField("DG08", "Is this activity funded by other sources than Best Start Family Hubs and Healthy Babies?", FieldType.Radio, 10, true);
         dg08.SetSection(s3.Id);
-        dg08.SetConfiguration("{\"formula\":\"DG06a + DG07\",\"prefix\":\"£\"}");
+        dg08.SetConfiguration("{\"size\":\"small\"}");
+        dg08.AddOption("yes", "Yes", 1);
+        dg08.AddOption("no", "No", 2);
 
-        var dg09 = module.AddField("DG09", "What is the total amount of actual spend on this activity to date?", FieldType.Currency, 15, true, null, null, "0");
+        var dg09 = module.AddField("DG09", "Total amount of additional funding", FieldType.Currency, 11, true, null, "Required if additional funding sources are present.", "0");
         dg09.SetSection(s3.Id);
-        dg09.SetConfiguration("{\"prefix\":\"£\"}");
+        dg09.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"DG08\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
+        dg09.SetConfiguration("{\"group\":\"DG08_extra\",\"groupLabel\":\"Additional funding details\",\"prefix\":\"£\"}");
 
-        var dg10 = module.AddField("DG10", "What is the amount of funding committed to this activity?", FieldType.Currency, 16, false, null, null, "0");
+        var dg10 = module.AddField("DG10", "Source of additional funding", FieldType.Text, 12, true, null, "Required if additional funding sources are present.");
         dg10.SetSection(s3.Id);
-        dg10.SetConfiguration("{\"prefix\":\"£\"}");
+        dg10.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"DG08\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
+        dg10.SetConfiguration("{\"group\":\"DG08_extra\"}");
 
-        var dg11 = module.AddField("DG11", "Planned Spend (Uncommitted)", FieldType.Calculation, 17, false, null, "DG07 - (DG09 + DG10)");
+        var dg11 = module.AddField("DG11", "How much Delivery Grant funding are you forecasting to spend on this activity in 2026-2027?", FieldType.Currency, 13, true, null, null, "0");
         dg11.SetSection(s3.Id);
-        dg11.SetConfiguration("{\"formula\":\"DG07 - (DG09 + DG10)\",\"prefix\":\"£\"}");
+        dg11.SetConfiguration("{\"prefix\":\"£\"}");
 
-        var dg12 = module.AddField("DG12", "How much funding are you forecasting to spend on this activity in 2027-2028?", FieldType.Currency, 18, true, null, null, "0");
+        var dg12 = module.AddField("DG12", "Total Activity Budget (26/27)", FieldType.Calculation, 14, false, null, "DG09 + DG11");
         dg12.SetSection(s3.Id);
-        dg12.SetConfiguration("{\"prefix\":\"£\"}");
+        dg12.SetConfiguration("{\"formula\":\"DG09 + DG11\",\"prefix\":\"£\"}");
 
-        var dg13 = module.AddField("DG13", "How much funding are you forecasting to spend on this activity in 2028-2029?", FieldType.Currency, 19, true, null, null, "0");
+        var dg13 = module.AddField("DG13", "What is the total amount of actual spend on this activity to date?", FieldType.Currency, 15, true, null, null, "0");
         dg13.SetSection(s3.Id);
         dg13.SetConfiguration("{\"prefix\":\"£\"}");
 
-        var dg14 = module.AddField("DG14", "Briefly outline what activity changed, why and when.", FieldType.Textarea, 20, false);
-        dg14.SetSection(s4.Id);
+        var dg14 = module.AddField("DG14", "What is the amount of funding committed to this activity?", FieldType.Currency, 16, false, null, null, "0");
+        dg14.SetSection(s3.Id);
+        dg14.SetConfiguration("{\"prefix\":\"£\"}");
 
-        var dg15 = module.AddField("DG15", "Are there any risks associated with this activity?", FieldType.Radio, 21, true);
-        dg15.SetSection(s4.Id);
-        dg15.SetConfiguration("{\"size\":\"small\"}");
-        dg15.AddOption("yes", "Yes", 1);
-        dg15.AddOption("no", "No", 2);
+        var dg15 = module.AddField("DG15", "Planned Spend (Uncommitted)", FieldType.Calculation, 17, false, null, "DG11 - (DG13 + DG14)");
+        dg15.SetSection(s3.Id);
+        dg15.SetConfiguration("{\"formula\":\"DG11 - (DG13 + DG14)\",\"prefix\":\"£\"}");
 
-        var dg15a = module.AddField("DG15a", "Outline the identified risks", FieldType.Textarea, 22, true, null, "Required if risks are present.");
-        dg15a.SetSection(s4.Id);
-        dg15a.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"DG15\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
-        dg15a.SetConfiguration("{\"group\":\"DG15_risk\",\"groupLabel\":\"Risk details\"}");
+        var dg16 = module.AddField("DG16", "How much funding are you forecasting to spend on this activity in 2027-2028?", FieldType.Currency, 18, true, null, null, "0");
+        dg16.SetSection(s3.Id);
+        dg16.SetConfiguration("{\"prefix\":\"£\"}");
 
-        var dg15b = module.AddField("DG15b", "Select the likelihood of this risk", FieldType.Select, 23, true, null, "Required if risks are present.");
-        dg15b.SetSection(s4.Id);
-        dg15b.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"DG15\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
-        dg15b.SetConfiguration("{\"group\":\"DG15_risk\"}");
-        dg15b.AddOption("low", "Low", 1);
-        dg15b.AddOption("medium", "Medium", 2);
-        dg15b.AddOption("high", "High", 3);
+        var dg17 = module.AddField("DG17", "How much funding are you forecasting to spend on this activity in 2028-2029?", FieldType.Currency, 19, true, null, null, "0");
+        dg17.SetSection(s3.Id);
+        dg17.SetConfiguration("{\"prefix\":\"£\"}");
 
-        var dg15c = module.AddField("DG15c", "Select the impact of this risk", FieldType.Select, 24, true, null, "Required if risks are present.");
-        dg15c.SetSection(s4.Id);
-        dg15c.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"DG15\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
-        dg15c.SetConfiguration("{\"group\":\"DG15_risk\"}");
-        dg15c.AddOption("low", "Low", 1);
-        dg15c.AddOption("medium", "Medium", 2);
-        dg15c.AddOption("high", "High", 3);
+        var dg18 = module.AddField("DG18", "Briefly outline what activity changed, why and when.", FieldType.Textarea, 20, false);
+        dg18.SetSection(s4.Id);
 
-        var dg15d = module.AddField("DG15d", "Give details of the mitigations in place or planned", FieldType.Textarea, 25, true, null, "Required if risks are present.");
-        dg15d.SetSection(s4.Id);
-        dg15d.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"DG15\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
-        dg15d.SetConfiguration("{\"group\":\"DG15_risk\"}");
+        var dg19 = module.AddField("DG19", "Are there any risks associated with this activity?", FieldType.Radio, 21, true);
+        dg19.SetSection(s4.Id);
+        dg19.SetConfiguration("{\"size\":\"small\"}");
+        dg19.AddOption("yes", "Yes", 1);
+        dg19.AddOption("no", "No", 2);
+
+        var dg20 = module.AddField("DG20", "Outline the identified risks", FieldType.Textarea, 22, true, null, "Required if risks are present.");
+        dg20.SetSection(s4.Id);
+        dg20.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"DG19\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
+        dg20.SetConfiguration("{\"group\":\"DG19_risk\",\"groupLabel\":\"Risk details\"}");
+
+        var dg21 = module.AddField("DG21", "Select the likelihood of this risk", FieldType.Select, 23, true, null, "Required if risks are present.");
+        dg21.SetSection(s4.Id);
+        dg21.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"DG19\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
+        dg21.SetConfiguration("{\"group\":\"DG19_risk\"}");
+        dg21.AddOption("low", "Low", 1);
+        dg21.AddOption("medium", "Medium", 2);
+        dg21.AddOption("high", "High", 3);
+
+        var dg22 = module.AddField("DG22", "Select the impact of this risk", FieldType.Select, 24, true, null, "Required if risks are present.");
+        dg22.SetSection(s4.Id);
+        dg22.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"DG19\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
+        dg22.SetConfiguration("{\"group\":\"DG19_risk\"}");
+        dg22.AddOption("low", "Low", 1);
+        dg22.AddOption("medium", "Medium", 2);
+        dg22.AddOption("high", "High", 3);
+
+        var dg23 = module.AddField("DG23", "Give details of the mitigations in place or planned", FieldType.Textarea, 25, true, null, "Required if risks are present.");
+        dg23.SetSection(s4.Id);
+        dg23.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"DG19\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
+        dg23.SetConfiguration("{\"group\":\"DG19_risk\"}");
     }
 
     // ─── Parenting ────────────────────────────────────────────────────────────
@@ -530,144 +725,150 @@ public static class DeliveryPlanFormModuleSeeder
 
     private static void PopulateParentingFields(DataCollectionFormModule module)
     {
-        var s1 = module.AddSection(1, "Activity Information", "Core activity details.");
-        var s2 = module.AddSection(2, "Activity Details", "Theme, expectations and delivery information.");
-        var s3 = module.AddSection(3, "Funding", "Financial forecasts and actuals.");
-        var s4 = module.AddSection(4, "Progress and Risks", "Activity changes and risk management.");
+        // Activity ID has no section of its own — a single read-only auto-generated field isn't worth
+        // its own wizard step, so it's the first field of Activity Details instead.
+        var s2 = module.AddSection(1, "Activity Details", "Theme, expectations and delivery information.");
+        var s3 = module.AddSection(2, "Funding", "Financial forecasts and actuals.");
+        var s4 = module.AddSection(3, "Progress and Risks", "Activity changes and risk management.");
 
-        var pId = module.AddField("P_ID", "Activity ID", FieldType.ReadOnly, 1, false, null, "Assigned automatically as a unique reference for this activity.");
-        pId.SetSection(s1.Id);
-
-        var pName = module.AddField("P_NAME", "What is the activity name?", FieldType.Text, 2, true, null, "Tell us what the activity is called. Activity names must be unique.");
-        pName.SetSection(s1.Id);
-
-        var pAbout = module.AddField("P_ABOUT", "What is the activity about?", FieldType.Textarea, 3, false, null, "Briefly describe what you will deliver, do, or achieve as part of this activity.");
-        pAbout.SetSection(s1.Id);
-
-        var p01 = module.AddField("P01", "Select the overarching theme or area of focus", FieldType.Select, 4, true);
+        var p01 = module.AddField("P01", "Activity ID", FieldType.ReadOnly, 1, false, null, "Assigned automatically as a unique reference for this activity.");
         p01.SetSection(s2.Id);
-        p01.AddOption("ebi1", "EBI1", 1);
-        p01.AddOption("ebi2", "EBI2", 2);
-        p01.AddOption("ebi3", "EBI3", 3);
-        p01.AddOption("ebi_extra", "EBI Extra", 4);
-        p01.AddOption("alternative", "Alternative / Locally developed Programme", 5);
-        p01.AddOption("peer_support", "Peer Support", 6);
-        p01.AddOption("outreach", "Outreach", 7);
-        p01.AddOption("partnership", "Partnership working", 8);
-        p01.AddOption("staff", "Staff", 9);
-        p01.AddOption("other", "Other", 10);
 
-        var p01a = module.AddField("P01a", "Describe the theme or area of focus", FieldType.Text, 5, false, null, "Required if 'Other' is selected.");
-        p01a.SetSection(s2.Id);
-        p01a.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"P01\",\"equals\":\"other\"},\"displayInline\":true,\"parentOption\":\"other\"}");
-
-        var p02 = module.AddField("P02", "Enter the name and description of all activities delivered within this theme", FieldType.Textarea, 6, true);
+        var p02 = module.AddField("P02", "Select the overarching theme or area of focus", FieldType.Select, 2, true);
         p02.SetSection(s2.Id);
+        p02.AddOption("ebi1", "EBI1", 1);
+        p02.AddOption("ebi2", "EBI2", 2);
+        p02.AddOption("ebi3", "EBI3", 3);
+        p02.AddOption("ebi_extra", "EBI Extra", 4);
+        p02.AddOption("alternative", "Alternative / Locally developed Programme", 5);
+        p02.AddOption("peer_support", "Peer Support", 6);
+        p02.AddOption("outreach", "Outreach", 7);
+        p02.AddOption("partnership", "Partnership working", 8);
+        p02.AddOption("staff", "Staff", 9);
+        p02.AddOption("other", "Other", 10);
 
-        var p03 = module.AddField("P03", "Which expectations do these activities meet?", FieldType.Checkbox, 7, true, null, "Select all that apply.");
+        var p03 = module.AddField("P03", "Describe the theme or area of focus", FieldType.Text, 3, true, null, "Required if 'Other' is selected.");
         p03.SetSection(s2.Id);
-        p03.AddOption("deliver_offer", "Deliver a parenting offer 0-5", 1);
-        p03.AddOption("play_reading", "Play and shared reading resources", 2);
-        p03.AddOption("prioritise_ebis", "Prioritise DfE parenting menus/EBIs", 3);
-        p03.AddOption("maximise_takeup", "Maximise take up", 4);
-        p03.AddOption("staff_equipped", "Staff equipped to deliver", 5);
+        p03.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"P02\",\"equals\":\"other\"},\"displayInline\":true,\"parentOption\":\"other\"}");
 
-        var p04 = module.AddField("P04", "Is this a new or continuing activity?", FieldType.Radio, 8, true);
+        var p04 = module.AddField("P04", "Enter the name and description of all activities delivered within this theme", FieldType.Textarea, 4, true);
         p04.SetSection(s2.Id);
-        p04.SetConfiguration("{\"size\":\"small\"}");
-        p04.AddOption("new", "New", 1);
-        p04.AddOption("continuing", "Continuing", 2);
 
-        var p05 = module.AddField("P05", "Select the activity status", FieldType.Select, 9, true);
+        var p05 = module.AddField("P05", "Which expectations do these activities meet?", FieldType.Checkbox, 5, true, null, "Select all that apply.");
         p05.SetSection(s2.Id);
-        p05.AddOption("started", "Started", 1);
-        p05.AddOption("not_started", "Not started", 2);
-        p05.AddOption("delayed", "Delayed", 3);
-        p05.AddOption("completed", "Completed", 4);
+        p05.AddOption("deliver_offer", "Deliver a parenting offer 0-5", 1);
+        p05.AddOption("play_reading", "Play and shared reading resources", 2);
+        p05.AddOption("prioritise_ebis", "Prioritise DfE parenting menus/EBIs", 3);
+        p05.AddOption("maximise_takeup", "Maximise take up", 4);
+        p05.AddOption("staff_equipped", "Staff equipped to deliver", 5);
 
-        var p06 = module.AddField("P06", "Select the delivery status of this activity", FieldType.Select, 10, true);
+        var p05_1 = module.AddField("P05.1", "Is this activity funding service(s)?", FieldType.Radio, 6, true);
+        p05_1.SetSection(s2.Id);
+        p05_1.SetConfiguration("{\"size\":\"small\"}");
+        p05_1.AddOption("yes", "Yes", 1);
+        p05_1.AddOption("no", "No", 2);
+
+        var p05_2 = module.AddField("P05.2", "Which service is the activity funding?", FieldType.Checkbox, 7, true, null, "Select every service this activity funds.");
+        p05_2.SetSection(s2.Id);
+        p05_2.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"P05.1\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
+        p05_2.SetConfiguration("{\"dynamicOptions\":\"services\"}");
+
+        var p06 = module.AddField("P06", "Is this a new or continuing activity?", FieldType.Radio, 8, true);
         p06.SetSection(s2.Id);
-        p06.AddOption("on_track", "On track", 1);
-        p06.AddOption("off_track", "Off track", 2);
+        p06.SetConfiguration("{\"size\":\"small\"}");
+        p06.AddOption("new", "New", 1);
+        p06.AddOption("continuing", "Continuing", 2);
 
-        var p07 = module.AddField("P07", "Is this activity receiving any additional funding from other sources?", FieldType.Radio, 11, true);
-        p07.SetSection(s3.Id);
-        p07.SetConfiguration("{\"size\":\"small\"}");
-        p07.AddOption("yes", "Yes", 1);
-        p07.AddOption("no", "No", 2);
+        var p07 = module.AddField("P07", "Select the activity status", FieldType.Select, 9, true);
+        p07.SetSection(s2.Id);
+        p07.AddOption("started", "Started", 1);
+        p07.AddOption("not_started", "Not started", 2);
+        p07.AddOption("delayed", "Delayed", 3);
+        p07.AddOption("completed", "Completed", 4);
 
-        var p07a = module.AddField("P07a", "Total amount of additional funding", FieldType.Currency, 12, true, null, "Required if additional funding sources are present.", "0");
-        p07a.SetSection(s3.Id);
-        p07a.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"P07\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
-        p07a.SetConfiguration("{\"group\":\"P07_extra\",\"groupLabel\":\"Additional funding details\",\"prefix\":\"£\"}");
+        var p08 = module.AddField("P08", "Select the delivery status of this activity", FieldType.Select, 10, true);
+        p08.SetSection(s2.Id);
+        p08.AddOption("on_track", "On track", 1);
+        p08.AddOption("off_track", "Off track", 2);
 
-        var p07b = module.AddField("P07b", "Source of additional funding", FieldType.Text, 13, true, null, "Required if additional funding sources are present.");
-        p07b.SetSection(s3.Id);
-        p07b.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"P07\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
-        p07b.SetConfiguration("{\"group\":\"P07_extra\"}");
-
-        var p08 = module.AddField("P08", "How much Parenting funding are you forecasting to spend in 2026-27?", FieldType.Currency, 14, true, null, "QA: Sum of all P08 must be +/- 10% of CFD04.", "0");
-        p08.SetSection(s3.Id);
-        p08.SetConfiguration("{\"prefix\":\"£\"}");
-
-        var p09 = module.AddField("P09", "Total Activity Budget (26/27)", FieldType.Calculation, 15, false, null, "P07a + P08");
+        var p09 = module.AddField("P09", "Is this activity receiving any additional funding from other sources?", FieldType.Radio, 11, true);
         p09.SetSection(s3.Id);
-        p09.SetConfiguration("{\"formula\":\"P07a + P08\",\"prefix\":\"£\"}");
+        p09.SetConfiguration("{\"size\":\"small\"}");
+        p09.AddOption("yes", "Yes", 1);
+        p09.AddOption("no", "No", 2);
 
-        var p10 = module.AddField("P10", "What is the total amount of actual spend on this activity to date?", FieldType.Currency, 16, true, null, null, "0");
+        var p10 = module.AddField("P10", "Total amount of additional funding", FieldType.Currency, 12, true, null, "Required if additional funding sources are present.", "0");
         p10.SetSection(s3.Id);
-        p10.SetConfiguration("{\"prefix\":\"£\",\"maxSumField\":\"P09\"}");
+        p10.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"P09\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
+        p10.SetConfiguration("{\"group\":\"P09_extra\",\"groupLabel\":\"Additional funding details\",\"prefix\":\"£\"}");
 
-        var p11 = module.AddField("P11", "What is the amount of funding committed to this activity?", FieldType.Currency, 17, false, null, null, "0");
+        var p11 = module.AddField("P11", "Source of additional funding", FieldType.Text, 13, true, null, "Required if additional funding sources are present.");
         p11.SetSection(s3.Id);
-        p11.SetConfiguration("{\"prefix\":\"£\"}");
+        p11.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"P09\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
+        p11.SetConfiguration("{\"group\":\"P09_extra\"}");
 
-        var p12 = module.AddField("P12", "Planned Spend (Uncommitted)", FieldType.Calculation, 18, false, null, "P08 - (P10 + P11). Flags overspend if negative.");
+        var p12 = module.AddField("P12", "How much Parenting funding are you forecasting to spend in 2026-27?", FieldType.Currency, 14, true, null, null, "0");
         p12.SetSection(s3.Id);
-        p12.SetConfiguration("{\"formula\":\"P08 - (P10 + P11)\",\"prefix\":\"£\",\"warnIfNegative\":true}");
+        p12.SetConfiguration("{\"prefix\":\"£\"}");
 
-        var p13 = module.AddField("P13", "How much funding are you forecasting to spend in 2027-2028?", FieldType.Currency, 19, true, null, "QA: Sum of all P13 must be +/- 10% of CFD05.", "0");
+        var p13 = module.AddField("P13", "Total Activity Budget (26/27)", FieldType.Calculation, 15, false, null, "P10 + P12");
         p13.SetSection(s3.Id);
-        p13.SetConfiguration("{\"prefix\":\"£\"}");
+        p13.SetConfiguration("{\"formula\":\"P10 + P12\",\"prefix\":\"£\"}");
 
-        var p14 = module.AddField("P14", "How much funding are you forecasting to spend in 2028-2029?", FieldType.Currency, 20, true, null, "QA: Sum of all P14 must be +/- 10% of CFD06.", "0");
+        var p14 = module.AddField("P14", "What is the total amount of actual spend on this activity to date?", FieldType.Currency, 16, true, null, null, "0");
         p14.SetSection(s3.Id);
-        p14.SetConfiguration("{\"prefix\":\"£\"}");
+        p14.SetConfiguration("{\"prefix\":\"£\",\"maxSumField\":\"P13\"}");
 
-        var p15 = module.AddField("P15", "Briefly outline what activity changed, why and when.", FieldType.Textarea, 21, false);
-        p15.SetSection(s4.Id);
+        var p15 = module.AddField("P15", "What is the amount of funding committed to this activity?", FieldType.Currency, 17, false, null, null, "0");
+        p15.SetSection(s3.Id);
+        p15.SetConfiguration("{\"prefix\":\"£\"}");
 
-        var p16 = module.AddField("P16", "Are there any risks associated with this activity?", FieldType.Radio, 22, true);
-        p16.SetSection(s4.Id);
-        p16.SetConfiguration("{\"size\":\"small\"}");
-        p16.AddOption("yes", "Yes", 1);
-        p16.AddOption("no", "No", 2);
+        var p16 = module.AddField("P16", "Planned Spend (Uncommitted)", FieldType.Calculation, 18, false, null, "P12 - (P14 + P15). Flags overspend if negative.");
+        p16.SetSection(s3.Id);
+        p16.SetConfiguration("{\"formula\":\"P12 - (P14 + P15)\",\"prefix\":\"£\",\"warnIfNegative\":true}");
 
-        var p16a = module.AddField("P16a", "Outline the identified risks", FieldType.Textarea, 23, false, null, "Required if risks are present.");
-        p16a.SetSection(s4.Id);
-        p16a.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"P16\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
-        p16a.SetConfiguration("{\"group\":\"P16_risk\",\"groupLabel\":\"Risk details\"}");
+        var p17 = module.AddField("P17", "How much funding are you forecasting to spend in 2027-2028?", FieldType.Currency, 19, true, null, null, "0");
+        p17.SetSection(s3.Id);
+        p17.SetConfiguration("{\"prefix\":\"£\"}");
 
-        var p16b = module.AddField("P16b", "Select the likelihood of this risk", FieldType.Select, 24, false, null, "Required if risks are present.");
-        p16b.SetSection(s4.Id);
-        p16b.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"P16\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
-        p16b.SetConfiguration("{\"group\":\"P16_risk\"}");
-        p16b.AddOption("low", "Low", 1);
-        p16b.AddOption("medium", "Medium", 2);
-        p16b.AddOption("high", "High", 3);
+        var p18 = module.AddField("P18", "How much funding are you forecasting to spend in 2028-2029?", FieldType.Currency, 20, true, null, null, "0");
+        p18.SetSection(s3.Id);
+        p18.SetConfiguration("{\"prefix\":\"£\"}");
 
-        var p16c = module.AddField("P16c", "Select the impact of this risk", FieldType.Select, 25, false, null, "Required if risks are present.");
-        p16c.SetSection(s4.Id);
-        p16c.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"P16\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
-        p16c.SetConfiguration("{\"group\":\"P16_risk\"}");
-        p16c.AddOption("low", "Low", 1);
-        p16c.AddOption("medium", "Medium", 2);
-        p16c.AddOption("high", "High", 3);
+        var p19 = module.AddField("P19", "Briefly outline what activity changed, why and when.", FieldType.Textarea, 21, false);
+        p19.SetSection(s4.Id);
 
-        var p16d = module.AddField("P16d", "Give details of the mitigations in place or planned", FieldType.Textarea, 26, false, null, "Required if risks are present.");
-        p16d.SetSection(s4.Id);
-        p16d.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"P16\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
-        p16d.SetConfiguration("{\"group\":\"P16_risk\"}");
+        var p20 = module.AddField("P20", "Are there any risks associated with this activity?", FieldType.Radio, 22, true);
+        p20.SetSection(s4.Id);
+        p20.SetConfiguration("{\"size\":\"small\"}");
+        p20.AddOption("yes", "Yes", 1);
+        p20.AddOption("no", "No", 2);
+
+        var p21 = module.AddField("P21", "Outline the identified risks", FieldType.Textarea, 23, true, null, "Required if risks are present.");
+        p21.SetSection(s4.Id);
+        p21.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"P20\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
+        p21.SetConfiguration("{\"group\":\"P20_risk\",\"groupLabel\":\"Risk details\"}");
+
+        var p22 = module.AddField("P22", "Select the likelihood of this risk", FieldType.Select, 24, true, null, "Required if risks are present.");
+        p22.SetSection(s4.Id);
+        p22.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"P20\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
+        p22.SetConfiguration("{\"group\":\"P20_risk\"}");
+        p22.AddOption("low", "Low", 1);
+        p22.AddOption("medium", "Medium", 2);
+        p22.AddOption("high", "High", 3);
+
+        var p23 = module.AddField("P23", "Select the impact of this risk", FieldType.Select, 25, true, null, "Required if risks are present.");
+        p23.SetSection(s4.Id);
+        p23.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"P20\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
+        p23.SetConfiguration("{\"group\":\"P20_risk\"}");
+        p23.AddOption("low", "Low", 1);
+        p23.AddOption("medium", "Medium", 2);
+        p23.AddOption("high", "High", 3);
+
+        var p24 = module.AddField("P24", "Give details of the mitigations in place or planned", FieldType.Textarea, 26, true, null, "Required if risks are present.");
+        p24.SetSection(s4.Id);
+        p24.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"P20\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
+        p24.SetConfiguration("{\"group\":\"P20_risk\"}");
     }
 
     // ─── HLE ─────────────────────────────────────────────────────────────────
@@ -695,144 +896,150 @@ public static class DeliveryPlanFormModuleSeeder
 
     private static void PopulateHleFields(DataCollectionFormModule module)
     {
-        var s1 = module.AddSection(1, "Activity Information", "Core activity details.");
-        var s2 = module.AddSection(2, "Activity Details", "Theme, status and delivery information.");
-        var s3 = module.AddSection(3, "Funding", "Financial forecasts and actuals.");
-        var s4 = module.AddSection(4, "Progress and Risks", "Activity changes and risk management.");
+        // Activity ID has no section of its own — a single read-only auto-generated field isn't worth
+        // its own wizard step, so it's the first field of Activity Details instead.
+        var s2 = module.AddSection(1, "Activity Details", "Theme, status and delivery information.");
+        var s3 = module.AddSection(2, "Funding", "Financial forecasts and actuals.");
+        var s4 = module.AddSection(3, "Progress and Risks", "Activity changes and risk management.");
 
-        var hId = module.AddField("H_ID", "Activity ID", FieldType.ReadOnly, 1, false, null, "Assigned automatically as a unique reference for this activity.");
-        hId.SetSection(s1.Id);
-
-        var hName = module.AddField("H_NAME", "What is the activity name?", FieldType.Text, 2, true, null, "Tell us what the activity is called. Activity names must be unique.");
-        hName.SetSection(s1.Id);
-
-        var hAbout = module.AddField("H_ABOUT", "What is the activity about?", FieldType.Textarea, 3, false, null, "Briefly describe what you will deliver, do, or achieve as part of this activity.");
-        hAbout.SetSection(s1.Id);
-
-        var h01 = module.AddField("H01", "Select the overarching theme or area of focus", FieldType.Select, 4, true);
+        var h01 = module.AddField("H01", "Activity ID", FieldType.ReadOnly, 1, false, null, "Assigned automatically as a unique reference for this activity.");
         h01.SetSection(s2.Id);
-        h01.AddOption("ebi1", "EBI1", 1);
-        h01.AddOption("ebi2", "EBI2", 2);
-        h01.AddOption("ebi3", "EBI3", 3);
-        h01.AddOption("ebi_extra", "EBI Extra", 4);
-        h01.AddOption("alternative", "Alternative / Locally developed Programme", 5);
-        h01.AddOption("peer_support", "Peer Support", 6);
-        h01.AddOption("outreach", "Outreach", 7);
-        h01.AddOption("partnership", "Partnership working", 8);
-        h01.AddOption("staff", "Staff", 9);
-        h01.AddOption("other", "Other", 10);
 
-        var h01a = module.AddField("H01a", "Describe the theme or area of focus", FieldType.Text, 5, false, null, "Required if 'Other' is selected.");
-        h01a.SetSection(s2.Id);
-        h01a.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"H01\",\"equals\":\"other\"},\"displayInline\":true,\"parentOption\":\"other\"}");
-
-        var h02 = module.AddField("H02", "Enter the name and description of all activities delivered within this theme", FieldType.Textarea, 6, true);
+        var h02 = module.AddField("H02", "Select the overarching theme or area of focus", FieldType.Select, 2, true);
         h02.SetSection(s2.Id);
+        h02.AddOption("ebi1", "EBI1", 1);
+        h02.AddOption("ebi2", "EBI2", 2);
+        h02.AddOption("ebi3", "EBI3", 3);
+        h02.AddOption("ebi_extra", "EBI Extra", 4);
+        h02.AddOption("alternative", "Alternative / Locally developed Programme", 5);
+        h02.AddOption("peer_support", "Peer Support", 6);
+        h02.AddOption("outreach", "Outreach", 7);
+        h02.AddOption("partnership", "Partnership working", 8);
+        h02.AddOption("staff", "Staff", 9);
+        h02.AddOption("other", "Other", 10);
 
-        var h03 = module.AddField("H03", "Which expectations do these activities meet?", FieldType.Checkbox, 7, true, null, "Select all that apply.");
+        var h03 = module.AddField("H03", "Describe the theme or area of focus", FieldType.Text, 3, true, null, "Required if 'Other' is selected.");
         h03.SetSection(s2.Id);
-        h03.AddOption("deliver_hle", "Deliver a HLE offer 0-5", 1);
-        h03.AddOption("play_reading", "Play and shared reading resources", 2);
-        h03.AddOption("prioritise_ebis", "Prioritise EBIs from DfE HLE menus", 3);
-        h03.AddOption("maximise_takeup", "Maximise take up of HLE", 4);
-        h03.AddOption("staff_equipped", "Staff equipped to deliver", 5);
+        h03.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"H02\",\"equals\":\"other\"},\"displayInline\":true,\"parentOption\":\"other\"}");
 
-        var h04 = module.AddField("H04", "Is this a new or continuing activity?", FieldType.Radio, 8, true);
+        var h04 = module.AddField("H04", "Enter the name and description of all activities delivered within this theme", FieldType.Textarea, 4, true);
         h04.SetSection(s2.Id);
-        h04.SetConfiguration("{\"size\":\"small\"}");
-        h04.AddOption("new", "New", 1);
-        h04.AddOption("continuing", "Continuing", 2);
 
-        var h05 = module.AddField("H05", "Select the activity status", FieldType.Select, 9, true);
+        var h05 = module.AddField("H05", "Which expectations do these activities meet?", FieldType.Checkbox, 5, true, null, "Select all that apply.");
         h05.SetSection(s2.Id);
-        h05.AddOption("started", "Started", 1);
-        h05.AddOption("not_started", "Not started", 2);
-        h05.AddOption("delayed", "Delayed", 3);
-        h05.AddOption("completed", "Completed", 4);
+        h05.AddOption("deliver_hle", "Deliver a HLE offer 0-5", 1);
+        h05.AddOption("play_reading", "Play and shared reading resources", 2);
+        h05.AddOption("prioritise_ebis", "Prioritise EBIs from DfE HLE menus", 3);
+        h05.AddOption("maximise_takeup", "Maximise take up of HLE", 4);
+        h05.AddOption("staff_equipped", "Staff equipped to deliver", 5);
 
-        var h06 = module.AddField("H06", "Select the delivery status of this activity", FieldType.Select, 10, true);
+        var h05_1 = module.AddField("H05.1", "Is this activity funding service(s)?", FieldType.Radio, 6, true);
+        h05_1.SetSection(s2.Id);
+        h05_1.SetConfiguration("{\"size\":\"small\"}");
+        h05_1.AddOption("yes", "Yes", 1);
+        h05_1.AddOption("no", "No", 2);
+
+        var h05_2 = module.AddField("H05.2", "Which service is the activity funding?", FieldType.Checkbox, 7, true, null, "Select every service this activity funds.");
+        h05_2.SetSection(s2.Id);
+        h05_2.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"H05.1\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
+        h05_2.SetConfiguration("{\"dynamicOptions\":\"services\"}");
+
+        var h06 = module.AddField("H06", "Is this a new or continuing activity?", FieldType.Radio, 8, true);
         h06.SetSection(s2.Id);
-        h06.AddOption("on_track", "On track", 1);
-        h06.AddOption("off_track", "Off track", 2);
+        h06.SetConfiguration("{\"size\":\"small\"}");
+        h06.AddOption("new", "New", 1);
+        h06.AddOption("continuing", "Continuing", 2);
 
-        var h07 = module.AddField("H07", "Is this activity receiving any additional funding from other sources?", FieldType.Radio, 11, true);
-        h07.SetSection(s3.Id);
-        h07.SetConfiguration("{\"size\":\"small\"}");
-        h07.AddOption("yes", "Yes", 1);
-        h07.AddOption("no", "No", 2);
+        var h07 = module.AddField("H07", "Select the activity status", FieldType.Select, 9, true);
+        h07.SetSection(s2.Id);
+        h07.AddOption("started", "Started", 1);
+        h07.AddOption("not_started", "Not started", 2);
+        h07.AddOption("delayed", "Delayed", 3);
+        h07.AddOption("completed", "Completed", 4);
 
-        var h07a = module.AddField("H07a", "Total amount of additional funding", FieldType.Currency, 12, true, null, "Required if additional funding sources are present.", "0");
-        h07a.SetSection(s3.Id);
-        h07a.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"H07\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
-        h07a.SetConfiguration("{\"group\":\"H07_extra\",\"groupLabel\":\"Additional funding details\",\"prefix\":\"£\"}");
+        var h08 = module.AddField("H08", "Select the delivery status of this activity", FieldType.Select, 10, true);
+        h08.SetSection(s2.Id);
+        h08.AddOption("on_track", "On track", 1);
+        h08.AddOption("off_track", "Off track", 2);
 
-        var h07b = module.AddField("H07b", "Source of additional funding", FieldType.Text, 13, true, null, "Required if additional funding sources are present.");
-        h07b.SetSection(s3.Id);
-        h07b.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"H07\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
-        h07b.SetConfiguration("{\"group\":\"H07_extra\"}");
-
-        var h08 = module.AddField("H08", "How much HLE funding are you forecasting to spend in 2026-27?", FieldType.Currency, 14, true, null, "QA: Sum of all H08 must be +/- 10% of CFD07.", "0");
-        h08.SetSection(s3.Id);
-        h08.SetConfiguration("{\"prefix\":\"£\"}");
-
-        var h09 = module.AddField("H09", "Total Activity Budget (26/27)", FieldType.Calculation, 15, false, null, "H07a + H08");
+        var h09 = module.AddField("H09", "Is this activity receiving any additional funding from other sources?", FieldType.Radio, 11, true);
         h09.SetSection(s3.Id);
-        h09.SetConfiguration("{\"formula\":\"H07a + H08\",\"prefix\":\"£\"}");
+        h09.SetConfiguration("{\"size\":\"small\"}");
+        h09.AddOption("yes", "Yes", 1);
+        h09.AddOption("no", "No", 2);
 
-        var h10 = module.AddField("H10", "What is the total amount of actual spend on this activity to date?", FieldType.Currency, 16, true, null, null, "0");
+        var h10 = module.AddField("H10", "Total amount of additional funding", FieldType.Currency, 12, true, null, "Required if additional funding sources are present.", "0");
         h10.SetSection(s3.Id);
-        h10.SetConfiguration("{\"prefix\":\"£\"}");
+        h10.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"H09\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
+        h10.SetConfiguration("{\"group\":\"H09_extra\",\"groupLabel\":\"Additional funding details\",\"prefix\":\"£\"}");
 
-        var h11 = module.AddField("H11", "What is the amount of funding committed to this activity?", FieldType.Currency, 17, false, null, null, "0");
+        var h11 = module.AddField("H11", "Source of additional funding", FieldType.Text, 13, true, null, "Required if additional funding sources are present.");
         h11.SetSection(s3.Id);
-        h11.SetConfiguration("{\"prefix\":\"£\"}");
+        h11.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"H09\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
+        h11.SetConfiguration("{\"group\":\"H09_extra\"}");
 
-        var h12 = module.AddField("H12", "Planned Spend (Uncommitted)", FieldType.Calculation, 18, false, null, "H08 - (H10 + H11). Flags overspend if negative.");
+        var h12 = module.AddField("H12", "How much HLE funding are you forecasting to spend in 2026-27?", FieldType.Currency, 14, true, null, null, "0");
         h12.SetSection(s3.Id);
-        h12.SetConfiguration("{\"formula\":\"H08 - (H10 + H11)\",\"prefix\":\"£\"}");
+        h12.SetConfiguration("{\"prefix\":\"£\"}");
 
-        var h13 = module.AddField("H13", "How much funding are you forecasting to spend in 2027-2028?", FieldType.Currency, 19, true, null, "QA: Sum of all H13 must be +/- 10% of CFD08.", "0");
+        var h13 = module.AddField("H13", "Total Activity Budget (26/27)", FieldType.Calculation, 15, false, null, "H10 + H12");
         h13.SetSection(s3.Id);
-        h13.SetConfiguration("{\"prefix\":\"£\"}");
+        h13.SetConfiguration("{\"formula\":\"H10 + H12\",\"prefix\":\"£\"}");
 
-        var h14 = module.AddField("H14", "How much funding are you forecasting to spend in 2028-2029?", FieldType.Currency, 20, true, null, "QA: Sum of all H14 must be +/- 10% of CFD09.", "0");
+        var h14 = module.AddField("H14", "What is the total amount of actual spend on this activity to date?", FieldType.Currency, 16, true, null, null, "0");
         h14.SetSection(s3.Id);
         h14.SetConfiguration("{\"prefix\":\"£\"}");
 
-        var h15 = module.AddField("H15", "Briefly outline what activity changed, why and when.", FieldType.Textarea, 21, false);
-        h15.SetSection(s4.Id);
+        var h15 = module.AddField("H15", "What is the amount of funding committed to this activity?", FieldType.Currency, 17, false, null, null, "0");
+        h15.SetSection(s3.Id);
+        h15.SetConfiguration("{\"prefix\":\"£\"}");
 
-        var h16 = module.AddField("H16", "Are there any risks associated with this activity?", FieldType.Radio, 22, true);
-        h16.SetSection(s4.Id);
-        h16.SetConfiguration("{\"size\":\"small\"}");
-        h16.AddOption("yes", "Yes", 1);
-        h16.AddOption("no", "No", 2);
+        var h16 = module.AddField("H16", "Planned Spend (Uncommitted)", FieldType.Calculation, 18, false, null, "H12 - (H14 + H15). Flags overspend if negative.");
+        h16.SetSection(s3.Id);
+        h16.SetConfiguration("{\"formula\":\"H12 - (H14 + H15)\",\"prefix\":\"£\"}");
 
-        var h16a = module.AddField("H16a", "Outline the identified risks", FieldType.Textarea, 23, true, null, "Required if risks are present.");
-        h16a.SetSection(s4.Id);
-        h16a.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"H16\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
-        h16a.SetConfiguration("{\"group\":\"H16_risk\",\"groupLabel\":\"Risk details\"}");
+        var h17 = module.AddField("H17", "How much funding are you forecasting to spend in 2027-2028?", FieldType.Currency, 19, true, null, null, "0");
+        h17.SetSection(s3.Id);
+        h17.SetConfiguration("{\"prefix\":\"£\"}");
 
-        var h16b = module.AddField("H16b", "Select the likelihood of this risk", FieldType.Select, 24, true, null, "Required if risks are present.");
-        h16b.SetSection(s4.Id);
-        h16b.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"H16\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
-        h16b.SetConfiguration("{\"group\":\"H16_risk\"}");
-        h16b.AddOption("low", "Low", 1);
-        h16b.AddOption("medium", "Medium", 2);
-        h16b.AddOption("high", "High", 3);
+        var h18 = module.AddField("H18", "How much funding are you forecasting to spend in 2028-2029?", FieldType.Currency, 20, true, null, null, "0");
+        h18.SetSection(s3.Id);
+        h18.SetConfiguration("{\"prefix\":\"£\"}");
 
-        var h16c = module.AddField("H16c", "Select the impact of this risk", FieldType.Select, 25, true, null, "Required if risks are present.");
-        h16c.SetSection(s4.Id);
-        h16c.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"H16\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
-        h16c.SetConfiguration("{\"group\":\"H16_risk\"}");
-        h16c.AddOption("low", "Low", 1);
-        h16c.AddOption("medium", "Medium", 2);
-        h16c.AddOption("high", "High", 3);
+        var h19 = module.AddField("H19", "Briefly outline what activity changed, why and when.", FieldType.Textarea, 21, false);
+        h19.SetSection(s4.Id);
 
-        var h16d = module.AddField("H16d", "Give details of the mitigations in place or planned", FieldType.Textarea, 26, true, null, "Required if risks are present.");
-        h16d.SetSection(s4.Id);
-        h16d.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"H16\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
-        h16d.SetConfiguration("{\"group\":\"H16_risk\"}");
+        var h20 = module.AddField("H20", "Are there any risks associated with this activity?", FieldType.Radio, 22, true);
+        h20.SetSection(s4.Id);
+        h20.SetConfiguration("{\"size\":\"small\"}");
+        h20.AddOption("yes", "Yes", 1);
+        h20.AddOption("no", "No", 2);
+
+        var h21 = module.AddField("H21", "Outline the identified risks", FieldType.Textarea, 23, true, null, "Required if risks are present.");
+        h21.SetSection(s4.Id);
+        h21.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"H20\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
+        h21.SetConfiguration("{\"group\":\"H20_risk\",\"groupLabel\":\"Risk details\"}");
+
+        var h22 = module.AddField("H22", "Select the likelihood of this risk", FieldType.Select, 24, true, null, "Required if risks are present.");
+        h22.SetSection(s4.Id);
+        h22.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"H20\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
+        h22.SetConfiguration("{\"group\":\"H20_risk\"}");
+        h22.AddOption("low", "Low", 1);
+        h22.AddOption("medium", "Medium", 2);
+        h22.AddOption("high", "High", 3);
+
+        var h23 = module.AddField("H23", "Select the impact of this risk", FieldType.Select, 25, true, null, "Required if risks are present.");
+        h23.SetSection(s4.Id);
+        h23.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"H20\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
+        h23.SetConfiguration("{\"group\":\"H20_risk\"}");
+        h23.AddOption("low", "Low", 1);
+        h23.AddOption("medium", "Medium", 2);
+        h23.AddOption("high", "High", 3);
+
+        var h24 = module.AddField("H24", "Give details of the mitigations in place or planned", FieldType.Textarea, 26, true, null, "Required if risks are present.");
+        h24.SetSection(s4.Id);
+        h24.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"H20\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
+        h24.SetConfiguration("{\"group\":\"H20_risk\"}");
     }
 
     // ─── SEND ─────────────────────────────────────────────────────────────────
@@ -860,140 +1067,146 @@ public static class DeliveryPlanFormModuleSeeder
 
     private static void PopulateSendFields(DataCollectionFormModule module)
     {
-        var s1 = module.AddSection(1, "Activity Information", "Core activity details.");
-        var s2 = module.AddSection(2, "Activity Details", "Theme, status and delivery information.");
-        var s3 = module.AddSection(3, "Funding", "Financial forecasts and actuals.");
-        var s4 = module.AddSection(4, "Progress and Risks", "Activity changes and risk management.");
+        // Activity ID has no section of its own — a single read-only auto-generated field isn't worth
+        // its own wizard step, so it's the first field of Activity Details instead.
+        var s2 = module.AddSection(1, "Activity Details", "Theme, status and delivery information.");
+        var s3 = module.AddSection(2, "Funding", "Financial forecasts and actuals.");
+        var s4 = module.AddSection(3, "Progress and Risks", "Activity changes and risk management.");
 
-        var sendId = module.AddField("SEND_ID", "Activity ID", FieldType.ReadOnly, 1, false, null, "Assigned automatically as a unique reference for this activity.");
-        sendId.SetSection(s1.Id);
-
-        var sendName = module.AddField("SEND_NAME", "What is the activity name?", FieldType.Text, 2, true, null, "Tell us what the activity is called. Activity names must be unique.");
-        sendName.SetSection(s1.Id);
-
-        var sendAbout = module.AddField("SEND_ABOUT", "What is the activity about?", FieldType.Textarea, 3, false, null, "Briefly describe what you will deliver, do, or achieve as part of this activity.");
-        sendAbout.SetSection(s1.Id);
-
-        var send01 = module.AddField("SEND01", "Select the overarching theme or area of focus", FieldType.Select, 4, true);
+        var send01 = module.AddField("SEND01", "Activity ID", FieldType.ReadOnly, 1, false, null, "Assigned automatically as a unique reference for this activity.");
         send01.SetSection(s2.Id);
-        send01.AddOption("appoint_bsips", "Appoint BSIPS", 1);
-        send01.AddOption("ebi1", "EBI 1 (prescribed list)", 2);
-        send01.AddOption("ebi_extra", "Extra EBI (prescribed list)", 3);
-        send01.AddOption("vcf_local", "VCF/locally developed interventions", 4);
-        send01.AddOption("other", "Other", 5);
 
-        var send01a = module.AddField("SEND01a", "Provide further details for the theme selected", FieldType.Text, 5, false, null, "Required if 'Other' is selected.");
-        send01a.SetSection(s2.Id);
-        send01a.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"SEND01\",\"equals\":\"other\"},\"displayInline\":true,\"parentOption\":\"other\"}");
-
-        var send02 = module.AddField("SEND02", "Enter the name and description of all activities delivered within this funded strand", FieldType.Textarea, 6, true);
+        var send02 = module.AddField("SEND02", "Select the overarching theme or area of focus", FieldType.Select, 2, true);
         send02.SetSection(s2.Id);
+        send02.AddOption("appoint_bsips", "Appoint BSIPS", 1);
+        send02.AddOption("ebi1", "EBI 1 (prescribed list)", 2);
+        send02.AddOption("ebi_extra", "Extra EBI (prescribed list)", 3);
+        send02.AddOption("vcf_local", "VCF/locally developed interventions", 4);
+        send02.AddOption("other", "Other", 5);
 
-        var send03 = module.AddField("SEND03", "Which expectations do these activities meet?", FieldType.Checkbox, 7, true, null, "Select all that apply.");
+        var send03 = module.AddField("SEND03", "Provide further details for the theme selected", FieldType.Text, 3, true, null, "Required if 'Other' is selected.");
         send03.SetSection(s2.Id);
-        send03.AddOption("appoint_bsips", "Appoint BSIPs", 1);
-        send03.AddOption("build_workforce", "Build workforce capability", 2);
-        send03.AddOption("identify_need", "Identify emerging additional need", 3);
-        send03.AddOption("prepare_ebi", "Prepare EBI/child interventions", 4);
-        send03.AddOption("strengthen_partnerships", "Strengthen SEND partnerships", 5);
-        send03.AddOption("strategic_role", "Strategic/system role", 6);
+        send03.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"SEND02\",\"equals\":\"other\"},\"displayInline\":true,\"parentOption\":\"other\"}");
 
-        var send04 = module.AddField("SEND04", "Is this a new or continuing activity?", FieldType.Radio, 8, true);
+        var send04 = module.AddField("SEND04", "Enter the name and description of all activities delivered within this funded strand", FieldType.Textarea, 4, true);
         send04.SetSection(s2.Id);
-        send04.SetConfiguration("{\"size\":\"small\"}");
-        send04.AddOption("new", "New", 1);
-        send04.AddOption("continuing", "Continuing", 2);
 
-        var send05 = module.AddField("SEND05", "Select the activity status", FieldType.Select, 9, true);
+        var send05 = module.AddField("SEND05", "Which expectations do these activities meet?", FieldType.Checkbox, 5, true, null, "Select all that apply.");
         send05.SetSection(s2.Id);
-        send05.AddOption("started", "Started", 1);
-        send05.AddOption("not_started", "Not started", 2);
-        send05.AddOption("delayed", "Delayed", 3);
-        send05.AddOption("completed", "Completed", 4);
+        send05.AddOption("appoint_bsips", "Appoint BSIPs", 1);
+        send05.AddOption("build_workforce", "Build workforce capability", 2);
+        send05.AddOption("identify_need", "Identify emerging additional need", 3);
+        send05.AddOption("prepare_ebi", "Prepare EBI/child interventions", 4);
+        send05.AddOption("strengthen_partnerships", "Strengthen SEND partnerships", 5);
+        send05.AddOption("strategic_role", "Strategic/system role", 6);
 
-        var send06 = module.AddField("SEND06", "Select the delivery status of this activity", FieldType.Select, 10, true);
+        var send05_1 = module.AddField("SEND05.1", "Is this activity funding service(s)?", FieldType.Radio, 6, true);
+        send05_1.SetSection(s2.Id);
+        send05_1.SetConfiguration("{\"size\":\"small\"}");
+        send05_1.AddOption("yes", "Yes", 1);
+        send05_1.AddOption("no", "No", 2);
+
+        var send05_2 = module.AddField("SEND05.2", "Which service is the activity funding?", FieldType.Checkbox, 7, true, null, "Select every service this activity funds.");
+        send05_2.SetSection(s2.Id);
+        send05_2.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"SEND05.1\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
+        send05_2.SetConfiguration("{\"dynamicOptions\":\"services\"}");
+
+        var send06 = module.AddField("SEND06", "Is this a new or continuing activity?", FieldType.Radio, 8, true);
         send06.SetSection(s2.Id);
-        send06.AddOption("on_track", "On track", 1);
-        send06.AddOption("off_track", "Off track", 2);
+        send06.SetConfiguration("{\"size\":\"small\"}");
+        send06.AddOption("new", "New", 1);
+        send06.AddOption("continuing", "Continuing", 2);
 
-        var send07 = module.AddField("SEND07", "Is this activity receiving any additional funding from other sources?", FieldType.Radio, 11, true);
-        send07.SetSection(s3.Id);
-        send07.SetConfiguration("{\"size\":\"small\"}");
-        send07.AddOption("yes", "Yes", 1);
-        send07.AddOption("no", "No", 2);
+        var send07 = module.AddField("SEND07", "Select the activity status", FieldType.Select, 9, true);
+        send07.SetSection(s2.Id);
+        send07.AddOption("started", "Started", 1);
+        send07.AddOption("not_started", "Not started", 2);
+        send07.AddOption("delayed", "Delayed", 3);
+        send07.AddOption("completed", "Completed", 4);
 
-        var send07a = module.AddField("SEND07a", "Total amount of additional funding", FieldType.Currency, 12, true, null, "Required if additional funding sources are present.", "0");
-        send07a.SetSection(s3.Id);
-        send07a.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"SEND07\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
-        send07a.SetConfiguration("{\"group\":\"SEND07_extra\",\"groupLabel\":\"Additional funding details\",\"prefix\":\"£\"}");
+        var send08 = module.AddField("SEND08", "Select the delivery status of this activity", FieldType.Select, 10, true);
+        send08.SetSection(s2.Id);
+        send08.AddOption("on_track", "On track", 1);
+        send08.AddOption("off_track", "Off track", 2);
 
-        var send07b = module.AddField("SEND07b", "Source of additional funding", FieldType.Text, 13, true, null, "Required if additional funding sources are present.");
-        send07b.SetSection(s3.Id);
-        send07b.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"SEND07\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
-        send07b.SetConfiguration("{\"group\":\"SEND07_extra\"}");
-
-        var send08 = module.AddField("SEND08", "How much SEND funding are you forecasting to spend in 2026-27?", FieldType.Currency, 14, true, null, "QA: Sum of all SEND08 must be +/- 10% of CFD10.", "0");
-        send08.SetSection(s3.Id);
-        send08.SetConfiguration("{\"prefix\":\"£\"}");
-
-        var send09 = module.AddField("SEND09", "Total Activity Budget (26/27)", FieldType.Calculation, 15, false, null, "SEND07a + SEND08");
+        var send09 = module.AddField("SEND09", "Is this activity receiving any additional funding from other sources?", FieldType.Radio, 11, true);
         send09.SetSection(s3.Id);
-        send09.SetConfiguration("{\"formula\":\"SEND07a + SEND08\",\"prefix\":\"£\"}");
+        send09.SetConfiguration("{\"size\":\"small\"}");
+        send09.AddOption("yes", "Yes", 1);
+        send09.AddOption("no", "No", 2);
 
-        var send10 = module.AddField("SEND10", "What is the total amount of actual spend on this activity to date?", FieldType.Currency, 16, true, null, null, "0");
+        var send10 = module.AddField("SEND10", "Total amount of additional funding", FieldType.Currency, 12, true, null, "Required if additional funding sources are present.", "0");
         send10.SetSection(s3.Id);
-        send10.SetConfiguration("{\"prefix\":\"£\",\"maxSumField\":\"SEND09\"}");
+        send10.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"SEND09\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
+        send10.SetConfiguration("{\"group\":\"SEND09_extra\",\"groupLabel\":\"Additional funding details\",\"prefix\":\"£\"}");
 
-        var send11 = module.AddField("SEND11", "What is the amount of funding committed to this activity?", FieldType.Currency, 17, false, null, null, "0");
+        var send11 = module.AddField("SEND11", "Source of additional funding", FieldType.Text, 13, true, null, "Required if additional funding sources are present.");
         send11.SetSection(s3.Id);
-        send11.SetConfiguration("{\"prefix\":\"£\"}");
+        send11.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"SEND09\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
+        send11.SetConfiguration("{\"group\":\"SEND09_extra\"}");
 
-        var send12 = module.AddField("SEND12", "Planned Spend (Uncommitted)", FieldType.Calculation, 18, false, null, "SEND08 - (SEND10 + SEND11). Flags overspend if negative.");
+        var send12 = module.AddField("SEND12", "How much SEND funding are you forecasting to spend in 2026-27?", FieldType.Currency, 14, true, null, null, "0");
         send12.SetSection(s3.Id);
-        send12.SetConfiguration("{\"formula\":\"SEND08 - (SEND10 + SEND11)\",\"prefix\":\"£\",\"warnIfNegative\":true}");
+        send12.SetConfiguration("{\"prefix\":\"£\"}");
 
-        var send13 = module.AddField("SEND13", "How much funding are you forecasting to spend in 2027-2028?", FieldType.Currency, 19, true, null, "QA: Sum of all SEND13 must be +/- 10% of CFD11.", "0");
+        var send13 = module.AddField("SEND13", "Total Activity Budget (26/27)", FieldType.Calculation, 15, false, null, "SEND10 + SEND12");
         send13.SetSection(s3.Id);
-        send13.SetConfiguration("{\"prefix\":\"£\"}");
+        send13.SetConfiguration("{\"formula\":\"SEND10 + SEND12\",\"prefix\":\"£\"}");
 
-        var send14 = module.AddField("SEND14", "How much funding are you forecasting to spend in 2028-2029?", FieldType.Currency, 20, true, null, "QA: Sum of all SEND14 must be +/- 10% of CFD12.", "0");
+        var send14 = module.AddField("SEND14", "What is the total amount of actual spend on this activity to date?", FieldType.Currency, 16, true, null, null, "0");
         send14.SetSection(s3.Id);
-        send14.SetConfiguration("{\"prefix\":\"£\"}");
+        send14.SetConfiguration("{\"prefix\":\"£\",\"maxSumField\":\"SEND13\"}");
 
-        var send15 = module.AddField("SEND15", "Briefly outline what activity changed, why and when.", FieldType.Textarea, 21, false);
-        send15.SetSection(s4.Id);
+        var send15 = module.AddField("SEND15", "What is the amount of funding committed to this activity?", FieldType.Currency, 17, false, null, null, "0");
+        send15.SetSection(s3.Id);
+        send15.SetConfiguration("{\"prefix\":\"£\"}");
 
-        var send16 = module.AddField("SEND16", "Are there any risks associated with this activity?", FieldType.Radio, 22, true);
-        send16.SetSection(s4.Id);
-        send16.SetConfiguration("{\"size\":\"small\"}");
-        send16.AddOption("yes", "Yes", 1);
-        send16.AddOption("no", "No", 2);
+        var send16 = module.AddField("SEND16", "Planned Spend (Uncommitted)", FieldType.Calculation, 18, false, null, "SEND12 - (SEND14 + SEND15). Flags overspend if negative.");
+        send16.SetSection(s3.Id);
+        send16.SetConfiguration("{\"formula\":\"SEND12 - (SEND14 + SEND15)\",\"prefix\":\"£\",\"warnIfNegative\":true}");
 
-        var send16a = module.AddField("SEND16a", "Outline the identified risks", FieldType.Textarea, 23, false, null, "Required if risks are present.");
-        send16a.SetSection(s4.Id);
-        send16a.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"SEND16\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
-        send16a.SetConfiguration("{\"group\":\"SEND16_risk\",\"groupLabel\":\"Risk details\"}");
+        var send17 = module.AddField("SEND17", "How much funding are you forecasting to spend in 2027-2028?", FieldType.Currency, 19, true, null, null, "0");
+        send17.SetSection(s3.Id);
+        send17.SetConfiguration("{\"prefix\":\"£\"}");
 
-        var send16b = module.AddField("SEND16b", "Select the likelihood of this risk", FieldType.Select, 24, false, null, "Required if risks are present.");
-        send16b.SetSection(s4.Id);
-        send16b.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"SEND16\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
-        send16b.SetConfiguration("{\"group\":\"SEND16_risk\"}");
-        send16b.AddOption("low", "Low", 1);
-        send16b.AddOption("medium", "Medium", 2);
-        send16b.AddOption("high", "High", 3);
+        var send18 = module.AddField("SEND18", "How much funding are you forecasting to spend in 2028-2029?", FieldType.Currency, 20, true, null, null, "0");
+        send18.SetSection(s3.Id);
+        send18.SetConfiguration("{\"prefix\":\"£\"}");
 
-        var send16c = module.AddField("SEND16c", "Select the impact of this risk", FieldType.Select, 25, false, null, "Required if risks are present.");
-        send16c.SetSection(s4.Id);
-        send16c.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"SEND16\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
-        send16c.SetConfiguration("{\"group\":\"SEND16_risk\"}");
-        send16c.AddOption("low", "Low", 1);
-        send16c.AddOption("medium", "Medium", 2);
-        send16c.AddOption("high", "High", 3);
+        var send19 = module.AddField("SEND19", "Briefly outline what activity changed, why and when.", FieldType.Textarea, 21, false);
+        send19.SetSection(s4.Id);
 
-        var send16d = module.AddField("SEND16d", "Give details of the mitigations in place or planned", FieldType.Textarea, 26, false, null, "Required if risks are present.");
-        send16d.SetSection(s4.Id);
-        send16d.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"SEND16\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
-        send16d.SetConfiguration("{\"group\":\"SEND16_risk\"}");
+        var send20 = module.AddField("SEND20", "Are there any risks associated with this activity?", FieldType.Radio, 22, true);
+        send20.SetSection(s4.Id);
+        send20.SetConfiguration("{\"size\":\"small\"}");
+        send20.AddOption("yes", "Yes", 1);
+        send20.AddOption("no", "No", 2);
+
+        var send21 = module.AddField("SEND21", "Outline the identified risks", FieldType.Textarea, 23, true, null, "Required if risks are present.");
+        send21.SetSection(s4.Id);
+        send21.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"SEND20\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
+        send21.SetConfiguration("{\"group\":\"SEND20_risk\",\"groupLabel\":\"Risk details\"}");
+
+        var send22 = module.AddField("SEND22", "Select the likelihood of this risk", FieldType.Select, 24, true, null, "Required if risks are present.");
+        send22.SetSection(s4.Id);
+        send22.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"SEND20\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
+        send22.SetConfiguration("{\"group\":\"SEND20_risk\"}");
+        send22.AddOption("low", "Low", 1);
+        send22.AddOption("medium", "Medium", 2);
+        send22.AddOption("high", "High", 3);
+
+        var send23 = module.AddField("SEND23", "Select the impact of this risk", FieldType.Select, 25, true, null, "Required if risks are present.");
+        send23.SetSection(s4.Id);
+        send23.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"SEND20\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
+        send23.SetConfiguration("{\"group\":\"SEND20_risk\"}");
+        send23.AddOption("low", "Low", 1);
+        send23.AddOption("medium", "Medium", 2);
+        send23.AddOption("high", "High", 3);
+
+        var send24 = module.AddField("SEND24", "Give details of the mitigations in place or planned", FieldType.Textarea, 26, true, null, "Required if risks are present.");
+        send24.SetSection(s4.Id);
+        send24.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"SEND20\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
+        send24.SetConfiguration("{\"group\":\"SEND20_risk\"}");
     }
 
     // ─── PNMH and PIR (TF2 only) ─────────────────────────────────────────────
@@ -1021,130 +1234,167 @@ public static class DeliveryPlanFormModuleSeeder
 
     private static void PopulatePnmhAndPirFields(DataCollectionFormModule module)
     {
-        var s1 = module.AddSection(1, "Activity Information", "Core activity details.");
-        var s2 = module.AddSection(2, "Activity Details", "Activity type, expectations and status.");
-        var s3 = module.AddSection(3, "Dates and Status", "Planned and actual activity dates.");
-        var s4 = module.AddSection(4, "Funding", "Financial forecasts and actuals.");
-        var s5 = module.AddSection(5, "Progress and Strand Risk", "Activity progress and strand-level risk.");
+        // Activity ID has no section of its own — a single read-only auto-generated field isn't worth
+        // its own wizard step, so it's the first field of Activity Details instead.
+        var s2 = module.AddSection(1, "Activity Details", "Activity type, expectations and status.");
+        var s3 = module.AddSection(2, "Dates and Status", "Planned and actual activity dates.");
+        var s4 = module.AddSection(3, "Funding", "Financial forecasts and actuals.");
+        var s5 = module.AddSection(4, "Progress", "Activity progress.");
 
-        var pnId = module.AddField("PN_ID", "Activity ID", FieldType.ReadOnly, 1, false, null, "Assigned automatically as a unique reference for this activity.");
-        pnId.SetSection(s1.Id);
-
-        var pnName = module.AddField("PN_NAME", "What is the activity name?", FieldType.Text, 2, true, null, "Tell us what the activity is called. Activity names must be unique.");
-        pnName.SetSection(s1.Id);
-
-        var pnAbout = module.AddField("PN_ABOUT", "What is the activity about?", FieldType.Textarea, 3, false, null, "Briefly describe what you will deliver, do, or achieve as part of this activity.");
-        pnAbout.SetSection(s1.Id);
-
-        var pn01 = module.AddField("PN01", "Provide the name and a brief description of the activity.", FieldType.Textarea, 4, true);
+        var pn01 = module.AddField("PN01", "Activity ID", FieldType.ReadOnly, 1, false, null, "Assigned automatically as a unique reference for this activity.");
         pn01.SetSection(s2.Id);
 
-        var pn02 = module.AddField("PN02", "Select the activity type", FieldType.Select, 5, true);
+        var pn02 = module.AddField("PN02", "Provide the name and a brief description of the activity.", FieldType.Textarea, 2, true);
         pn02.SetSection(s2.Id);
-        pn02.AddOption("training", "Training", 1);
-        pn02.AddOption("service_delivery", "Service Delivery", 2);
-        pn02.AddOption("staff", "Staff", 3);
-        pn02.AddOption("other", "Other", 4);
 
-        var pn03 = module.AddField("PN03", "Which expectations does this activity meet?", FieldType.Checkbox, 6, true, null, "Multi-select.");
+        var pn03 = module.AddField("PN03", "Select the activity type", FieldType.Select, 3, true);
         pn03.SetSection(s2.Id);
-        pn03.AddOption("safe_inclusive", "Ensure BSFHs provide safe, inclusive and supportive environments", 1);
-        pn03.AddOption("co_locate", "Co-locate PNMH and PIR support", 2);
-        pn03.AddOption("build_on_mature", "Build on mature PNMH and PIR systems", 3);
-        pn03.AddOption("clear_info", "Provide clear information and advice", 4);
-        pn03.AddOption("high_quality", "Provide high quality, evidence-based support", 5);
-        pn03.AddOption("shared_vision", "Build a shared system wide vision", 6);
-        pn03.AddOption("empower_workforce", "Empower the workforce through training/supervision", 7);
+        pn03.AddOption("training", "Training", 1);
+        pn03.AddOption("service_delivery", "Service Delivery", 2);
+        pn03.AddOption("staff", "Staff", 3);
+        pn03.AddOption("other", "Other", 4);
 
-        var pn04 = module.AddField("PN04", "Is this a new or continuing activity?", FieldType.Radio, 7, true);
+        var pn04 = module.AddField("PN04", "Which expectations does this activity meet?", FieldType.Checkbox, 4, true, null, "Multi-select.");
         pn04.SetSection(s2.Id);
-        pn04.SetConfiguration("{\"size\":\"small\"}");
-        pn04.AddOption("new", "New", 1);
-        pn04.AddOption("continuing", "Continuing", 2);
+        pn04.AddOption("safe_inclusive", "Ensure BSFHs provide safe, inclusive and supportive environments", 1);
+        pn04.AddOption("co_locate", "Co-locate PNMH and PIR support", 2);
+        pn04.AddOption("build_on_mature", "Build on mature PNMH and PIR systems", 3);
+        pn04.AddOption("clear_info", "Provide clear information and advice", 4);
+        pn04.AddOption("high_quality", "Provide high quality, evidence-based support", 5);
+        pn04.AddOption("shared_vision", "Build a shared system wide vision", 6);
+        pn04.AddOption("empower_workforce", "Empower the workforce through training/supervision", 7);
 
-        var pn05 = module.AddField("PN05", "Provide the planned start date for this activity", FieldType.Text, 8, true, "DD/MM/YYYY");
-        pn05.SetSection(s3.Id);
+        var pn05 = module.AddField("PN05", "Is this a new or continuing activity?", FieldType.Radio, 5, true);
+        pn05.SetSection(s2.Id);
+        pn05.SetConfiguration("{\"size\":\"small\"}");
+        pn05.AddOption("new", "New", 1);
+        pn05.AddOption("continuing", "Continuing", 2);
 
-        var pn06 = module.AddField("PN06", "Provide the actual date from which this activity commenced", FieldType.Text, 9, false, "DD/MM/YYYY");
+        var pn05_1 = module.AddField("PN05.1", "Is this activity funding service(s)?", FieldType.Radio, 6, true);
+        pn05_1.SetSection(s2.Id);
+        pn05_1.SetConfiguration("{\"size\":\"small\"}");
+        pn05_1.AddOption("yes", "Yes", 1);
+        pn05_1.AddOption("no", "No", 2);
+
+        var pn05_2 = module.AddField("PN05.2", "Which service is the activity funding?", FieldType.Checkbox, 7, true, null, "Select every service this activity funds.");
+        pn05_2.SetSection(s2.Id);
+        pn05_2.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"PN05.1\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
+        pn05_2.SetConfiguration("{\"dynamicOptions\":\"services\"}");
+
+        var pn06 = module.AddField("PN06", "Provide the planned start date for this activity", FieldType.Date, 8, true, "DD/MM/YYYY");
         pn06.SetSection(s3.Id);
 
-        var pn07 = module.AddField("PN07", "Provide the date you expect this activity to be completed", FieldType.Text, 10, true, "DD/MM/YYYY", "Cannot be a date before PN05.");
+        var pn07 = module.AddField("PN07", "Provide the actual date from which this activity commenced", FieldType.Date, 9, false, "DD/MM/YYYY");
         pn07.SetSection(s3.Id);
+        pn07.SetConfiguration("{\"dateRule\":\"not_in_future\"}");
 
-        var pn08 = module.AddField("PN08", "Provide the date this activity was completed", FieldType.Text, 11, false, "DD/MM/YYYY", "Cannot be in the future.");
+        var pn08 = module.AddField("PN08", "Provide the date you expect this activity to be completed", FieldType.Date, 10, true, "DD/MM/YYYY", "Cannot be a date before PN06.");
         pn08.SetSection(s3.Id);
+        pn08.SetConfiguration("{\"notBefore\":\"PN06\"}");
 
-        var pn09 = module.AddField("PN09", "Select the activity status", FieldType.Select, 12, true);
+        var pn09 = module.AddField("PN09", "Provide the date this activity was completed", FieldType.Date, 11, false, "DD/MM/YYYY", "Cannot be in the future.");
         pn09.SetSection(s3.Id);
-        pn09.AddOption("started", "Started", 1);
-        pn09.AddOption("not_started", "Not started", 2);
-        pn09.AddOption("delayed", "Delayed", 3);
-        pn09.AddOption("completed", "Completed", 4);
+        pn09.SetConfiguration("{\"dateRule\":\"not_in_future\"}");
 
-        var pn10 = module.AddField("PN10", "Select the delivery status of this activity", FieldType.Select, 13, true);
+        var pn10 = module.AddField("PN10", "Select the activity status", FieldType.Select, 12, true);
         pn10.SetSection(s3.Id);
-        pn10.AddOption("on_track", "On track", 1);
-        pn10.AddOption("off_track", "Off track", 2);
+        pn10.AddOption("started", "Started", 1);
+        pn10.AddOption("not_started", "Not started", 2);
+        pn10.AddOption("delayed", "Delayed", 3);
+        pn10.AddOption("completed", "Completed", 4);
 
-        var pn11 = module.AddField("PN11", "Is this activity receiving any additional funding from other sources?", FieldType.Radio, 14, true);
-        pn11.SetSection(s4.Id);
-        pn11.SetConfiguration("{\"size\":\"small\"}");
-        pn11.AddOption("yes", "Yes", 1);
-        pn11.AddOption("no", "No", 2);
+        var pn11 = module.AddField("PN11", "Select the delivery status of this activity", FieldType.Select, 13, true);
+        pn11.SetSection(s3.Id);
+        pn11.AddOption("on_track", "On track", 1);
+        pn11.AddOption("off_track", "Off track", 2);
 
-        var pn11a = module.AddField("PN11a", "Total amount of additional funding", FieldType.Currency, 15, true, null, "Required if additional funding sources are present.", "0");
-        pn11a.SetSection(s4.Id);
-        pn11a.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"PN11\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
-        pn11a.SetConfiguration("{\"group\":\"PN11_extra\",\"groupLabel\":\"Additional funding details\",\"prefix\":\"£\"}");
-
-        var pn11b = module.AddField("PN11b", "Source of additional funding", FieldType.Text, 16, true, null, "Required if additional funding sources are present.");
-        pn11b.SetSection(s4.Id);
-        pn11b.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"PN11\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
-        pn11b.SetConfiguration("{\"group\":\"PN11_extra\"}");
-
-        var pn12 = module.AddField("PN12", "How much PNMH & PIR funding are you forecasting to spend in 2026-27?", FieldType.Currency, 17, true, null, "QA: Sum of all PN12 must be +/- 10% of CFD13.", "0");
+        var pn12 = module.AddField("PN12", "Is this activity receiving any additional funding from other sources?", FieldType.Radio, 14, true);
         pn12.SetSection(s4.Id);
-        pn12.SetConfiguration("{\"prefix\":\"£\"}");
+        pn12.SetConfiguration("{\"size\":\"small\"}");
+        pn12.AddOption("yes", "Yes", 1);
+        pn12.AddOption("no", "No", 2);
 
-        var pn13 = module.AddField("PN13", "Total Activity Budget (26/27)", FieldType.Calculation, 18, false, null, "PN11a + PN12");
+        var pn13 = module.AddField("PN13", "Total amount of additional funding", FieldType.Currency, 15, true, null, "Required if additional funding sources are present.", "0");
         pn13.SetSection(s4.Id);
-        pn13.SetConfiguration("{\"formula\":\"PN11a + PN12\",\"prefix\":\"£\"}");
+        pn13.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"PN12\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
+        pn13.SetConfiguration("{\"group\":\"PN12_extra\",\"groupLabel\":\"Additional funding details\",\"prefix\":\"£\"}");
 
-        var pn14 = module.AddField("PN14", "What is the total amount of actual spend on this activity to date?", FieldType.Currency, 19, true, null, null, "0");
+        var pn14 = module.AddField("PN14", "Source of additional funding", FieldType.Text, 16, true, null, "Required if additional funding sources are present.");
         pn14.SetSection(s4.Id);
-        pn14.SetConfiguration("{\"prefix\":\"£\"}");
+        pn14.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"PN12\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
+        pn14.SetConfiguration("{\"group\":\"PN12_extra\"}");
 
-        var pn15 = module.AddField("PN15", "What is the amount of funding committed to this activity?", FieldType.Currency, 20, false, null, null, "0");
+        var pn15 = module.AddField("PN15", "How much PNMH & PIR funding are you forecasting to spend in 2026-27?", FieldType.Currency, 17, true, null, null, "0");
         pn15.SetSection(s4.Id);
         pn15.SetConfiguration("{\"prefix\":\"£\"}");
 
-        var pn16 = module.AddField("PN16", "Planned Spend (Uncommitted)", FieldType.Calculation, 21, false, null, "PN12 - (PN14 + PN15). Flags overspend if negative.");
+        var pn16 = module.AddField("PN16", "Total Activity Budget (26/27)", FieldType.Calculation, 18, false, null, "PN13 + PN15");
         pn16.SetSection(s4.Id);
-        pn16.SetConfiguration("{\"formula\":\"PN12 - (PN14 + PN15)\",\"prefix\":\"£\"}");
+        pn16.SetConfiguration("{\"formula\":\"PN13 + PN15\",\"prefix\":\"£\"}");
 
-        var pn17 = module.AddField("PN17", "How much funding are you forecasting to spend in 2027-2028?", FieldType.Currency, 22, true, null, "QA: Sum of all PN17 must be +/- 10% of CFD14.", "0");
+        var pn17 = module.AddField("PN17", "What is the total amount of actual spend on this activity to date?", FieldType.Currency, 19, true, null, null, "0");
         pn17.SetSection(s4.Id);
         pn17.SetConfiguration("{\"prefix\":\"£\"}");
 
-        var pn18 = module.AddField("PN18", "How much funding are you forecasting to spend in 2028-2029?", FieldType.Currency, 23, true, null, "QA: Sum of all PN18 must be +/- 10% of CFD15.", "0");
+        var pn18 = module.AddField("PN18", "What is the amount of funding committed to this activity?", FieldType.Currency, 20, false, null, null, "0");
         pn18.SetSection(s4.Id);
         pn18.SetConfiguration("{\"prefix\":\"£\"}");
 
-        var pn19 = module.AddField("PN19", "Briefly outline what activity changed, why and when.", FieldType.Textarea, 24, false);
-        pn19.SetSection(s5.Id);
+        var pn19 = module.AddField("PN19", "Planned Spend (Uncommitted)", FieldType.Calculation, 21, false, null, "PN15 - (PN17 + PN18). Flags overspend if negative.");
+        pn19.SetSection(s4.Id);
+        pn19.SetConfiguration("{\"formula\":\"PN15 - (PN17 + PN18)\",\"prefix\":\"£\"}");
 
-        var pn20 = module.AddField("PN20", "Provide a narrative of how this activity is progressing.", FieldType.Textarea, 25, false, null, "Optional. Max 200 words.");
-        pn20.SetSection(s5.Id);
+        var pn20 = module.AddField("PN20", "How much funding are you forecasting to spend in 2027-2028?", FieldType.Currency, 22, true, null, null, "0");
+        pn20.SetSection(s4.Id);
+        pn20.SetConfiguration("{\"prefix\":\"£\"}");
 
-        var pn21 = module.AddField("PN21", "What are the risks to successful delivery of this strand?", FieldType.Checkbox, 26, true, null, "Strand-level risk. Only needs to be completed once per strand.");
-        pn21.SetSection(s5.Id);
-        pn21.AddOption("recruitment_delays", "Recruitment delays", 1);
-        pn21.AddOption("procurement_delays", "Delays to procurement or start of contracts", 2);
-        pn21.AddOption("s114_financial", "S114 notice or financial challenges", 3);
-        pn21.AddOption("spend_delay_rollover", "Previous spend delay or rollover", 4);
-        pn21.AddOption("wider_challenges", "Wider challenges/issues within LA", 5);
-        pn21.AddOption("other", "Other", 6);
-        pn21.AddOption("none_na", "None / NA", 7);
+        var pn21 = module.AddField("PN21", "How much funding are you forecasting to spend in 2028-2029?", FieldType.Currency, 23, true, null, null, "0");
+        pn21.SetSection(s4.Id);
+        pn21.SetConfiguration("{\"prefix\":\"£\"}");
+
+        var pn22 = module.AddField("PN22", "Briefly outline what activity changed, why and when.", FieldType.Textarea, 24, false);
+        pn22.SetSection(s5.Id);
+
+        var pn23 = module.AddField("PN23", "Provide a narrative of how this activity is progressing.", FieldType.Textarea, 25, false, null, "Optional. Max 200 words.");
+        pn23.SetSection(s5.Id);
+    }
+
+    // ─── PNMH and PIR strand level risk (TF2 only) ───────────────────────────
+
+    private static DataCollectionFormModule CreatePnmhAndPirRiskModule(UserId systemUserId)
+    {
+        var module = DataCollectionFormModule.Create(
+            DataCollectionFormModuleId.New(),
+            DataCollectionFormModuleCodes.PnmhAndPirRisk,
+            7,
+            "PNMH and PIR strand level risk",
+            "Strand-level risk for PNMH and PIR (TF2 LAs only). Only needs to be completed once per strand.",
+            DateTime.UtcNow,
+            type: DataCollectionType.DeliveryPlan);
+
+        PopulatePnmhAndPirRiskFields(module);
+
+        if (systemUserId != UserId.Empty())
+        {
+            module.Publish(systemUserId);
+        }
+
+        return module;
+    }
+
+    private static void PopulatePnmhAndPirRiskFields(DataCollectionFormModule module)
+    {
+        var s1 = module.AddSection(1, "Strand Risk", "Risks to successful delivery of this strand.");
+
+        var pn24 = module.AddField("PN24", "What are the risks to successful delivery of this strand?", FieldType.Checkbox, 1, true, null, "Only needs to be completed once per strand.");
+        pn24.SetSection(s1.Id);
+        pn24.AddOption("recruitment_delays", "Recruitment delays", 1);
+        pn24.AddOption("procurement_delays", "Delays to procurement or start of contracts", 2);
+        pn24.AddOption("s114_financial", "S114 notice or financial challenges", 3);
+        pn24.AddOption("spend_delay_rollover", "Previous spend delay or rollover", 4);
+        pn24.AddOption("wider_challenges", "Wider challenges/issues within LA", 5);
+        pn24.AddOption("other", "Other", 6);
+        pn24.AddOption("none_na", "None / NA", 7);
     }
 
     // ─── Infant Feeding (TF2 only) ────────────────────────────────────────────
@@ -1154,7 +1404,7 @@ public static class DeliveryPlanFormModuleSeeder
         var module = DataCollectionFormModule.Create(
             DataCollectionFormModuleId.New(),
             DataCollectionFormModuleCodes.InfantFeeding,
-            7,
+            8,
             "Infant Feeding",
             "Activity tracking for Infant Feeding funded activities (TF2 LAs only).",
             DateTime.UtcNow,
@@ -1172,151 +1422,166 @@ public static class DeliveryPlanFormModuleSeeder
 
     private static void PopulateInfantFeedingFields(DataCollectionFormModule module)
     {
-        var s1 = module.AddSection(1, "Activity Information", "Core activity details.");
-        var s2 = module.AddSection(2, "Activity Details", "Activity type, expectations and status.");
-        var s3 = module.AddSection(3, "Dates and Status", "Planned and actual activity dates.");
-        var s4 = module.AddSection(4, "Funding", "Financial forecasts and actuals.");
-        var s5 = module.AddSection(5, "Progress and Strand Risk", "Activity progress and strand-level risk.");
+        // Activity ID has no section of its own — a single read-only auto-generated field isn't worth
+        // its own wizard step, so it's the first field of Activity Details instead.
+        var s2 = module.AddSection(1, "Activity Details", "Activity type, expectations and status.");
+        var s3 = module.AddSection(2, "Dates and Status", "Planned and actual activity dates.");
+        var s4 = module.AddSection(3, "Funding", "Financial forecasts and actuals.");
+        var s5 = module.AddSection(4, "Progress", "Activity progress.");
 
-        var ifId = module.AddField("IF_ID", "Activity ID", FieldType.ReadOnly, 1, false, null, "Assigned automatically as a unique reference for this activity.");
-        ifId.SetSection(s1.Id);
-
-        var ifName = module.AddField("IF_NAME", "What is the activity name?", FieldType.Text, 2, true, null, "Tell us what the activity is called. Activity names must be unique.");
-        ifName.SetSection(s1.Id);
-
-        var ifAbout = module.AddField("IF_ABOUT", "What is the activity about?", FieldType.Textarea, 3, false, null, "Briefly describe what you will deliver, do, or achieve as part of this activity.");
-        ifAbout.SetSection(s1.Id);
-
-        var if01 = module.AddField("IF01", "Provide the name and a brief description of the activity.", FieldType.Textarea, 4, true);
+        var if01 = module.AddField("IF01", "Activity ID", FieldType.ReadOnly, 1, false, null, "Assigned automatically as a unique reference for this activity.");
         if01.SetSection(s2.Id);
 
-        var if02 = module.AddField("IF02", "Select the activity type", FieldType.Select, 5, true);
+        var if02 = module.AddField("IF02", "Provide the name and a brief description of the activity.", FieldType.Textarea, 2, true);
         if02.SetSection(s2.Id);
-        if02.AddOption("training", "Training", 1);
-        if02.AddOption("service_delivery", "Service Delivery", 2);
-        if02.AddOption("staff", "Staff", 3);
-        if02.AddOption("other", "Other", 4);
 
-        var if03 = module.AddField("IF03", "Which expectations does this activity meet?", FieldType.Checkbox, 6, true, null, "Multi-select.");
+        var if03 = module.AddField("IF03", "Select the activity type", FieldType.Select, 3, true);
         if03.SetSection(s2.Id);
-        if03.AddOption("national_guidance", "Support aligned with national guidance", 1);
-        if03.AddOption("co_locate", "Co-locate support", 2);
-        if03.AddOption("build_on_mature", "Build on mature offers", 3);
-        if03.AddOption("clear_info", "Clear evidence-based info", 4);
-        if03.AddOption("high_quality", "High quality accessible support", 5);
-        if03.AddOption("joined_up", "Joined up local system", 6);
+        if03.AddOption("training", "Training", 1);
+        if03.AddOption("service_delivery", "Service Delivery", 2);
+        if03.AddOption("staff", "Staff", 3);
+        if03.AddOption("other", "Other", 4);
 
-        var if04 = module.AddField("IF04", "Is this a new or continuing activity?", FieldType.Radio, 7, true);
+        var if04 = module.AddField("IF04", "Which expectations does this activity meet?", FieldType.Checkbox, 4, true, null, "Multi-select.");
         if04.SetSection(s2.Id);
-        if04.SetConfiguration("{\"size\":\"small\"}");
-        if04.AddOption("new", "New", 1);
-        if04.AddOption("continuing", "Continuing", 2);
+        if04.AddOption("national_guidance", "Support aligned with national guidance", 1);
+        if04.AddOption("co_locate", "Co-locate support", 2);
+        if04.AddOption("build_on_mature", "Build on mature offers", 3);
+        if04.AddOption("clear_info", "Clear evidence-based info", 4);
+        if04.AddOption("high_quality", "High quality accessible support", 5);
+        if04.AddOption("joined_up", "Joined up local system", 6);
 
-        var if05 = module.AddField("IF05", "Provide the planned start date for this activity", FieldType.Text, 8, true, "DD/MM/YYYY");
-        if05.SetSection(s3.Id);
+        var if05 = module.AddField("IF05", "Is this a new or continuing activity?", FieldType.Radio, 5, true);
+        if05.SetSection(s2.Id);
+        if05.SetConfiguration("{\"size\":\"small\"}");
+        if05.AddOption("new", "New", 1);
+        if05.AddOption("continuing", "Continuing", 2);
 
-        var if06 = module.AddField("IF06", "Provide the actual date from which this activity commenced", FieldType.Text, 9, false, "DD/MM/YYYY");
+        var if05_1 = module.AddField("IF05.1", "Is this activity funding service(s)?", FieldType.Radio, 6, true);
+        if05_1.SetSection(s2.Id);
+        if05_1.SetConfiguration("{\"size\":\"small\"}");
+        if05_1.AddOption("yes", "Yes", 1);
+        if05_1.AddOption("no", "No", 2);
+
+        var if05_2 = module.AddField("IF05.2", "Which service is the activity funding?", FieldType.Checkbox, 7, true, null, "Select every service this activity funds.");
+        if05_2.SetSection(s2.Id);
+        if05_2.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"IF05.1\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
+        if05_2.SetConfiguration("{\"dynamicOptions\":\"services\"}");
+
+        var if06 = module.AddField("IF06", "Provide the planned start date for this activity", FieldType.Date, 8, true, "DD/MM/YYYY");
         if06.SetSection(s3.Id);
 
-        var if07 = module.AddField("IF07", "Provide the date you expect this activity to be completed", FieldType.Text, 10, true, "DD/MM/YYYY", "Cannot be a date before IF05.");
+        var if07 = module.AddField("IF07", "Provide the actual date from which this activity commenced", FieldType.Date, 9, false, "DD/MM/YYYY");
         if07.SetSection(s3.Id);
+        if07.SetConfiguration("{\"dateRule\":\"not_in_future\"}");
 
-        var if08 = module.AddField("IF08", "Provide the date this activity was completed", FieldType.Text, 11, false, "DD/MM/YYYY", "Cannot be in the future.");
+        var if08 = module.AddField("IF08", "Provide the date you expect this activity to be completed", FieldType.Date, 10, true, "DD/MM/YYYY", "Cannot be a date before IF06.");
         if08.SetSection(s3.Id);
+        if08.SetConfiguration("{\"notBefore\":\"IF06\"}");
 
-        var if09 = module.AddField("IF09", "Select the activity status", FieldType.Select, 12, true);
+        var if09 = module.AddField("IF09", "Provide the date this activity was completed", FieldType.Date, 11, false, "DD/MM/YYYY", "Cannot be in the future.");
         if09.SetSection(s3.Id);
-        if09.AddOption("started", "Started", 1);
-        if09.AddOption("not_started", "Not started", 2);
-        if09.AddOption("delayed", "Delayed", 3);
-        if09.AddOption("completed", "Completed", 4);
+        if09.SetConfiguration("{\"dateRule\":\"not_in_future\"}");
 
-        var if10 = module.AddField("IF10", "Select the delivery status of this activity", FieldType.Select, 13, true);
+        var if10 = module.AddField("IF10", "Select the activity status", FieldType.Select, 12, true);
         if10.SetSection(s3.Id);
-        if10.AddOption("on_track", "On track", 1);
-        if10.AddOption("off_track", "Off track", 2);
+        if10.AddOption("started", "Started", 1);
+        if10.AddOption("not_started", "Not started", 2);
+        if10.AddOption("delayed", "Delayed", 3);
+        if10.AddOption("completed", "Completed", 4);
 
-        var if11 = module.AddField("IF11", "Is this activity receiving any additional funding from other sources?", FieldType.Radio, 14, true);
-        if11.SetSection(s4.Id);
-        if11.SetConfiguration("{\"size\":\"small\"}");
-        if11.AddOption("yes", "Yes", 1);
-        if11.AddOption("no", "No", 2);
+        var if11 = module.AddField("IF11", "Select the delivery status of this activity", FieldType.Select, 13, true);
+        if11.SetSection(s3.Id);
+        if11.AddOption("on_track", "On track", 1);
+        if11.AddOption("off_track", "Off track", 2);
 
-        var if11a = module.AddField("IF11a", "Total amount of additional funding", FieldType.Currency, 15, true, null, "Required if additional funding sources are present.", "0");
-        if11a.SetSection(s4.Id);
-        if11a.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"IF11\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
-        if11a.SetConfiguration("{\"group\":\"IF11_extra\",\"groupLabel\":\"Additional funding details\",\"prefix\":\"£\"}");
-
-        var if11b = module.AddField("IF11b", "Source of additional funding", FieldType.Text, 16, true, null, "Required if additional funding sources are present.");
-        if11b.SetSection(s4.Id);
-        if11b.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"IF11\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
-        if11b.SetConfiguration("{\"group\":\"IF11_extra\"}");
-
-        var if12 = module.AddField("IF12", "How much Infant Feeding funding are you forecasting to spend in 2026-27?", FieldType.Currency, 17, true, null, "QA: Sum of all IF12 must be +/- 10% of CFD16.", "0");
+        var if12 = module.AddField("IF12", "Is this activity receiving any additional funding from other sources?", FieldType.Radio, 14, true);
         if12.SetSection(s4.Id);
-        if12.SetConfiguration("{\"prefix\":\"£\"}");
+        if12.SetConfiguration("{\"size\":\"small\"}");
+        if12.AddOption("yes", "Yes", 1);
+        if12.AddOption("no", "No", 2);
 
-        var if13 = module.AddField("IF13", "Total Activity Budget (26/27)", FieldType.Calculation, 18, false, null, "IF11a + IF12");
+        var if13 = module.AddField("IF13", "Total amount of additional funding", FieldType.Currency, 15, true, null, "Required if additional funding sources are present.", "0");
         if13.SetSection(s4.Id);
-        if13.SetConfiguration("{\"formula\":\"IF11a + IF12\",\"prefix\":\"£\"}");
+        if13.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"IF12\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
+        if13.SetConfiguration("{\"group\":\"IF12_extra\",\"groupLabel\":\"Additional funding details\",\"prefix\":\"£\"}");
 
-        var if14 = module.AddField("IF14", "What is the total amount of actual spend on this activity to date?", FieldType.Currency, 19, true, null, null, "0");
+        var if14 = module.AddField("IF14", "Source of additional funding", FieldType.Text, 16, true, null, "Required if additional funding sources are present.");
         if14.SetSection(s4.Id);
-        if14.SetConfiguration("{\"prefix\":\"£\",\"maxSumField\":\"IF13\"}");
+        if14.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"IF12\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
+        if14.SetConfiguration("{\"group\":\"IF12_extra\"}");
 
-        var if15 = module.AddField("IF15", "What is the amount of funding committed to this activity?", FieldType.Currency, 20, false, null, null, "0");
+        var if15 = module.AddField("IF15", "How much Infant Feeding funding are you forecasting to spend in 2026-27?", FieldType.Currency, 17, true, null, null, "0");
         if15.SetSection(s4.Id);
         if15.SetConfiguration("{\"prefix\":\"£\"}");
 
-        var if16 = module.AddField("IF16", "Planned Spend (Uncommitted)", FieldType.Calculation, 21, false, null, "IF12 - (IF14 + IF15). Flags overspend if negative.");
+        var if16 = module.AddField("IF16", "Total Activity Budget (26/27)", FieldType.Calculation, 18, false, null, "IF13 + IF15");
         if16.SetSection(s4.Id);
-        if16.SetConfiguration("{\"formula\":\"IF12 - (IF14 + IF15)\",\"prefix\":\"£\",\"warnIfNegative\":true}");
+        if16.SetConfiguration("{\"formula\":\"IF13 + IF15\",\"prefix\":\"£\"}");
 
-        var if17 = module.AddField("IF17", "How much funding are you forecasting to spend in 2027-2028?", FieldType.Currency, 22, true, null, "QA: Sum of all IF17 must be +/- 10% of CFD17.", "0");
+        var if17 = module.AddField("IF17", "What is the total amount of actual spend on this activity to date?", FieldType.Currency, 19, true, null, null, "0");
         if17.SetSection(s4.Id);
-        if17.SetConfiguration("{\"prefix\":\"£\"}");
+        if17.SetConfiguration("{\"prefix\":\"£\",\"maxSumField\":\"IF16\"}");
 
-        var if18 = module.AddField("IF18", "How much funding are you forecasting to spend in 2028-2029?", FieldType.Currency, 23, true, null, "QA: Sum of all IF18 must be +/- 10% of CFD18.", "0");
+        var if18 = module.AddField("IF18", "What is the amount of funding committed to this activity?", FieldType.Currency, 20, false, null, null, "0");
         if18.SetSection(s4.Id);
         if18.SetConfiguration("{\"prefix\":\"£\"}");
 
-        var if19 = module.AddField("IF19", "Briefly outline what activity changed, why and when.", FieldType.Textarea, 24, false);
-        if19.SetSection(s5.Id);
+        var if19 = module.AddField("IF19", "Planned Spend (Uncommitted)", FieldType.Calculation, 21, false, null, "IF15 - (IF17 + IF18). Flags overspend if negative.");
+        if19.SetSection(s4.Id);
+        if19.SetConfiguration("{\"formula\":\"IF15 - (IF17 + IF18)\",\"prefix\":\"£\",\"warnIfNegative\":true}");
 
-        var if20 = module.AddField("IF20", "Provide a narrative of how this activity is progressing.", FieldType.Textarea, 25, false, null, "Optional. No PII.");
-        if20.SetSection(s5.Id);
+        var if20 = module.AddField("IF20", "How much funding are you forecasting to spend in 2027-2028?", FieldType.Currency, 22, true, null, null, "0");
+        if20.SetSection(s4.Id);
+        if20.SetConfiguration("{\"prefix\":\"£\"}");
 
-        var if21 = module.AddField("IF21", "What are the risks to successful delivery of this strand?", FieldType.Checkbox, 26, true, null, "Strand-level risk. Only needs to be completed once per strand.");
-        if21.SetSection(s5.Id);
-        if21.AddOption("recruitment_delays", "Recruitment delays", 1);
-        if21.AddOption("procurement_delays", "Delays to procurement or start of contracts", 2);
-        if21.AddOption("s114_financial", "S114 notice or financial challenges", 3);
-        if21.AddOption("spend_delay_rollover", "Previous spend delay or rollover", 4);
-        if21.AddOption("wider_challenges", "Wider challenges/issues within LA", 5);
-        if21.AddOption("other", "Other", 6);
-        if21.AddOption("none_na", "None / NA", 7);
+        var if21 = module.AddField("IF21", "How much funding are you forecasting to spend in 2028-2029?", FieldType.Currency, 23, true, null, null, "0");
+        if21.SetSection(s4.Id);
+        if21.SetConfiguration("{\"prefix\":\"£\"}");
 
-        var if21a = module.AddField("IF21a", "Describe the strand risk in more detail", FieldType.Textarea, 27, false, null, "Required if risks are identified.");
-        if21a.SetSection(s5.Id);
-        if21a.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"IF21\",\"notEquals\":\"none_na\"}}");
+        var if22 = module.AddField("IF22", "Briefly outline what activity changed, why and when.", FieldType.Textarea, 24, false);
+        if22.SetSection(s5.Id);
 
-        var if21b = module.AddField("IF21b", "Select the likelihood of this strand risk", FieldType.Select, 28, false, null, "Required if risks are identified.");
-        if21b.SetSection(s5.Id);
-        if21b.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"IF21\",\"notEquals\":\"none_na\"}}");
-        if21b.AddOption("low", "Low", 1);
-        if21b.AddOption("medium", "Medium", 2);
-        if21b.AddOption("high", "High", 3);
+        var if23 = module.AddField("IF23", "Provide a narrative of how this activity is progressing.", FieldType.Textarea, 25, false, null, "Optional. No PII.");
+        if23.SetSection(s5.Id);
+    }
 
-        var if21c = module.AddField("IF21c", "Select the impact of this strand risk", FieldType.Select, 29, false, null, "Required if risks are identified.");
-        if21c.SetSection(s5.Id);
-        if21c.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"IF21\",\"notEquals\":\"none_na\"}}");
-        if21c.AddOption("low", "Low", 1);
-        if21c.AddOption("medium", "Medium", 2);
-        if21c.AddOption("high", "High", 3);
+    // ─── Infant Feeding strand level risk (TF2 only) ─────────────────────────
 
-        var if21d = module.AddField("IF21d", "Describe the mitigation actions in place or planned", FieldType.Textarea, 30, false, null, "Required if risks are identified.");
-        if21d.SetSection(s5.Id);
-        if21d.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"IF21\",\"notEquals\":\"none_na\"}}");
+    private static DataCollectionFormModule CreateInfantFeedingRiskModule(UserId systemUserId)
+    {
+        var module = DataCollectionFormModule.Create(
+            DataCollectionFormModuleId.New(),
+            DataCollectionFormModuleCodes.InfantFeedingRisk,
+            9,
+            "Infant Feeding strand level risk",
+            "Strand-level risk for Infant Feeding (TF2 LAs only). Only needs to be completed once per strand.",
+            DateTime.UtcNow,
+            type: DataCollectionType.DeliveryPlan);
+
+        PopulateInfantFeedingRiskFields(module);
+
+        if (systemUserId != UserId.Empty())
+        {
+            module.Publish(systemUserId);
+        }
+
+        return module;
+    }
+
+    private static void PopulateInfantFeedingRiskFields(DataCollectionFormModule module)
+    {
+        var s1 = module.AddSection(1, "Strand Risk", "Risks to successful delivery of this strand.");
+
+        var if24 = module.AddField("IF24", "What are the risks to successful delivery of this strand?", FieldType.Checkbox, 1, true, null, "Only needs to be completed once per strand.");
+        if24.SetSection(s1.Id);
+        if24.AddOption("recruitment_delays", "Recruitment delays", 1);
+        if24.AddOption("procurement_delays", "Delays to procurement or start of contracts", 2);
+        if24.AddOption("s114_financial", "S114 notice or financial challenges", 3);
+        if24.AddOption("spend_delay_rollover", "Previous spend delay or rollover", 4);
+        if24.AddOption("wider_challenges", "Wider challenges/issues within LA", 5);
+        if24.AddOption("other", "Other", 6);
+        if24.AddOption("none_na", "None / NA", 7);
     }
 
     // ─── Healthy Babies Offer (TF2 only) ─────────────────────────────────────
@@ -1326,7 +1591,7 @@ public static class DeliveryPlanFormModuleSeeder
         var module = DataCollectionFormModule.Create(
             DataCollectionFormModuleId.New(),
             DataCollectionFormModuleCodes.HealthyBabiesOffer,
-            8,
+            10,
             "Healthy Babies Offer",
             "Activity tracking for Healthy Babies Offer funded activities (TF2 LAs only).",
             DateTime.UtcNow,
@@ -1344,128 +1609,165 @@ public static class DeliveryPlanFormModuleSeeder
 
     private static void PopulateHealthyBabiesOfferFields(DataCollectionFormModule module)
     {
-        var s1 = module.AddSection(1, "Activity Information", "Core activity details.");
-        var s2 = module.AddSection(2, "Activity Details", "Activity type, expectations and status.");
-        var s3 = module.AddSection(3, "Dates and Status", "Planned and actual activity dates.");
-        var s4 = module.AddSection(4, "Funding", "Financial forecasts and actuals.");
-        var s5 = module.AddSection(5, "Progress and Strand Risk", "Activity progress and strand-level risk.");
+        // Activity ID has no section of its own — a single read-only auto-generated field isn't worth
+        // its own wizard step, so it's the first field of Activity Details instead.
+        var s2 = module.AddSection(1, "Activity Details", "Activity type, expectations and status.");
+        var s3 = module.AddSection(2, "Dates and Status", "Planned and actual activity dates.");
+        var s4 = module.AddSection(3, "Funding", "Financial forecasts and actuals.");
+        var s5 = module.AddSection(4, "Progress", "Activity progress.");
 
-        var hboId = module.AddField("HBO_ID", "Activity ID", FieldType.ReadOnly, 1, false, null, "Assigned automatically as a unique reference for this activity.");
-        hboId.SetSection(s1.Id);
-
-        var hboName = module.AddField("HBO_NAME", "What is the activity name?", FieldType.Text, 2, true, null, "Tell us what the activity is called. Activity names must be unique.");
-        hboName.SetSection(s1.Id);
-
-        var hboAbout = module.AddField("HBO_ABOUT", "What is the activity about?", FieldType.Textarea, 3, false, null, "Briefly describe what you will deliver, do, or achieve as part of this activity.");
-        hboAbout.SetSection(s1.Id);
-
-        var hbo01 = module.AddField("HBO01", "Provide the name and a brief description of the activity.", FieldType.Textarea, 4, true);
+        var hbo01 = module.AddField("HBO01", "Activity ID", FieldType.ReadOnly, 1, false, null, "Assigned automatically as a unique reference for this activity.");
         hbo01.SetSection(s2.Id);
 
-        var hbo02 = module.AddField("HBO02", "Select the activity type", FieldType.Select, 5, true);
+        var hbo02 = module.AddField("HBO02", "Provide the name and a brief description of the activity.", FieldType.Textarea, 2, true);
         hbo02.SetSection(s2.Id);
-        hbo02.AddOption("training", "Training", 1);
-        hbo02.AddOption("service_delivery", "Service Delivery", 2);
-        hbo02.AddOption("staff", "Staff", 3);
-        hbo02.AddOption("other", "Other", 4);
 
-        var hbo03 = module.AddField("HBO03", "Which expectations does this activity meet?", FieldType.Checkbox, 6, true, null, "Multi-select.");
+        var hbo03 = module.AddField("HBO03", "Select the activity type", FieldType.Select, 3, true);
         hbo03.SetSection(s2.Id);
-        hbo03.AddOption("entitlements", "Families understand entitlements", 1);
-        hbo03.AddOption("co_design", "Co-design integrated pathways", 2);
-        hbo03.AddOption("involve_parents", "Involve parents/carers in development", 3);
-        hbo03.AddOption("accessible_online", "Accessible online space", 4);
-        hbo03.AddOption("hard_copy", "Hard-copy version prior to birth", 5);
+        hbo03.AddOption("training", "Training", 1);
+        hbo03.AddOption("service_delivery", "Service Delivery", 2);
+        hbo03.AddOption("staff", "Staff", 3);
+        hbo03.AddOption("other", "Other", 4);
 
-        var hbo04 = module.AddField("HBO04", "Is this a new or continuing activity?", FieldType.Radio, 7, true);
+        var hbo04 = module.AddField("HBO04", "Which expectations does this activity meet?", FieldType.Checkbox, 4, true, null, "Multi-select.");
         hbo04.SetSection(s2.Id);
-        hbo04.SetConfiguration("{\"size\":\"small\"}");
-        hbo04.AddOption("new", "New", 1);
-        hbo04.AddOption("continuing", "Continuing", 2);
+        hbo04.AddOption("entitlements", "Families understand entitlements", 1);
+        hbo04.AddOption("co_design", "Co-design integrated pathways", 2);
+        hbo04.AddOption("involve_parents", "Involve parents/carers in development", 3);
+        hbo04.AddOption("accessible_online", "Accessible online space", 4);
+        hbo04.AddOption("hard_copy", "Hard-copy version prior to birth", 5);
 
-        var hbo05 = module.AddField("HBO05", "Provide the planned start date for this activity", FieldType.Text, 8, true, "DD/MM/YYYY");
-        hbo05.SetSection(s3.Id);
+        var hbo05 = module.AddField("HBO05", "Is this a new or continuing activity?", FieldType.Radio, 5, true);
+        hbo05.SetSection(s2.Id);
+        hbo05.SetConfiguration("{\"size\":\"small\"}");
+        hbo05.AddOption("new", "New", 1);
+        hbo05.AddOption("continuing", "Continuing", 2);
 
-        var hbo06 = module.AddField("HBO06", "Provide the actual date from which this activity commenced", FieldType.Text, 9, false, "DD/MM/YYYY");
+        var hbo05_1 = module.AddField("HBO05.1", "Is this activity funding service(s)?", FieldType.Radio, 6, true);
+        hbo05_1.SetSection(s2.Id);
+        hbo05_1.SetConfiguration("{\"size\":\"small\"}");
+        hbo05_1.AddOption("yes", "Yes", 1);
+        hbo05_1.AddOption("no", "No", 2);
+
+        var hbo05_2 = module.AddField("HBO05.2", "Which service is the activity funding?", FieldType.Checkbox, 7, true, null, "Select every service this activity funds.");
+        hbo05_2.SetSection(s2.Id);
+        hbo05_2.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"HBO05.1\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
+        hbo05_2.SetConfiguration("{\"dynamicOptions\":\"services\"}");
+
+        var hbo06 = module.AddField("HBO06", "Provide the planned start date for this activity", FieldType.Date, 8, true, "DD/MM/YYYY");
         hbo06.SetSection(s3.Id);
 
-        var hbo07 = module.AddField("HBO07", "Provide the date you expect this activity to be completed", FieldType.Text, 10, true, "DD/MM/YYYY", "Cannot be a date before HBO05.");
+        var hbo07 = module.AddField("HBO07", "Provide the actual date from which this activity commenced", FieldType.Date, 9, false, "DD/MM/YYYY");
         hbo07.SetSection(s3.Id);
+        hbo07.SetConfiguration("{\"dateRule\":\"not_in_future\"}");
 
-        var hbo08 = module.AddField("HBO08", "Provide the date this activity was completed", FieldType.Text, 11, false, "DD/MM/YYYY", "Cannot be in the future.");
+        var hbo08 = module.AddField("HBO08", "Provide the date you expect this activity to be completed", FieldType.Date, 10, true, "DD/MM/YYYY", "Cannot be a date before HBO06.");
         hbo08.SetSection(s3.Id);
+        hbo08.SetConfiguration("{\"notBefore\":\"HBO06\"}");
 
-        var hbo09 = module.AddField("HBO09", "Select the activity status", FieldType.Select, 12, true);
+        var hbo09 = module.AddField("HBO09", "Provide the date this activity was completed", FieldType.Date, 11, false, "DD/MM/YYYY", "Cannot be in the future.");
         hbo09.SetSection(s3.Id);
-        hbo09.AddOption("started", "Started", 1);
-        hbo09.AddOption("not_started", "Not started", 2);
-        hbo09.AddOption("delayed", "Delayed", 3);
-        hbo09.AddOption("completed", "Completed", 4);
+        hbo09.SetConfiguration("{\"dateRule\":\"not_in_future\"}");
 
-        var hbo10 = module.AddField("HBO10", "Select the delivery status of this activity", FieldType.Select, 13, true);
+        var hbo10 = module.AddField("HBO10", "Select the activity status", FieldType.Select, 12, true);
         hbo10.SetSection(s3.Id);
-        hbo10.AddOption("on_track", "On track", 1);
-        hbo10.AddOption("off_track", "Off track", 2);
+        hbo10.AddOption("started", "Started", 1);
+        hbo10.AddOption("not_started", "Not started", 2);
+        hbo10.AddOption("delayed", "Delayed", 3);
+        hbo10.AddOption("completed", "Completed", 4);
 
-        var hbo11 = module.AddField("HBO11", "Is this activity receiving any additional funding from other sources?", FieldType.Radio, 14, true);
-        hbo11.SetSection(s4.Id);
-        hbo11.SetConfiguration("{\"size\":\"small\"}");
-        hbo11.AddOption("yes", "Yes", 1);
-        hbo11.AddOption("no", "No", 2);
+        var hbo11 = module.AddField("HBO11", "Select the delivery status of this activity", FieldType.Select, 13, true);
+        hbo11.SetSection(s3.Id);
+        hbo11.AddOption("on_track", "On track", 1);
+        hbo11.AddOption("off_track", "Off track", 2);
 
-        var hbo11a = module.AddField("HBO11a", "Total amount of additional funding", FieldType.Currency, 15, true, null, "Required if additional funding sources are present.", "0");
-        hbo11a.SetSection(s4.Id);
-        hbo11a.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"HBO11\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
-        hbo11a.SetConfiguration("{\"group\":\"HBO11_extra\",\"groupLabel\":\"Additional funding details\",\"prefix\":\"£\"}");
-
-        var hbo11b = module.AddField("HBO11b", "Source of additional funding", FieldType.Text, 16, true, null, "Required if additional funding sources are present.");
-        hbo11b.SetSection(s4.Id);
-        hbo11b.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"HBO11\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
-        hbo11b.SetConfiguration("{\"group\":\"HBO11_extra\"}");
-
-        var hbo12 = module.AddField("HBO12", "How much Healthy Babies Offer funding are you forecasting to spend in 2026-27?", FieldType.Currency, 17, true, null, "QA: Sum of all HBO12 must be +/- 10% of CFD19.", "0");
+        var hbo12 = module.AddField("HBO12", "Is this activity receiving any additional funding from other sources?", FieldType.Radio, 14, true);
         hbo12.SetSection(s4.Id);
-        hbo12.SetConfiguration("{\"prefix\":\"£\"}");
+        hbo12.SetConfiguration("{\"size\":\"small\"}");
+        hbo12.AddOption("yes", "Yes", 1);
+        hbo12.AddOption("no", "No", 2);
 
-        var hbo13 = module.AddField("HBO13", "Total Activity Budget (26/27)", FieldType.Calculation, 18, false, null, "HBO11a + HBO12");
+        var hbo13 = module.AddField("HBO13", "Total amount of additional funding", FieldType.Currency, 15, true, null, "Required if additional funding sources are present.", "0");
         hbo13.SetSection(s4.Id);
-        hbo13.SetConfiguration("{\"formula\":\"HBO11a + HBO12\",\"prefix\":\"£\"}");
+        hbo13.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"HBO12\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
+        hbo13.SetConfiguration("{\"group\":\"HBO12_extra\",\"groupLabel\":\"Additional funding details\",\"prefix\":\"£\"}");
 
-        var hbo14 = module.AddField("HBO14", "What is the total amount of actual spend on this activity to date?", FieldType.Currency, 19, true, null, null, "0");
+        var hbo14 = module.AddField("HBO14", "Source of additional funding", FieldType.Text, 16, true, null, "Required if additional funding sources are present.");
         hbo14.SetSection(s4.Id);
-        hbo14.SetConfiguration("{\"prefix\":\"£\"}");
+        hbo14.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"HBO12\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
+        hbo14.SetConfiguration("{\"group\":\"HBO12_extra\"}");
 
-        var hbo15 = module.AddField("HBO15", "What is the amount of funding committed to this activity?", FieldType.Currency, 20, false, null, null, "0");
+        var hbo15 = module.AddField("HBO15", "How much Healthy Babies Offer funding are you forecasting to spend in 2026-27?", FieldType.Currency, 17, true, null, null, "0");
         hbo15.SetSection(s4.Id);
         hbo15.SetConfiguration("{\"prefix\":\"£\"}");
 
-        var hbo16 = module.AddField("HBO16", "Planned Spend (Uncommitted)", FieldType.Calculation, 21, false, null, "HBO12 - (HBO14 + HBO15). Flags overspend if negative.");
+        var hbo16 = module.AddField("HBO16", "Total Activity Budget (26/27)", FieldType.Calculation, 18, false, null, "HBO13 + HBO15");
         hbo16.SetSection(s4.Id);
-        hbo16.SetConfiguration("{\"formula\":\"HBO12 - (HBO14 + HBO15)\",\"prefix\":\"£\"}");
+        hbo16.SetConfiguration("{\"formula\":\"HBO13 + HBO15\",\"prefix\":\"£\"}");
 
-        var hbo17 = module.AddField("HBO17", "How much funding are you forecasting to spend in 2027-2028?", FieldType.Currency, 22, true, null, "QA: Sum of all HBO17 must be +/- 10% of CFD20.", "0");
+        var hbo17 = module.AddField("HBO17", "What is the total amount of actual spend on this activity to date?", FieldType.Currency, 19, true, null, null, "0");
         hbo17.SetSection(s4.Id);
         hbo17.SetConfiguration("{\"prefix\":\"£\"}");
 
-        var hbo18 = module.AddField("HBO18", "How much funding are you forecasting to spend in 2028-2029?", FieldType.Currency, 23, true, null, "QA: Sum of all HBO18 must be +/- 10% of CFD21.", "0");
+        var hbo18 = module.AddField("HBO18", "What is the amount of funding committed to this activity?", FieldType.Currency, 20, false, null, null, "0");
         hbo18.SetSection(s4.Id);
         hbo18.SetConfiguration("{\"prefix\":\"£\"}");
 
-        var hbo19 = module.AddField("HBO19", "Briefly outline what activity changed, why and when.", FieldType.Textarea, 24, false);
-        hbo19.SetSection(s5.Id);
+        var hbo19 = module.AddField("HBO19", "Planned Spend (Uncommitted)", FieldType.Calculation, 21, false, null, "HBO15 - (HBO17 + HBO18). Flags overspend if negative.");
+        hbo19.SetSection(s4.Id);
+        hbo19.SetConfiguration("{\"formula\":\"HBO15 - (HBO17 + HBO18)\",\"prefix\":\"£\"}");
 
-        var hbo20 = module.AddField("HBO20", "Provide a narrative of how this activity is progressing.", FieldType.Textarea, 25, false, null, "Optional. No PII.");
-        hbo20.SetSection(s5.Id);
+        var hbo20 = module.AddField("HBO20", "How much funding are you forecasting to spend in 2027-2028?", FieldType.Currency, 22, true, null, null, "0");
+        hbo20.SetSection(s4.Id);
+        hbo20.SetConfiguration("{\"prefix\":\"£\"}");
 
-        var hbo21 = module.AddField("HBO21", "What are the risks to successful delivery of this strand?", FieldType.Checkbox, 26, true, null, "Strand-level risk. Only needs to be completed once per strand.");
-        hbo21.SetSection(s5.Id);
-        hbo21.AddOption("recruitment_delays", "Recruitment delays", 1);
-        hbo21.AddOption("procurement_delays", "Delays to procurement or start of contracts", 2);
-        hbo21.AddOption("s114_financial", "S114 notice or financial challenges", 3);
-        hbo21.AddOption("spend_delay_rollover", "Previous spend delay or rollover", 4);
-        hbo21.AddOption("wider_challenges", "Wider challenges/issues within LA", 5);
-        hbo21.AddOption("other", "Other", 6);
-        hbo21.AddOption("none_na", "None / NA", 7);
+        var hbo21 = module.AddField("HBO21", "How much funding are you forecasting to spend in 2028-2029?", FieldType.Currency, 23, true, null, null, "0");
+        hbo21.SetSection(s4.Id);
+        hbo21.SetConfiguration("{\"prefix\":\"£\"}");
+
+        var hbo22 = module.AddField("HBO22", "Briefly outline what activity changed, why and when.", FieldType.Textarea, 24, false);
+        hbo22.SetSection(s5.Id);
+
+        var hbo23 = module.AddField("HBO23", "Provide a narrative of how this activity is progressing.", FieldType.Textarea, 25, false, null, "Optional. No PII.");
+        hbo23.SetSection(s5.Id);
+    }
+
+    // ─── Healthy Babies Offer strand level risk (TF2 only) ───────────────────
+
+    private static DataCollectionFormModule CreateHealthyBabiesOfferRiskModule(UserId systemUserId)
+    {
+        var module = DataCollectionFormModule.Create(
+            DataCollectionFormModuleId.New(),
+            DataCollectionFormModuleCodes.HealthyBabiesOfferRisk,
+            11,
+            "Healthy Babies Offer strand level risk",
+            "Strand-level risk for Healthy Babies Offer (TF2 LAs only). Only needs to be completed once per strand.",
+            DateTime.UtcNow,
+            type: DataCollectionType.DeliveryPlan);
+
+        PopulateHealthyBabiesOfferRiskFields(module);
+
+        if (systemUserId != UserId.Empty())
+        {
+            module.Publish(systemUserId);
+        }
+
+        return module;
+    }
+
+    private static void PopulateHealthyBabiesOfferRiskFields(DataCollectionFormModule module)
+    {
+        var s1 = module.AddSection(1, "Strand Risk", "Risks to successful delivery of this strand.");
+
+        var hbo24 = module.AddField("HBO24", "What are the risks to successful delivery of this strand?", FieldType.Checkbox, 1, true, null, "Only needs to be completed once per strand.");
+        hbo24.SetSection(s1.Id);
+        hbo24.AddOption("recruitment_delays", "Recruitment delays", 1);
+        hbo24.AddOption("procurement_delays", "Delays to procurement or start of contracts", 2);
+        hbo24.AddOption("s114_financial", "S114 notice or financial challenges", 3);
+        hbo24.AddOption("spend_delay_rollover", "Previous spend delay or rollover", 4);
+        hbo24.AddOption("wider_challenges", "Wider challenges/issues within LA", 5);
+        hbo24.AddOption("other", "Other", 6);
+        hbo24.AddOption("none_na", "None / NA", 7);
     }
 
     // ─── Rollover Spend ───────────────────────────────────────────────────────
@@ -1475,7 +1777,7 @@ public static class DeliveryPlanFormModuleSeeder
         var module = DataCollectionFormModule.Create(
             DataCollectionFormModuleId.New(),
             DataCollectionFormModuleCodes.RolloverSpend,
-            9,
+            12,
             "Rollover Spend",
             "Tracking of approved rollover spend from previous years.",
             DateTime.UtcNow,
@@ -1516,44 +1818,58 @@ public static class DeliveryPlanFormModuleSeeder
         ro03.AddOption("staff", "Staff", 3);
         ro03.AddOption("other", "Other", 4);
 
-        var ro04 = module.AddField("RO04", "Provide the planned start date for this activity", FieldType.Text, 4, true, "DD/MM/YYYY");
+        var ro03_1 = module.AddField("RO03.1", "Is this activity funding service(s)?", FieldType.Radio, 4, true);
+        ro03_1.SetSection(s1.Id);
+        ro03_1.SetConfiguration("{\"size\":\"small\"}");
+        ro03_1.AddOption("yes", "Yes", 1);
+        ro03_1.AddOption("no", "No", 2);
+
+        var ro03_2 = module.AddField("RO03.2", "Which service is the activity funding?", FieldType.Checkbox, 5, true, null, "Select every service this activity funds.");
+        ro03_2.SetSection(s1.Id);
+        ro03_2.SetConditionalRules("{\"showWhen\":{\"fieldKey\":\"RO03.1\",\"equals\":\"yes\"},\"displayInline\":true,\"parentOption\":\"yes\"}");
+        ro03_2.SetConfiguration("{\"dynamicOptions\":\"services\"}");
+
+        var ro04 = module.AddField("RO04", "Provide the planned start date for this activity", FieldType.Date, 6, true, "DD/MM/YYYY");
         ro04.SetSection(s1.Id);
 
-        var ro05 = module.AddField("RO05", "Provide the actual date from which this activity commenced", FieldType.Text, 5, false, "DD/MM/YYYY");
+        var ro05 = module.AddField("RO05", "Provide the actual date from which this activity commenced", FieldType.Date, 7, false, "DD/MM/YYYY");
         ro05.SetSection(s1.Id);
+        ro05.SetConfiguration("{\"dateRule\":\"not_in_future\"}");
 
-        var ro06 = module.AddField("RO06", "Provide the date you expect this activity to be completed", FieldType.Text, 6, false, "DD/MM/YYYY");
+        var ro06 = module.AddField("RO06", "Provide the date you expect this activity to be completed", FieldType.Date, 8, false, "DD/MM/YYYY");
         ro06.SetSection(s1.Id);
+        ro06.SetConfiguration("{\"notBefore\":\"RO04\"}");
 
-        var ro07 = module.AddField("RO07", "Provide the date this activity was completed", FieldType.Text, 7, false, "DD/MM/YYYY");
+        var ro07 = module.AddField("RO07", "Provide the date this activity was completed", FieldType.Date, 9, false, "DD/MM/YYYY");
         ro07.SetSection(s1.Id);
+        ro07.SetConfiguration("{\"dateRule\":\"not_in_future\"}");
 
-        var ro08 = module.AddField("RO08", "What is the status of this activity?", FieldType.Select, 8, true);
+        var ro08 = module.AddField("RO08", "What is the status of this activity?", FieldType.Select, 10, true);
         ro08.SetSection(s1.Id);
         ro08.AddOption("on_track", "On track", 1);
         ro08.AddOption("off_track", "Off track", 2);
 
-        var ro09 = module.AddField("RO09", "Select the year of this rollover", FieldType.Select, 9, true);
+        var ro09 = module.AddField("RO09", "Select the year of this rollover", FieldType.Select, 11, true);
         ro09.SetSection(s2.Id);
         ro09.AddOption("2025_26", "2025-26", 1);
 
-        var ro10 = module.AddField("RO10", "Provide the total amount of 2025-26 funding planned for this activity", FieldType.Currency, 10, true, null, null, "0");
+        var ro10 = module.AddField("RO10", "Provide the total amount of 2025-26 funding planned for this activity", FieldType.Currency, 12, true, null, null, "0");
         ro10.SetSection(s2.Id);
         ro10.SetConfiguration("{\"prefix\":\"£\"}");
 
-        var ro11 = module.AddField("RO11", "Provide the total amount of actual spend on this activity to date", FieldType.Currency, 11, true, null, null, "0");
+        var ro11 = module.AddField("RO11", "Provide the total amount of actual spend on this activity to date", FieldType.Currency, 13, true, null, null, "0");
         ro11.SetSection(s2.Id);
         ro11.SetConfiguration("{\"prefix\":\"£\",\"maxSumField\":\"RO10\"}");
 
-        var ro12 = module.AddField("RO12", "Provide the amount of funding that is committed to this activity", FieldType.Currency, 12, false, null, null, "0");
+        var ro12 = module.AddField("RO12", "Provide the amount of funding that is committed to this activity", FieldType.Currency, 14, false, null, null, "0");
         ro12.SetSection(s2.Id);
         ro12.SetConfiguration("{\"prefix\":\"£\"}");
 
-        var ro13 = module.AddField("RO13", "2025-26 Planned Spend", FieldType.Calculation, 13, false, null, "RO10 - (RO11 + RO12). Flags overspend if negative.");
+        var ro13 = module.AddField("RO13", "2025-26 Planned Spend", FieldType.Calculation, 15, false, null, "RO10 - (RO11 + RO12). Flags overspend if negative.");
         ro13.SetSection(s2.Id);
         ro13.SetConfiguration("{\"formula\":\"RO10 - (RO11 + RO12)\",\"prefix\":\"£\",\"warnIfNegative\":true}");
 
-        var ro14 = module.AddField("RO14", "Provide a narrative of how this activity is progressing", FieldType.Textarea, 14, false);
+        var ro14 = module.AddField("RO14", "Provide a narrative of how this activity is progressing", FieldType.Textarea, 16, false);
         ro14.SetSection(s2.Id);
     }
 }

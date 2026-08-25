@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { API_ROUTES } from '../../../../constants/apiRoutes';
 
 export interface GetAdminsResponse {
   id: string;
@@ -9,4 +10,4 @@ export interface GetAdminsResponse {
   mfaStatus: string | null;
 }
 
-export const getAdmins = () => axios.get<GetAdminsResponse[]>('/admin/users');
+export const getAdmins = () => axios.get<GetAdminsResponse[]>(API_ROUTES.admin.users.list);

@@ -1,3 +1,4 @@
+using Application.Common;
 using Application.ServiceForms.Dtos;
 using Domain.ServiceForms;
 
@@ -7,7 +8,8 @@ public static class ServiceFormDateAnswerValidator
 {
     public static string? ValidateAnswers(
         IReadOnlyList<ServiceAnswerInputDto> answers,
-        IReadOnlyList<ServiceFormQuestion> questions)
+        IReadOnlyList<ServiceFormQuestion> questions,
+        DateTime? today = null)
     {
         foreach (var answer in answers)
         {
@@ -17,12 +19,12 @@ public static class ServiceFormDateAnswerValidator
             }
 
             var question = questions.FirstOrDefault(q => q.Code == answer.QuestionCode);
-            if (question == null || !DateTime.TryParse(answer.Value, out var date))
+            if (question == null || !FormDateParser.TryParse(answer.Value, out var date))
             {
                 continue;
             }
 
-            var error = ValidateDateRule(question, date);
+            var error = ValidateDateRule(question, date, today);
             if (error != null)
             {
                 return error;
@@ -32,21 +34,21 @@ public static class ServiceFormDateAnswerValidator
         return null;
     }
 
-    public static string? ValidateDateRule(ServiceFormQuestion question, DateTime date)
+    public static string? ValidateDateRule(ServiceFormQuestion question, DateTime date, DateTime? today = null)
     {
         if (question.QuestionType != ServiceFormQuestionType.Date || string.IsNullOrEmpty(question.DateValidationRule))
         {
             return null;
         }
 
-        var today = DateTime.UtcNow.Date;
+        var cutoff = (today ?? DateTime.UtcNow).Date;
 
-        if (question.DateValidationRule == ServiceFormDateValidationRules.NotInFuture && date.Date > today)
+        if (question.DateValidationRule == ServiceFormDateValidationRules.NotInFuture && date.Date > cutoff)
         {
             return $"'{question.Label}' must not be a date in the future.";
         }
 
-        if (question.DateValidationRule == ServiceFormDateValidationRules.NotInPast && date.Date < today)
+        if (question.DateValidationRule == ServiceFormDateValidationRules.NotInPast && date.Date < cutoff)
         {
             return $"'{question.Label}' must not be a date in the past.";
         }

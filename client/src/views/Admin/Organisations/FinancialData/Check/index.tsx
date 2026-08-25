@@ -7,6 +7,7 @@ import { defaultStaleTime, viewOrganisationHomeCacheKey } from '../../../../../h
 import { getOrganisationHome, upsertOrganisationFinancialData, FinancialDataEntryDto } from '../../View/queries';
 import { FinancialModule, FormValues, formatCurrency, parseAmount } from '../constants';
 import { GovUKSummaryTable } from '../../../../../components/GovUKComponents';
+import { ROUTES } from '../../../../../constants/routes';
 
 type UrlParams = { organisationId: string };
 
@@ -56,7 +57,7 @@ const CheckFinancialData = (): React.ReactElement => {
       // Drop the cached (now stale) reads so the profile's Allocations tab shows the freshly saved data.
       await queryClient.invalidateQueries(['organisation-financial-data', organisationId]);
       await queryClient.invalidateQueries([viewOrganisationHomeCacheKey(organisationId!)]);
-      navigate(`/admin/organisations/${organisationId}`, { state: { financialDataSaved: true, isUpdate } });
+      navigate(ROUTES.admin.organisations.view(organisationId), { state: { financialDataSaved: true, isUpdate } });
     },
   });
 
@@ -77,7 +78,7 @@ const CheckFinancialData = (): React.ReactElement => {
   };
 
   const handleChange = () => {
-    navigate(`/admin/organisations/${organisationId}/financial-data/add`, {
+    navigate(ROUTES.admin.organisations.financialData.add(organisationId), {
       state: { values, allocationModules, allocationYears, rolloverModuleKey, rolloverModuleLabel, rolloverYear, isUpdate },
     });
   };
@@ -85,7 +86,7 @@ const CheckFinancialData = (): React.ReactElement => {
   return (
     <SettingsLayout breadcrumbs={[]}>
       <a
-        href={`/admin/organisations/${organisationId}/financial-data/add`}
+        href={ROUTES.admin.organisations.financialData.add(organisationId)}
         className="govuk-back-link"
         onClick={(e) => { e.preventDefault(); handleChange(); }}>
         Back
@@ -128,6 +129,8 @@ const CheckFinancialData = (): React.ReactElement => {
       <div className="govuk-inset-text">
         <h2 className="govuk-heading-m">Summary</h2>
         <GovUKSummaryTable
+          caption="Summary of financial data totals"
+          captionVisuallyHidden
           rows={[
             ...(rolloverModuleKey && rolloverYear ? [{
               label: `Total approved rollover spend ${rolloverYear}`,

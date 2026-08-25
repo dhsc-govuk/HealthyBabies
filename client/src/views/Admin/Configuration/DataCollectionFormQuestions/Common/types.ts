@@ -151,6 +151,7 @@ export const fieldTypeOptions = [
   { value: 'currency', label: 'Currency' },
   { value: 'calculation', label: 'Calculation' },
   { value: 'read_only', label: 'Read Only' },
+  { value: 'date', label: 'Date' },
 ];
 
 export const initialFormState: QuestionFormState = {

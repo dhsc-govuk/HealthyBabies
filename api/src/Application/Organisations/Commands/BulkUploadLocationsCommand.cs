@@ -1,3 +1,4 @@
+using Application.Common.Dtos;
 using Application.Common.Interfaces;
 using Application.Common.Interfaces.Queries;
 using Application.Common.Permissions;
@@ -138,8 +139,8 @@ public class ValidateBulkUploadLocationsCommandHandler(
             questions.FirstOrDefault(q => q.Code == error.QuestionCode)?.Label ?? error.QuestionCode,
             error.Message);
 
-    private static List<BulkUploadFieldMetadataDto> BuildFieldMetadata(IReadOnlyList<SiteFormQuestion> questions) =>
-        questions.Select(q => new BulkUploadFieldMetadataDto(
+    private static List<BulkUploadLocationFieldMetadataDto> BuildFieldMetadata(IReadOnlyList<SiteFormQuestion> questions) =>
+        questions.Select(q => new BulkUploadLocationFieldMetadataDto(
             q.Code,
             q.QuestionType.ToString(),
             q.IsRequired,

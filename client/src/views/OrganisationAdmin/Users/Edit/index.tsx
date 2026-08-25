@@ -7,6 +7,7 @@ import { organisationUserStaleTime, viewOrganisationUsersCacheKey } from '../../
 import EditOrganisationUsersComponent from '../../../../components/Global/Organisations/Users/Edit';
 import { useAuthProvider } from '../../../../components/AuthProvider';
 import { SettingsLayout } from '../../../../layouts';
+import { ROUTES } from '../../../../constants/routes';
 
 type UrlParams = {
   userId: string;
@@ -26,22 +27,22 @@ const EditOrganisationUsers = (): React.ReactElement => {
   });
 
   const handleFinish = (_organisationId: string, userId: string) => {
-    navigate(`/organisation-admin/la-users/${userId}`);
+    navigate(ROUTES.organisationAdmin.laUsers.view(userId));
   };
 
   return (
     <LoadingSpinner loading={userLoading} label="Loading">
       <SettingsLayout
         breadcrumbs={[
-          { label: 'Home', link: '/organisation-admin/home' },
-          { label: 'LA users', link: '/organisation-admin/la-users' },
+          { label: 'Home', link: ROUTES.organisationAdmin.home },
+          { label: 'LA users', link: ROUTES.organisationAdmin.laUsers.list },
         ]}
         currentPage="Edit LA user">
         <EditOrganisationUsersComponent
           organisationId={organisationId!}
           userId={userId!}
           handleFinish={handleFinish}
-          onCancel={() => navigate(`/organisation-admin/la-users/${userId}`)}
+          onCancel={() => navigate(ROUTES.organisationAdmin.laUsers.view(userId))}
         />
       </SettingsLayout>
     </LoadingSpinner>

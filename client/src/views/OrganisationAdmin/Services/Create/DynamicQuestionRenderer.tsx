@@ -1,13 +1,15 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Box } from '@mui/material';
 import { Details } from 'govuk-react';
-import { evaluateConditionalRules } from '../../../../helpers/conditionalRules';
 import { GovUKFieldset, GovUKRadio, GovUKCheckbox, GovUKDateField } from '../../../../components/GovUKComponents';
 import { ServiceFormQuestionDto, ServiceFormQuestionType, DateValidationRule } from '../../../../components/Global/Services';
-import { ServiceFormState, ServiceReducerAction, ValidationErrors } from '../Common';
+import { ServiceFormState, ServiceReducerAction, ValidationErrors, getEffectiveServiceAnswers, isServiceQuestionVisible } from '../Common';
 
 interface DynamicQuestionRendererProps {
+  /** The questions to render — a single step's slice. */
   questions: ServiceFormQuestionDto[];
+  /** The whole form. Only used to prune answers, since a conditional parent may live on another step. */
+  allFormQuestions: ServiceFormQuestionDto[];
   state: ServiceFormState;
   dispatch: React.Dispatch<{ type: ServiceReducerAction; payload?: any }>;
   errors: ValidationErrors;
@@ -22,22 +24,8 @@ interface QuestionRendererProps {
   state: ServiceFormState;
   dispatch: React.Dispatch<{ type: ServiceReducerAction; payload?: any }>;
   errors: ValidationErrors;
+  effectiveAnswers: Record<string, string | undefined>;
 }
-
-const isQuestionVisible = (question: ServiceFormQuestionDto, answers: Record<string, string | undefined>): boolean => {
-  if (question.conditionalRules) {
-    return evaluateConditionalRules(question.conditionalRules, answers);
-  }
-  if (!question.conditionalQuestionCode || !question.conditionalValue) {
-    return true;
-  }
-  const parentValue = answers[question.conditionalQuestionCode] || '';
-  const conditionalValues = question.conditionalValue.split(',').map((v) => v.trim());
-
-  // For checkbox parent questions, check if any of the selected values match any conditional value
-  const parentSelectedValues = parentValue.split(',').map((v) => v.trim());
-  return conditionalValues.some((cv) => parentSelectedValues.includes(cv));
-};
 
 // Helper function to convert markdown-like formatting to HTML
 const formatHelpText = (text: string): string => {
@@ -63,13 +51,14 @@ const HelpBlock = ({ question }: { question: ServiceFormQuestionDto }): React.Re
   );
 };
 
-const QuestionRenderer = ({ question, value, error, onChange, allQuestions, state, dispatch, errors }: QuestionRendererProps): React.ReactElement | null => {
+const QuestionRenderer = ({ question, value, error, onChange, allQuestions, state, dispatch, errors, effectiveAnswers }: QuestionRendererProps): React.ReactElement | null => {
   // Find conditional child questions for this question
   const conditionalChildren = allQuestions.filter((q) => q.conditionalQuestionCode === question.code);
 
   const renderConditionalContent = (triggerValue: string): React.ReactNode => {
     const matches = conditionalChildren.filter((q) => {
       if (!q.conditionalValue) return false;
+      if (!q.isActive || !isServiceQuestionVisible(q, effectiveAnswers)) return false;
       return q.conditionalValue
         .split(',')
         .map((v) => v.trim())
@@ -96,6 +85,7 @@ const QuestionRenderer = ({ question, value, error, onChange, allQuestions, stat
             state={state}
             dispatch={dispatch}
             errors={errors}
+            effectiveAnswers={effectiveAnswers}
           />
         ))}
       </>
@@ -235,7 +225,7 @@ const QuestionRenderer = ({ question, value, error, onChange, allQuestions, stat
             value={value || ''}
             error={error}
             hint={question.hint}
-            allowFuture={question.dateValidationRule === DateValidationRule.NotInFuture ? false : undefined}
+            allowFuture={question.dateValidationRule === DateValidationRule.NotInPast}
             disallowPast={question.dateValidationRule === DateValidationRule.NotInPast ? true : undefined}
             onChange={onChange}
           />
@@ -246,39 +236,60 @@ const QuestionRenderer = ({ question, value, error, onChange, allQuestions, stat
     }
   };
 
+  // Radios reveal their children inline via the option's `conditional` above; every other parent type
+  // renders them as sibling blocks instead. Doing this here rather than in the top-level loop means it
+  // also fires for a parent that is itself a child — without which SMD10a, whose parent SMD10 is
+  // nested under SMD08, could never be rendered at all. Selects are included because SMD10 is a Select
+  // in the code seeder and a Checkbox in the exported schema, and SMD10a has to reach the page either way.
+  const siblingChildren =
+    question.questionType === ServiceFormQuestionType.Radio
+      ? []
+      : conditionalChildren.filter((child) => child.isActive && isServiceQuestionVisible(child, effectiveAnswers));
+
   return (
     <>
       <HelpBlock question={question} />
       {renderQuestionInput()}
+      {siblingChildren.map((childQuestion) => (
+        <Box key={childQuestion.id} sx={{ mt: 3 }}>
+          <QuestionRenderer
+            question={childQuestion}
+            value={state.answers[childQuestion.code]}
+            error={errors[childQuestion.code]}
+            onChange={(v) =>
+              dispatch({
+                type: ServiceReducerAction.SET_ANSWER,
+                payload: { code: childQuestion.code, value: v },
+              })
+            }
+            allQuestions={allQuestions}
+            state={state}
+            dispatch={dispatch}
+            errors={errors}
+            effectiveAnswers={effectiveAnswers}
+          />
+        </Box>
+      ))}
     </>
   );
 };
 
-const DynamicQuestionRenderer = ({ questions, state, dispatch, errors }: DynamicQuestionRendererProps): React.ReactElement => {
-  // Find the parent question type for conditional questions
-  const getParentQuestionType = (conditionalQuestionCode: string | null | undefined) => {
-    if (!conditionalQuestionCode) return null;
-    const parent = questions.find((q) => q.code === conditionalQuestionCode);
-    return parent?.questionType;
-  };
+const DynamicQuestionRenderer = ({ questions, allFormQuestions, state, dispatch, errors }: DynamicQuestionRendererProps): React.ReactElement => {
+  // Visibility is decided against the pruned answers so a question whose ancestor has changed stops
+  // showing even while its own stale answer is still held in state (BLUM-7221). Memoised because this
+  // component re-renders on every keystroke.
+  const effectiveAnswers = useMemo(() => getEffectiveServiceAnswers(allFormQuestions, state.answers), [allFormQuestions, state.answers]);
 
   // Filter to only top-level questions: questions with no conditional parent, or whose conditional
-  // parent lives in a different step (cross-step conditionals like SMD17 depending on SMD03).
-  // In-step radio/select conditionals are rendered inline by QuestionRenderer.renderConditionalContent.
-  // In-step checkbox conditionals are handled separately via checkboxConditionalQuestions below.
+  // parent lives in a different step. Conditionals whose parent is in this step are rendered by that
+  // parent's QuestionRenderer — inline for radios, as sibling blocks for every other parent type.
   const topLevelQuestions = questions
     .filter((q) => q.isActive && q.code !== 'SMD01' && (!q.conditionalQuestionCode || !questions.some((p) => p.code === q.conditionalQuestionCode)))
     .sort((a, b) => a.displayOrder - b.displayOrder);
 
-  // Find checkbox-conditional questions (like SMD19 depending on SMD17 which is a checkbox)
-  // These are questions whose parent is a checkbox type
-  const checkboxConditionalQuestions = questions.filter(
-    (q) => q.isActive && q.conditionalQuestionCode && getParentQuestionType(q.conditionalQuestionCode) === ServiceFormQuestionType.Checkbox
-  );
-
   const renderQuestion = (question: ServiceFormQuestionDto, index: number) => {
     // Check if question should be visible based on conditional logic
-    if (!isQuestionVisible(question, state.answers)) {
+    if (!isServiceQuestionVisible(question, effectiveAnswers)) {
       return null;
     }
 
@@ -298,37 +309,13 @@ const DynamicQuestionRenderer = ({ questions, state, dispatch, errors }: Dynamic
           state={state}
           dispatch={dispatch}
           errors={errors}
+          effectiveAnswers={effectiveAnswers}
         />
       </Box>
     );
   };
 
-  return (
-    <Box>
-      {topLevelQuestions.map((question, index) => {
-        const elements: React.ReactNode[] = [];
-
-        // Render the main question
-        const mainQuestion = renderQuestion(question, index);
-        if (mainQuestion) {
-          elements.push(mainQuestion);
-        }
-
-        // After rendering a checkbox question, render all visible conditional children
-        const conditionalChildren = checkboxConditionalQuestions.filter((cq) => cq.conditionalQuestionCode === question.code);
-        conditionalChildren.forEach((child, childIndex) => {
-          if (isQuestionVisible(child, state.answers)) {
-            const childQuestion = renderQuestion(child, index + childIndex + 1);
-            if (childQuestion) {
-              elements.push(childQuestion);
-            }
-          }
-        });
-
-        return <React.Fragment key={question.id}>{elements}</React.Fragment>;
-      })}
-    </Box>
-  );
+  return <Box>{topLevelQuestions.map((question, index) => renderQuestion(question, index))}</Box>;
 };
 
 export default DynamicQuestionRenderer;

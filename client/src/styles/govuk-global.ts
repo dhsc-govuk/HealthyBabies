@@ -51,8 +51,11 @@ export const ActionsDropdownButton = styled(MuiButton)(() => ({
     backgroundColor: '#dbdad9',
   },
   '&:focus': {
+    // Yellow alone is ~1.35:1 against white and fails 1.4.11; the black bar carries the
+    // contrast, matching the GOV.UK button focus state.
     outline: `3px solid ${govukColors.yellow}`,
     outlineOffset: 0,
+    boxShadow: `0 2px 0 ${govukColors.black}`,
   },
 }));
 
@@ -82,8 +85,10 @@ export const ActionsDropdownItem = styled('button')<{ variant?: 'danger' }>(({ v
     backgroundColor: govukColors.grey3,
   },
   '&:focus': {
+    // Inset so the ring stays inside the menu bounds; black carries the contrast.
     outline: `3px solid ${govukColors.yellow}`,
     outlineOffset: '-3px',
+    boxShadow: `inset 0 0 0 5px ${govukColors.black}`,
   },
 }));
 

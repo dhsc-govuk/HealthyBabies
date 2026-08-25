@@ -7,6 +7,8 @@ import { OrganisationUserForm, OrganisationUserFormData } from '../../../../comp
 import { useGovUKNotification } from '../../../../components/GovUKComponents';
 import { LoadingBox } from 'govuk-react';
 import axios from 'axios';
+import { ROUTES } from '../../../../constants/routes';
+import { API_ROUTES } from '../../../../constants/apiRoutes';
 
 type UrlParams = {
   userId: string;
@@ -29,10 +31,10 @@ interface UpdateAdminUserRequest {
 }
 
 const getAdminUser = (userId: string) => 
-  axios.get<AdminUserResponse>(`/admin/users/${userId}`);
+  axios.get<AdminUserResponse>(API_ROUTES.admin.users.byId(userId));
 
 const updateAdminUser = (data: UpdateAdminUserRequest) => 
-  axios.put<AdminUserResponse>(`/admin/users/${data.id}`, data);
+  axios.put<AdminUserResponse>(API_ROUTES.admin.users.byId(data.id), data);
 
 const EditAdminUser = (): React.ReactElement => {
   const navigate = useNavigate();
@@ -48,7 +50,7 @@ const EditAdminUser = (): React.ReactElement => {
     mutationKey: ['departmental-user-edit'],
     mutationFn: updateAdminUser,
     onSuccess(data) {
-      navigate(`/admin/departmental-users/${data.data.id}`);
+      navigate(ROUTES.admin.departmentalUsers.view(data.data.id));
     },
     onError(error) {
       processError(error, (e) => setNotification({ type: 'important', title: 'Error', message: e }));
@@ -77,7 +79,8 @@ const EditAdminUser = (): React.ReactElement => {
   return (
     <SettingsLayout
       currentPage="Edit departmental user"
-      backLink={{ href: `/admin/departmental-users/${userId}`, onClick: () => navigate(`/admin/departmental-users/${userId}`) }}>
+      manageTitle={false}
+      backLink={{ href: ROUTES.admin.departmentalUsers.view(userId), onClick: () => navigate(ROUTES.admin.departmentalUsers.view(userId)) }}>
       <LoadingBox loading={isLoading}>
         {dataReady && (
           <OrganisationUserForm
@@ -86,13 +89,14 @@ const EditAdminUser = (): React.ReactElement => {
             isLoading={false}
             isSaving={saving}
             onSubmit={handleSubmit}
-            onCancel={() => navigate(`/admin/departmental-users/${userId}`)}
+            onCancel={() => navigate(ROUTES.admin.departmentalUsers.view(userId))}
             submitLabel="Save changes"
             isEdit={true}
             emailReadOnly={true}
             showOrganisation={false}
             showRole={false}
             hideBackLink={true}
+            pageTitle="Edit departmental user"
           />
         )}
       </LoadingBox>

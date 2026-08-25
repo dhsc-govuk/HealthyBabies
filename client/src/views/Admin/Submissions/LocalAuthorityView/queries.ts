@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { API_ROUTES } from '../../../../constants/apiRoutes';
 
 export interface LocalAuthoritySubmissionDetail {
   id: string;
@@ -23,20 +24,39 @@ export interface LocalAuthoritySubmissionDetail {
   files: {
     name: string;
     description: string;
-    csvUrl: string | null;
-    csvSize: string | null;
-    jsonUrl: string | null;
-    jsonSize: string | null;
+    downloadUrl: string | null;
+    downloadSize: string | null;
+    /** Short label shown next to the file name, e.g. "Submission pending". Null when downloadable. */
+    status: string | null;
   }[];
+  type: DataCollectionTypeValue;
+  sections: ReviewSectionSummary[];
+  /** Set once the submission has been accepted or reopened. */
+  reviewedAt: string | null;
+  reviewedBy: string | null;
+  /** The reason given when reopening. Empty for an acceptance. */
+  reviewNotes: string | null;
+  /** This authority's current deadline — updated when a submission is reopened. */
+  dueDate: string | null;
+  /** Sections the reviewer asked the local authority to focus on when reopening. Advisory only. */
+  sectionsToReview: ReviewSectionSummary[];
+  /** Number of previous submissions this local authority has had rejected. */
+  previousVersionCount: number;
 }
 
-export const getLocalAuthoritySubmission = (
-  dataCollectionId: string,
-  localAuthorityId: string
-) =>
-  axios.get<LocalAuthoritySubmissionDetail>(
-    `/admin/data-collections/${dataCollectionId}/local-authorities/${localAuthorityId}`
-  );
+export type DataCollectionTypeValue = 'delivery-plan' | 'management-information';
+
+/** One reviewable section of a submitted Delivery Plan. Empty for management information. */
+export interface ReviewSectionSummary {
+  formModuleId: string;
+  code: string;
+  sectionNumber: number;
+  name: string;
+  allowsMultipleActivities: boolean;
+}
+
+export const getLocalAuthoritySubmission = (dataCollectionId: string, localAuthorityId: string) =>
+  axios.get<LocalAuthoritySubmissionDetail>(API_ROUTES.admin.dataCollections.localAuthority(dataCollectionId, localAuthorityId));
 
 export const getStatusLabel = (status: string): string => {
   switch (status) {
@@ -47,14 +67,35 @@ export const getStatusLabel = (status: string): string => {
     case 'Submitted':
       return 'Submitted';
     case 'Approved':
-      return 'Complete';
+      return 'Accepted';
+    // The domain records a rejection; users only ever see the submission as reopened.
     case 'Rejected':
-      return 'Rejected';
+      return 'Not started (Reopened)';
     case 'RequiresChanges':
       return 'Requires changes';
     default:
       return status;
   }
+};
+
+/** Accept and Reopen are only offered while the plan is awaiting a decision. */
+export const isAwaitingReview = (status: string): boolean => status === 'Submitted';
+
+export const approveSubmission = (dataCollectionId: string, localAuthorityId: string, comment?: string) =>
+  axios.post(API_ROUTES.admin.dataCollections.localAuthorityApprove(dataCollectionId, localAuthorityId), { comment });
+
+export interface ReopenSubmissionRequest {
+  reason: string;
+  resubmitBy: string;
+  sectionsToReview: string[];
+}
+
+export const reopenSubmission = (dataCollectionId: string, localAuthorityId: string, body: ReopenSubmissionRequest) =>
+  axios.post(API_ROUTES.admin.dataCollections.localAuthorityReopen(dataCollectionId, localAuthorityId), body);
+
+export const formatDateOnly = (dateString: string | null): string => {
+  if (!dateString) return '';
+  return new Date(dateString).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
 };
 
 export const formatDateTime = (dateString: string | null): string => {
@@ -68,28 +109,7 @@ export const formatDateTime = (dateString: string | null): string => {
   return `${day} ${month} ${year}, ${hours}:${minutes}`;
 };
 
-export type DownloadFormat = 'csv' | 'json';
+export const downloadSubmission = (dataCollectionId: string, localAuthorityId: string) =>
+  axios.get(API_ROUTES.admin.dataCollections.localAuthorityDownload(dataCollectionId, localAuthorityId), { responseType: 'blob' });
 
-export const downloadSubmission = (
-  dataCollectionId: string,
-  localAuthorityId: string,
-  format: DownloadFormat
-) =>
-  axios.get(
-    `/admin/data-collections/${dataCollectionId}/local-authorities/${localAuthorityId}/download?format=${format}`,
-    { responseType: 'blob' }
-  );
-
-export const getDownloadFileName = (
-  dataCollectionId: string,
-  localAuthorityId: string,
-  format: DownloadFormat
-): string => {
-  return format === 'csv'
-    ? `submission_${dataCollectionId}_${localAuthorityId}.zip`
-    : `submission_${dataCollectionId}_${localAuthorityId}.json`;
-};
-
-export const getDownloadMimeType = (format: DownloadFormat): string => {
-  return format === 'csv' ? 'application/zip' : 'application/json';
-};
+export const getDownloadFileName = (dataCollectionId: string, localAuthorityId: string): string => `submission_${dataCollectionId}_${localAuthorityId}.zip`;

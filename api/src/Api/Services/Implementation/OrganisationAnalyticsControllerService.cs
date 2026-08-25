@@ -1,12 +1,11 @@
-using System.Globalization;
 using Api.Services.Abstract;
+using Application.Common;
 using Application.Common.Interfaces.Queries;
 using Application.Common.Interfaces.Repositories;
 using Application.Organisations;
 using Application.Organisations.Dtos;
 using Domain.DataCollections;
 using Domain.DataCollections.Forms;
-using Domain.DataCollections.Forms.ValueObjects;
 using Domain.Organisations;
 
 namespace Api.Services.Implementation;
@@ -14,11 +13,11 @@ namespace Api.Services.Implementation;
 public class OrganisationAnalyticsControllerService(
     IOrganisationFinancialDataQueries financialDataQueries,
     IDataCollectionFormModuleQueries formModuleQueries,
-    IFormSubmissionRepository formSubmissionRepository) : IOrganisationAnalyticsControllerService
+    IFormSubmissionRepository formSubmissionRepository,
+    IDataCollectionSubmissionQueries dataCollectionSubmissionQueries) : IOrganisationAnalyticsControllerService
 {
     private const string OnTrack = "on_track";
     private const string OffTrack = "off_track";
-    private const string StatusNotStarted = "not_started";
     private const string StatusStarted = "started";
     private const string StatusDelayed = "delayed";
     private const string StatusCompleted = "completed";
@@ -29,7 +28,7 @@ public class OrganisationAnalyticsControllerService(
         CancellationToken cancellationToken)
     {
         var entityId = new OrganisationId(organisationId);
-        var (submissionsByStrand, _) = await LoadStrandActivitiesAsync(entityId, cancellationToken);
+        var submissionsByStrand = (await LoadStrandActivitiesAsync(entityId, cancellationToken)).ByStrand;
         var allocations = await financialDataQueries.GetAllByOrganisationIdAsync(entityId, cancellationToken);
 
         decimal AllocationFor(string? module, string year) =>
@@ -37,10 +36,14 @@ public class OrganisationAnalyticsControllerService(
 
         var allocationYears = new[] { DeliveryPlanStrandFields.Year2627, DeliveryPlanStrandFields.Year2728, DeliveryPlanStrandFields.Year2829 };
 
-        // CFD22: total grant allocation spans every allocation year across the seven strands.
+        // Two deliberately different figures, despite similar names:
+        //   Total grant allocation  — the whole 2026-29 grant, every strand across all three years.
+        //   Total annual allocation — the seven strands for the selected year only.
+        // The data map's dashboard sheet says "Total grant allocation = CFD22", but CFD22 is defined
+        // there as "Total Funding 26/27" — a single year. That wording is a defect in the map, not
+        // in this calculation: the dashboard card is labelled 2026-29 and means the full grant.
         var totalGrantAllocation = DeliveryPlanStrandFields.AllocationStrands
             .Sum(strand => allocationYears.Sum(year => AllocationFor(strand.AllocationModule, year)));
-        // Total annual allocation is the seven strands' allocation for the selected year.
         var totalAnnualAllocation = DeliveryPlanStrandFields.AllocationStrands
             .Sum(strand => AllocationFor(strand.AllocationModule, yearRange));
 
@@ -53,6 +56,8 @@ public class OrganisationAnalyticsControllerService(
             var forecastField = strand.ForecastFieldsByYear.GetValueOrDefault(yearRange);
 
             var strandForecast = forecastField is null ? 0m : activities.Sum(a => a.Money(forecastField));
+            // NOTE: kept in step with DeliveryPlanSpendReconciler.SumForecast — both must read the
+            // same field for the dashboard and the ±10% validation to agree.
             forecasted += strandForecast;
             actual += activities.Sum(a => a.Money(strand.ActualSpendField));
             committed += activities.Sum(a => a.Money(strand.CommittedField));
@@ -113,7 +118,8 @@ public class OrganisationAnalyticsControllerService(
         CancellationToken cancellationToken)
     {
         var entityId = new OrganisationId(organisationId);
-        var (submissionsByStrand, _) = await LoadStrandActivitiesAsync(entityId, cancellationToken);
+        var strandActivities = await LoadStrandActivitiesAsync(entityId, cancellationToken);
+        var submissionsByStrand = strandActivities.ByStrand;
 
         var hasStrandFilter = !string.IsNullOrWhiteSpace(strand) && !string.Equals(strand, "all", StringComparison.OrdinalIgnoreCase);
         var strandsInScope = DeliveryPlanStrandFields.All
@@ -146,17 +152,58 @@ public class OrganisationAnalyticsControllerService(
                         config.ModuleCode,
                         config.DisplayName,
                         activity.Text(config.ActivityNameField) ?? config.DisplayName,
-                        actualSpend));
+                        actualSpend,
+                        activity.DataCollectionId,
+                        activity.FormModuleId,
+                        activity.ActivityId));
                 }
 
-                switch (activity.Text(config.ActivityStatusField))
+                // Not started / Started / Delayed / Completed are read from the "Select the activity
+                // status" question the local authority answers on the form, not derived from the
+                // FormSubmission's own workflow status. Rollover Spend has no such question — its
+                // ActivityStatusFieldKey is null — so its activities don't contribute to this grid.
+                var activityStatusFieldKey = DeliveryPlanActivityStatusFields.ForModule(config.ModuleCode)?.ActivityStatusFieldKey;
+                if (activityStatusFieldKey is null)
                 {
-                    case StatusNotStarted: notStarted++; break;
-                    case StatusStarted: started++; break;
-                    case StatusDelayed: delayed++; break;
-                    case StatusCompleted: completed++; break;
+                    continue;
+                }
+
+                switch (activity.Text(activityStatusFieldKey))
+                {
+                    case StatusStarted:
+                        started++;
+                        break;
+                    case StatusDelayed:
+                        delayed++;
+                        break;
+                    case StatusCompleted:
+                        completed++;
+                        break;
+                    default:
+                        notStarted++;
+                        break;
                 }
             }
+        }
+
+        // A specific strand links to that strand's own activities list; "all strands" has no single
+        // list to open, so it links to the submission summary, which lists every section.
+        //
+        // The round and the section have to be chosen together. Pairing the newest round overall with
+        // the selected strand's module can name a section that round never contained — the review
+        // screens build their section list from the round's own module assignments and answer with
+        // "Failed to load this section" — so a strand filter links to the newest round that actually
+        // holds that strand's activities, and falls back to the summary when it holds none.
+        DeliveryActivitiesLinkDto? activitiesLink = null;
+        if (hasStrandFilter
+            && strandActivities.LatestRoundByModuleCode.TryGetValue(strand!, out var strandRound)
+            && strandActivities.ModuleIdsByCode.TryGetValue(strand!, out var strandModuleId))
+        {
+            activitiesLink = new DeliveryActivitiesLinkDto(strandRound, strandModuleId);
+        }
+        else if (strandActivities.LatestDataCollectionId is { } latestDataCollectionId)
+        {
+            activitiesLink = new DeliveryActivitiesLinkDto(latestDataCollectionId, null);
         }
 
         return new DeliverySummaryDto(
@@ -167,14 +214,15 @@ public class OrganisationAnalyticsControllerService(
             Started: started,
             Delayed: delayed,
             Completed: completed,
-            OffTrackActivities: offTrackActivities);
+            OffTrackActivities: offTrackActivities,
+            ActivitiesLink: activitiesLink);
     }
 
     /// <summary>
     /// Loads every delivery-plan submission for the organisation and indexes them by strand,
     /// resolving each submission's raw <see cref="FormFieldValue"/> rows to a field-key lookup.
     /// </summary>
-    private async Task<(IReadOnlyDictionary<string, IReadOnlyList<ActivityAnswers>> ByStrand, int Count)> LoadStrandActivitiesAsync(
+    private async Task<StrandActivities> LoadStrandActivitiesAsync(
         OrganisationId organisationId,
         CancellationToken cancellationToken)
     {
@@ -185,8 +233,67 @@ public class OrganisationAnalyticsControllerService(
             .SelectMany(m => m.Fields)
             .ToDictionary(f => f.Id, f => f.FieldKey);
 
-        var submissions = await formSubmissionRepository.GetActivitiesByOrganisationAndModulesAsync(
-            organisationId, moduleCodeById.Keys.ToList(), cancellationToken);
+        // Indexer assignment rather than ToDictionary: a duplicate code would throw, and a strand
+        // that somehow appears twice should not take the whole Delivery data tab down.
+        var moduleIdsByCode = new Dictionary<string, Guid>();
+        foreach (var module in modules)
+        {
+            moduleIdsByCode[module.Code] = module.Id.Value;
+        }
+
+        // Only a module holding an Activities list can be addressed by activity on the review
+        // screens — DeliveryPlanReviewService.GetActivity gates on exactly this flag.
+        var activityListModuleIds = modules
+            .Where(m => m.AllowsMultipleActivities)
+            .Select(m => m.Id)
+            .ToHashSet();
+
+        // Rollover Spend (unlike the other strands) is a single-form module, not an Activities list —
+        // its one submission per round is saved with EntityType = null, so it must be fetched separately
+        // from the Activity-tagged submissions the other strands use.
+        var strandModuleCodes = DeliveryPlanStrandFields.All.Select(s => s.ModuleCode).ToHashSet();
+        var activityModuleIds = activityListModuleIds.ToList();
+        var singleFormStrandModuleIds = modules
+            .Where(m => !m.AllowsMultipleActivities && strandModuleCodes.Contains(m.Code))
+            .Select(m => m.Id)
+            .ToList();
+
+        var activitySubmissions = await formSubmissionRepository.GetActivitiesByOrganisationAndModulesAsync(
+            organisationId, activityModuleIds, cancellationToken);
+        var singleFormSubmissions = singleFormStrandModuleIds.Count == 0
+            ? []
+            : await formSubmissionRepository.GetByOrganisationAndModulesAsync(
+                organisationId, singleFormStrandModuleIds, cancellationToken);
+
+        var submissions = activitySubmissions.Concat(singleFormSubmissions).ToList();
+
+        // The activities query above has no concept of "which Delivery Plan round" — it returns
+        // every Activity the organisation has ever submitted for these modules, across every round
+        // it's ever taken part in. Restrict to rounds the organisation has actually submitted (not
+        // still in progress/never finished), so leftover activities from an abandoned or superseded
+        // round don't get silently added on top of the current one.
+        var allSubmissions = await dataCollectionSubmissionQueries.GetByOrganisationIdAsync(organisationId, cancellationToken);
+        var submittedRounds = allSubmissions
+            .Where(s => s.Status is DataCollectionSubmissionStatus.Submitted or DataCollectionSubmissionStatus.Approved)
+            .ToList();
+        var submittedDataCollectionIds = submittedRounds
+            .Select(s => s.DataCollectionId.Value)
+            .ToHashSet();
+
+        var submittedAtByRound = new Dictionary<Guid, DateTime>();
+        foreach (var round in submittedRounds)
+        {
+            var submittedAt = round.SubmittedAt ?? DateTime.MinValue;
+            if (!submittedAtByRound.TryGetValue(round.DataCollectionId.Value, out var existing) || submittedAt > existing)
+            {
+                submittedAtByRound[round.DataCollectionId.Value] = submittedAt;
+            }
+        }
+
+        // The rounds that actually produced delivery-plan submissions, so the "View activities" link
+        // targets a Delivery Plan collection. Picking the organisation's latest submitted collection
+        // outright could land on a management information one, which the review screens 404 on.
+        var roundsWithActivities = new HashSet<Guid>();
 
         var byStrand = new Dictionary<string, List<ActivityAnswers>>();
         foreach (var submission in submissions)
@@ -196,9 +303,18 @@ public class OrganisationAnalyticsControllerService(
                 continue;
             }
 
+            if (submission.DataCollectionId is null || !submittedDataCollectionIds.Contains(submission.DataCollectionId.Value))
+            {
+                continue;
+            }
+
+            // Defensive: field values saved before the WAF-encode-on-save fix (or via any path that
+            // missed it) are still stored as "b64:..." — decode here too so this service self-heals
+            // on old data without requiring every historic activity to be re-saved. HtmlDecodeNullableField
+            // is a no-op on values that were already saved as plain text going forward.
             var answers = submission.FieldValues
                 .Where(v => fieldKeyById.ContainsKey(v.FormFieldId))
-                .ToDictionary(v => fieldKeyById[v.FormFieldId], v => v.Value);
+                .ToDictionary(v => fieldKeyById[v.FormFieldId], v => Utility.HtmlDecodeNullableField(v.Value));
 
             if (!byStrand.TryGetValue(code, out var list))
             {
@@ -206,30 +322,78 @@ public class OrganisationAnalyticsControllerService(
                 byStrand[code] = list;
             }
 
-            list.Add(new ActivityAnswers(answers));
+            roundsWithActivities.Add(submission.DataCollectionId.Value);
+
+            list.Add(new ActivityAnswers(
+                answers,
+                submission.DataCollectionId.Value,
+                submission.FormModuleId.Value,
+                activityListModuleIds.Contains(submission.FormModuleId) ? submission.Id.Value : null));
         }
 
-        return (byStrand.ToDictionary(kv => kv.Key, kv => (IReadOnlyList<ActivityAnswers>)kv.Value), submissions.Count);
+        // Most recently submitted first, so the tab links into the round the reviewer most likely
+        // means. Ordering by id as a tiebreak keeps the choice stable across requests.
+        Guid? LatestRound(IEnumerable<Guid> rounds) => rounds
+            .Distinct()
+            .OrderByDescending(id => submittedAtByRound.GetValueOrDefault(id))
+            .ThenByDescending(id => id)
+            .Select(id => (Guid?)id)
+            .FirstOrDefault();
+
+        // Per strand as well as overall: a strand's section only exists in the rounds that strand was
+        // actually part of, so the two must be chosen together rather than independently.
+        var latestRoundByModuleCode = new Dictionary<string, Guid>();
+        foreach (var (code, activities) in byStrand)
+        {
+            if (LatestRound(activities.Select(a => a.DataCollectionId)) is { } strandRound)
+            {
+                latestRoundByModuleCode[code] = strandRound;
+            }
+        }
+
+        return new StrandActivities(
+            byStrand.ToDictionary(kv => kv.Key, kv => (IReadOnlyList<ActivityAnswers>)kv.Value),
+            moduleIdsByCode,
+            latestRoundByModuleCode,
+            LatestRound(roundsWithActivities));
     }
 
     private static decimal Percentage(decimal value, decimal total) =>
         total == 0 ? 0 : Math.Round(value / total * 100, 2, MidpointRounding.AwayFromZero);
 
+    /// <summary>
+    /// Every delivery-plan submission for one organisation, indexed by strand, together with what
+    /// the Delivery data tab needs to link out to the review screens.
+    /// </summary>
+    private sealed record StrandActivities(
+        IReadOnlyDictionary<string, IReadOnlyList<ActivityAnswers>> ByStrand,
+        IReadOnlyDictionary<string, Guid> ModuleIdsByCode,
+        IReadOnlyDictionary<string, Guid> LatestRoundByModuleCode,
+        Guid? LatestDataCollectionId);
+
     /// <summary>A single activity submission, addressed by field key.</summary>
-    private sealed class ActivityAnswers(IReadOnlyDictionary<string, string?> values)
+    private sealed class ActivityAnswers(
+        IReadOnlyDictionary<string, string?> values,
+        Guid dataCollectionId,
+        Guid formModuleId,
+        Guid? activityId)
     {
+        public Guid DataCollectionId => dataCollectionId;
+
+        public Guid FormModuleId => formModuleId;
+
+        /// <summary>
+        /// The FormSubmission id, carried so the Delivery data tab can link an off-track activity to
+        /// its review screen. Null for a submission saved against a module that holds no Activities
+        /// list — the review screens address those by section, not by activity.
+        /// </summary>
+        public Guid? ActivityId => activityId;
+
         public string? Text(string fieldKey) => values.GetValueOrDefault(fieldKey);
 
-        public decimal Money(string fieldKey)
-        {
-            var raw = values.GetValueOrDefault(fieldKey);
-            if (string.IsNullOrWhiteSpace(raw))
-            {
-                return 0m;
-            }
+        // Shared with the reconciler so the dashboard and the ±10% validation parse money identically.
+        public decimal Money(string fieldKey) => DeliveryPlanSpendReconciler.Money(values.GetValueOrDefault(fieldKey));
 
-            var cleaned = new string(raw.Where(c => char.IsDigit(c) || c == '.' || c == '-').ToArray());
-            return decimal.TryParse(cleaned, NumberStyles.Number, CultureInfo.InvariantCulture, out var parsed) ? parsed : 0m;
-        }
+        public IReadOnlyDictionary<string, string?> Values => values;
     }
 }

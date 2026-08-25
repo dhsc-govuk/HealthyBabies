@@ -8,6 +8,7 @@ import { useQuery } from 'react-query';
 import { SettingsLayout } from '../../../../layouts';
 import { PageHeaderContainer, PageHeaderActions } from '../../../../styles/govuk-global';
 import usePageTitle from '../../../../hooks/usePageTitle';
+import { ROUTES } from '../../../../constants/routes';
 
 interface LocationState {
   created?: boolean;
@@ -37,7 +38,7 @@ const ListOrganisation = (): React.ReactElement => {
       key: 'name',
       header: 'Name',
       render: (org) => (
-        <Link href={`/admin/organisations/${org.id}`} onClick={(e: React.MouseEvent) => { e.preventDefault(); navigate(`/admin/organisations/${org.id}`); }}>
+        <Link href={ROUTES.admin.organisations.view(org.id)} onClick={(e: React.MouseEvent) => { e.preventDefault(); navigate(ROUTES.admin.organisations.view(org.id)); }}>
           {org.name}<span className="govuk-visually-hidden"> - view local authority</span>
         </Link>
       ),
@@ -49,7 +50,8 @@ const ListOrganisation = (): React.ReactElement => {
     },
     {
       key: 'isActive',
-      header: '',
+      header: 'Status',
+      headerVisuallyHidden: true,
       align: 'right',
       render: (org) => (
         org.isActive ? (
@@ -70,8 +72,8 @@ const ListOrganisation = (): React.ReactElement => {
   return (
     <SettingsLayout
       breadcrumbs={[
-        { label: 'Home', link: '/admin/home' },
-        { label: 'Settings', link: '/admin/settings' },
+        { label: 'Home', link: ROUTES.admin.home },
+        { label: 'Settings', link: ROUTES.admin.settings },
       ]}>
       {showSuccessBanner && (
         <div className="govuk-notification-banner govuk-notification-banner--success" role="alert" aria-labelledby="govuk-notification-banner-title">
@@ -94,12 +96,13 @@ const ListOrganisation = (): React.ReactElement => {
       <PageHeaderContainer>
         <h1 className="govuk-heading-l">Local authorities</h1>
         <PageHeaderActions>
-          <Button onClick={() => navigate('/admin/organisations/create')}>Add local authority</Button>
+          <Button onClick={() => navigate(ROUTES.admin.organisations.create)}>Add local authority</Button>
         </PageHeaderActions>
       </PageHeaderContainer>
 
       <LoadingBox loading={isLoading}>
         <GovUKTable<Organisation>
+          caption="Local authorities"
           data={data?.data ?? []}
           columns={columns}
           searchPlaceholder="Search local authority by name or ONS code"
@@ -107,7 +110,7 @@ const ListOrganisation = (): React.ReactElement => {
           sortOptions={sortOptions}
           sortLabel="Sort local authorities"
           keyExtractor={(org) => org.id}
-          getRowHref={(org) => `/admin/organisations/${org.id}`}
+          getRowHref={(org) => ROUTES.admin.organisations.view(org.id)}
           emptyMessage="No local authorities found"
         />
       </LoadingBox>

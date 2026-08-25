@@ -2,6 +2,7 @@ import { GovUKHeaderLogo } from '../../../components/Logos';
 import { GovUKBackLink, GovUKSkipLink } from '../../../components/GovUKComponents';
 import LayoutFooter from '../../../layouts/General/LayoutFooter';
 import usePageTitle from '../../../hooks/usePageTitle';
+import { ROUTES } from '../../../constants/routes';
 import './styles.css';
 
 const Help = () => {
@@ -44,7 +45,7 @@ const Help = () => {
         <div className="govuk-width-container">
           <div className="govuk-main-wrapper">
             {/* Back Link */}
-            <GovUKBackLink href="/sign-in">
+            <GovUKBackLink href={ROUTES.signIn}>
               Back
             </GovUKBackLink>
 

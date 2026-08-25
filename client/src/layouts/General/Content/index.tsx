@@ -10,10 +10,16 @@ interface Props extends React.PropsWithChildren {
   endContent?: React.ReactElement;
   phaseBanner?: React.ReactElement;
   backLink?: { href: string; onClick?: () => void };
+  /**
+   * Set false on multi-step pages where a child owns document.title (so it can append
+   * "Step X of Y"). The layout still renders currentPage as the h1, but does not set the
+   * title — otherwise this parent effect runs after the child's and clobbers the step label.
+   */
+  manageTitle?: boolean;
 }
 
-const Content = ({ children, breadcrumbs, currentPage, endContent, phaseBanner, backLink }: Props): React.ReactElement => {
-  usePageTitle(currentPage);
+const Content = ({ children, breadcrumbs, currentPage, endContent, phaseBanner, backLink, manageTitle = true }: Props): React.ReactElement => {
+  usePageTitle(manageTitle ? currentPage : undefined);
   return (
     <Box component="main" className="govuk-main-wrapper" id="main-content" role="main">
       <Box className="govuk-width-container">

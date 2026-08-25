@@ -42,7 +42,8 @@ const ListLocationsComponent = ({ organisationId, handleView, handleEdit, handle
     },
     {
       key: 'actions',
-      header: '',
+      header: 'Actions',
+      headerVisuallyHidden: true,
       align: 'right',
       render: (location) => (
         <div className="govuk-table__actions">
@@ -74,7 +75,7 @@ const ListLocationsComponent = ({ organisationId, handleView, handleEdit, handle
 
   return (
     <LoadingSpinner loading={isLoading} label="Loading">
-      <GovUKTable<GetLocationDto> data={data?.data ?? []} columns={columns} keyExtractor={(location) => location.id} searchable={false} emptyMessage="No locations found" />
+      <GovUKTable<GetLocationDto> caption="Delivery locations" data={data?.data ?? []} columns={columns} keyExtractor={(location) => location.id} searchable={false} emptyMessage="No locations found" />
     </LoadingSpinner>
   );
 };

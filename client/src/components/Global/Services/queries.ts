@@ -1,17 +1,18 @@
 import axios from 'axios';
 import { ServiceDto, ServiceListDto, ServiceFormQuestionDto } from './types';
+import { API_ROUTES } from '../../../constants/apiRoutes';
 
 export const getServices = () =>
-  axios.get<ServiceListDto[]>('/services');
+  axios.get<ServiceListDto[]>(API_ROUTES.services.list);
 
 export const getService = (serviceId: string) =>
-  axios.get<ServiceDto>(`/services/${serviceId}`);
+  axios.get<ServiceDto>(API_ROUTES.services.byId(serviceId));
 
 export const getServiceFormQuestions = () =>
-  axios.get<ServiceFormQuestionDto[]>('/service-form-questions');
+  axios.get<ServiceFormQuestionDto[]>(API_ROUTES.serviceFormQuestions.list);
 
 export const getServiceFormQuestionsByStep = (step: number) =>
-  axios.get<ServiceFormQuestionDto[]>(`/service-form-questions/step/${step}`);
+  axios.get<ServiceFormQuestionDto[]>(API_ROUTES.serviceFormQuestions.step(step));
 
 export const servicesCacheKey = () => ['services-list'];
 export const serviceCacheKey = (serviceId: string) => ['service', serviceId];

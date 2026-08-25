@@ -1,4 +1,6 @@
 import axios from 'axios';
+import { API_ROUTES } from '../../../../constants/apiRoutes';
+import { DeliverySummaryDto, FinancialSummaryDto } from '../../../../components/Global/DeliveryPlanAnalytics/types';
 
 export interface OrganisationContactDetailDto {
   fullName: string;
@@ -27,7 +29,7 @@ export interface OrganisationUserDto {
   isActive: boolean;
 }
 
-export const getOrganisationHome = (id: string) => axios.get<OrganisationHomeDto>(`/organisations/${id}/totals`);
+export const getOrganisationHome = (id: string) => axios.get<OrganisationHomeDto>(API_ROUTES.organisations.totals(id));
 
 interface OrganisationUserApiDto {
   id: string;
@@ -44,81 +46,23 @@ export interface FinancialDataEntryDto {
 }
 
 export const getOrganisationFinancialData = (id: string) =>
-  axios.get<FinancialDataEntryDto[]>(`/organisations/${id}/financial-data`);
-
-export interface SpendFigureDto {
-  amount: number;
-  percentage: number;
-}
-
-export interface StrandForecastDto {
-  module: string;
-  displayName: string;
-  forecastedSpend: number;
-  allocation: number;
-}
-
-export interface RolloverSummaryDto {
-  totalRolloverSpend: number;
-  forecast: number;
-  actual: number;
-  committed: number;
-  planned: number;
-  unplanned: number;
-}
-
-export interface FinancialSummaryDto {
-  yearRange: string;
-  totalGrantAllocation: number;
-  totalAnnualAllocation: number;
-  forecastedSpend: SpendFigureDto;
-  committedSpend: SpendFigureDto;
-  actualSpend: SpendFigureDto;
-  actualAndCommittedSpend: SpendFigureDto;
-  plannedSpend: SpendFigureDto;
-  unplannedSpend: SpendFigureDto;
-  rollover: RolloverSummaryDto;
-  forecastByStrand: StrandForecastDto[];
-}
-
-export interface DeliveryStatusGroupDto {
-  activityCount: number;
-  totalActualSpend: number;
-}
-
-export interface OffTrackActivityDto {
-  module: string;
-  strandDisplayName: string;
-  activityName: string;
-  actualSpend: number;
-}
-
-export interface DeliverySummaryDto {
-  strand: string;
-  onTrack: DeliveryStatusGroupDto;
-  offTrack: DeliveryStatusGroupDto;
-  notStarted: number;
-  started: number;
-  delayed: number;
-  completed: number;
-  offTrackActivities: OffTrackActivityDto[];
-}
+  axios.get<FinancialDataEntryDto[]>(API_ROUTES.organisations.financialData(id));
 
 export const getOrganisationFinancialSummary = (id: string, yearRange: string) =>
-  axios.get<FinancialSummaryDto>(`/organisations/${id}/financial-summary`, {
+  axios.get<FinancialSummaryDto>(API_ROUTES.organisations.financialSummary(id), {
     params: { yearRange },
   });
 
 export const getOrganisationDeliverySummary = (id: string, strand: string) =>
-  axios.get<DeliverySummaryDto>(`/organisations/${id}/delivery-summary`, {
+  axios.get<DeliverySummaryDto>(API_ROUTES.organisations.deliverySummary(id), {
     params: { strand },
   });
 
 export const upsertOrganisationFinancialData = (id: string, entries: FinancialDataEntryDto[]) =>
-  axios.put<FinancialDataEntryDto[]>(`/organisations/${id}/financial-data`, { entries });
+  axios.put<FinancialDataEntryDto[]>(API_ROUTES.organisations.financialData(id), { entries });
 
 export const getOrganisationUsers = async (id: string) => {
-  const response = await axios.get<OrganisationUserApiDto[]>(`/organisations/${id}/users`);
+  const response = await axios.get<OrganisationUserApiDto[]>(API_ROUTES.organisations.users.list(id));
   return {
     ...response,
     data: response.data.map((user) => ({

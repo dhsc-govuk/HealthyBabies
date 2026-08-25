@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { API_ROUTES } from '../../../../constants/apiRoutes';
 
 interface UpdateOrganisationDto {
   id: string;
@@ -7,4 +8,4 @@ interface UpdateOrganisationDto {
   isActive: boolean;
 }
 
-export const updateOrganisation = (organisation: UpdateOrganisationDto) => axios.put<UpdateOrganisationDto>('/organisations/edit', organisation);
+export const updateOrganisation = (organisation: UpdateOrganisationDto) => axios.put<UpdateOrganisationDto>(API_ROUTES.organisations.edit, organisation);

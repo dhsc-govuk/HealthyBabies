@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { API_ROUTES } from '../../../../constants/apiRoutes';
 
 export interface GetAdminResponse {
   id: string;
@@ -25,6 +26,6 @@ export interface MfaStatusResponse {
   state: MfaState;
 }
 
-export const getAdmin = (userId: string) => axios.get<GetAdminResponse>(`admin/users/organisation-users/${userId}`);
+export const getAdmin = (userId: string) => axios.get<GetAdminResponse>(API_ROUTES.admin.users.organisationUsers.byId(userId));
 
-export const getMfaStatus = (userId: string) => axios.get<MfaStatusResponse>(`admin/users/${userId}/mfa-status`);
+export const getMfaStatus = (userId: string) => axios.get<MfaStatusResponse>(API_ROUTES.admin.users.mfaStatus(userId));

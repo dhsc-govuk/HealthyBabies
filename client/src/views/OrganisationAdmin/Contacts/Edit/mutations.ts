@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { API_ROUTES } from '../../../../constants/apiRoutes';
 
 export interface UpdateOrganisationContactDto {
   organisationId: string;
@@ -9,7 +10,7 @@ export interface UpdateOrganisationContactDto {
 }
 
 export const updateContact = (contact: UpdateOrganisationContactDto) =>
-  axios.put(`/organisations/${contact.organisationId}/contacts/${contact.contactId}`, {
+  axios.put(API_ROUTES.organisations.contacts.byId(contact.organisationId, contact.contactId), {
     name: contact.name,
     email: contact.email,
     role: contact.role,

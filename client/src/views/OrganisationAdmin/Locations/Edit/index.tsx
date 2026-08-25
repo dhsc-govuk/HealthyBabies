@@ -8,11 +8,14 @@ import { getSiteFormQuestions, siteFormQuestionsCacheKey, SiteFormQuestionType }
 import { processError } from '../../../../helpers/axiosErrorFallback';
 import { viewServiceDeliverySiteCacheKey } from '../../../../helpers/queriesParams';
 import useErrorSummaryFocus from '../../../../hooks/useErrorSummaryFocus';
+import usePageTitle from '../../../../hooks/usePageTitle';
 import useFormTelemetry from '../../../../hooks/useFormTelemetry';
 import axios from 'axios';
 import { Stack } from '@mui/material';
 import { ValidationErrors, initialLocationState, locationReducer, validateLocation, buildAnswersForRequest, LocationReducerAction } from '../Common';
 import LocationForm from '../Create/LocationForm';
+import { ROUTES } from '../../../../constants/routes';
+import { API_ROUTES } from '../../../../constants/apiRoutes';
 
 type UrlParams = {
   locationId: string;
@@ -37,11 +40,11 @@ const LocationsEdit = (): React.ReactElement => {
     staleTime: 5 * 60 * 1000,
   });
 
-  const { data: locationData, isLoading: isLoadingLocation } = useQuery(['location', locationId], () => axios.get(`/organisations/${organisationId}/locations/${locationId}`), {
+  const { data: locationData, isLoading: isLoadingLocation } = useQuery(['location', locationId], () => axios.get(API_ROUTES.organisations.locations.byId(organisationId, locationId)), {
     enabled: !!locationId && !!organisationId,
   });
 
-  const questions = questionsResponse?.data ?? [];
+  const questions = useMemo(() => questionsResponse?.data ?? [], [questionsResponse?.data]);
 
   useEffect(() => {
     if (locationData?.data && !initialized) {
@@ -68,14 +71,14 @@ const LocationsEdit = (): React.ReactElement => {
   }, [locationData, initialized]);
 
   const updateMutation = useMutation({
-    mutationFn: (data: { id: string; isActive: boolean; answers: any[] }) => axios.put(`/organisations/${organisationId}/locations/edit`, data),
+    mutationFn: (data: { id: string; isActive: boolean; answers: any[] }) => axios.put(API_ROUTES.organisations.locations.edit(organisationId), data),
     onSuccess: () => {
       trackSubmitted();
       setNotification({ type: 'success', title: 'Success', message: 'Site updated successfully' });
       queryClient.invalidateQueries(['locations']);
       queryClient.invalidateQueries(['location', locationId]);
       queryClient.invalidateQueries([viewServiceDeliverySiteCacheKey(organisationId!, locationId!)]);
-      navigate(`/organisation-admin/core-data/delivery-locations/${locationId}`);
+      navigate(ROUTES.organisationAdmin.locations.view(locationId));
     },
     onError: (error) => {
       processError(error, (e) => setNotification({ type: 'important', title: 'Error', message: e || 'Failed to update site' }));
@@ -105,7 +108,7 @@ const LocationsEdit = (): React.ReactElement => {
   };
 
   const handleCancel = () => {
-    navigate(`/organisation-admin/core-data/delivery-locations/${locationId}`);
+    navigate(ROUTES.organisationAdmin.locations.view(locationId));
   };
 
   const errorList = useMemo(() => {
@@ -130,6 +133,11 @@ const LocationsEdit = (): React.ReactElement => {
       });
   }, [errors, questions]);
 
+  // The layout's own title call cannot express an error state, so the view owns the title here
+  // and the layout is told to stand down (manageTitle={false}). Gives the "Error: " prefix
+  // whenever validation errors are present, and drops it once they clear (WCAG 2.4.2 / 3.3.1).
+  usePageTitle('Edit site', errorList.length > 0);
+
   if (isLoadingQuestions || isLoadingLocation) {
     return (
       <GeneralLayout>
@@ -142,11 +150,12 @@ const LocationsEdit = (): React.ReactElement => {
     <LoadingSpinner loading={isLoadingLocation} label="Loading">
       <GeneralLayout
         breadcrumbs={[
-          { label: 'Home', link: '/organisation-admin/home' },
-          { label: 'Delivery locations', link: `/organisation-admin/core-data/delivery-locations` },
-          { label: locationData?.data?.name ?? '', link: `/organisation-admin/core-data/delivery-locations/${locationId}` },
+          { label: 'Home', link: ROUTES.organisationAdmin.home },
+          { label: 'Delivery locations', link: ROUTES.organisationAdmin.locations.list },
+          { label: locationData?.data?.name ?? '', link: ROUTES.organisationAdmin.locations.view(locationId) },
         ]}
-        currentPage="Edit site">
+        currentPage="Edit site"
+        manageTitle={false}>
         {errorList.length > 0 && <GovUKErrorSummary errors={errorList} />}
         <LocationForm state={state} dispatch={dispatch} errors={errors} questions={questions} />
         <Stack direction="row" spacing={2} sx={{ mt: 3 }}>

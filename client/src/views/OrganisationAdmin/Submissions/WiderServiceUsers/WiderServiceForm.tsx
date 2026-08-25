@@ -2,14 +2,19 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from 'react-query';
 import { GeneralLayout } from '../../../../layouts';
-import { LoadingSpinner, GovUKButton, SummaryList, FormFieldRenderer } from '../../../../components/GovUKComponents';
+import { LoadingSpinner, GovUKButton, SummaryList, FormFieldRenderer, GovUKErrorSummary } from '../../../../components/GovUKComponents';
 import useErrorSummaryFocus from '../../../../hooks/useErrorSummaryFocus';
 import useFormTelemetry from '../../../../hooks/useFormTelemetry';
 import usePageTitle from '../../../../hooks/usePageTitle';
+import useStepFocus from '../../../../hooks/useStepFocus';
 import { getWiderServiceCategoryForm, saveWiderServiceCategoryForm, FormModuleFieldDto, ConditionalRule, FieldConfiguration } from '../queries';
+import { resolveSnapshotLabel } from '../../../../helpers/answerSnapshot';
 import { encodeNullableForWaf } from '../../../../helpers/stringUtils';
+import { sortFieldsForDisplay } from '../../../../helpers/formFieldOrdering';
 import { processError } from '../../../../helpers/axiosErrorFallback';
 import './styles.css';
+import focusErrorTarget from '../../../../helpers/focusErrorTarget';
+import { ROUTES } from '../../../../constants/routes';
 
 type ViewMode = 'form' | 'summary';
 
@@ -52,6 +57,7 @@ const WiderServiceForm = (): React.ReactElement => {
   const formData = data?.data;
 
   usePageTitle('Provide wider service data', Object.keys(fieldErrors).length > 0);
+  const stepFocusRef = useStepFocus<HTMLDivElement>(`${viewMode}-${currentStep}`);
   useErrorSummaryFocus(submitAttempts, Object.keys(fieldErrors).length > 0);
 
   const saveMutation = useMutation({
@@ -72,8 +78,9 @@ const WiderServiceForm = (): React.ReactElement => {
         markComplete,
       });
     },
+    // BLUM-7520: no longer bumps submitAttempts — GovUKErrorSummary focuses itself on mount, and
+    // useErrorSummaryFocus here is keyed on the field errors, not this one.
     onError: (error) => {
-      setSubmitAttempts((n) => n + 1);
       processError(error, setSaveError);
     },
     onSuccess: (_data, markComplete) => {
@@ -85,7 +92,7 @@ const WiderServiceForm = (): React.ReactElement => {
       queryClient.invalidateQueries(['organisation-admin-submission', submissionId]);
       queryClient.invalidateQueries(['wider-service-users-module', submissionId, moduleId]);
       queryClient.invalidateQueries(['wider-service-category-form', submissionId, moduleId, categoryId]);
-      navigate(`/organisation-admin/submissions/${submissionId}/modules/${moduleId}/wider-services`, {
+      navigate(ROUTES.organisationAdmin.submissions.widerServices.list(submissionId, moduleId), {
         state: {
           notification: {
             type: 'success',
@@ -96,6 +103,17 @@ const WiderServiceForm = (): React.ReactElement => {
       });
     },
   });
+
+  // BLUM-7520: reset() unmounts the save-error summary, which both clears a stale error before a
+  // fresh attempt and lets GovUKErrorSummary re-run its mount focus effect on a repeat failure.
+  // Skipped while a save is in flight: reset() drops currentMutation without detaching the
+  // observer, so that save would later set saveError while isError stayed false — the failure
+  // would be swallowed with no summary shown. Nothing to clear mid-flight anyway.
+  const clearSaveError = () => {
+    if (saveMutation.isLoading) return;
+    saveMutation.reset();
+    setSaveError(undefined);
+  };
 
   const sections = useMemo(() => {
     if (!formData) return [];
@@ -111,7 +129,7 @@ const WiderServiceForm = (): React.ReactElement => {
 
   const currentFields = useMemo(() => {
     if (!formData) return [];
-    const fields = [...formData.fields].sort((a, b) => a.displayOrder - b.displayOrder);
+    const fields = sortFieldsForDisplay(formData.fields);
     if (sections.length === 0) return fields;
     if (!currentSection) return [];
     return fields.filter((f) => f.stepNumber === currentSection.sectionNumber);
@@ -239,6 +257,10 @@ const WiderServiceForm = (): React.ReactElement => {
   };
 
   const handleContinue = () => {
+    // Clear any previous save failure first — the summary now sits above the field-error summary,
+    // so leaving a stale one there would steal the focus that belongs to the validation errors
+    // raised just below (focusErrorSummary takes the first match).
+    clearSaveError();
     if (!validateCurrentStep()) {
       setSubmitAttempts((n) => n + 1);
       return;
@@ -257,6 +279,9 @@ const WiderServiceForm = (): React.ReactElement => {
   };
 
   const handleBack = () => {
+    // Leaving the step that failed — drop the summary, otherwise it renders at the top of the
+    // next step claiming a save failed there.
+    clearSaveError();
     if (viewMode === 'summary') {
       setViewMode('form');
       setCurrentStep(sections.length > 0 ? sections.length : 1);
@@ -266,11 +291,12 @@ const WiderServiceForm = (): React.ReactElement => {
       window.scrollTo(0, 0);
     } else {
       trackAbandoned();
-      navigate(`/organisation-admin/submissions/${submissionId}/modules/${moduleId}/wider-services`);
+      navigate(ROUTES.organisationAdmin.submissions.widerServices.list(submissionId, moduleId));
     }
   };
 
   const handleSaveAsDraft = () => {
+    clearSaveError();
     if (!validateCurrentStep()) {
       setSubmitAttempts((n) => n + 1);
       return;
@@ -279,11 +305,13 @@ const WiderServiceForm = (): React.ReactElement => {
   };
 
   const handleConfirmAndSave = () => {
+    clearSaveError();
     trackSubmitAttempted();
     saveMutation.mutate(true);
   };
 
   const handleChangeAnswer = (stepNumber: number) => {
+    clearSaveError();
     setCurrentStep(stepNumber);
     setViewMode('form');
     window.scrollTo(0, 0);
@@ -327,13 +355,13 @@ const WiderServiceForm = (): React.ReactElement => {
       <GeneralLayout>
         <h1 className="govuk-heading-l">Category not found</h1>
         <p className="govuk-body">The category you are looking for does not exist.</p>
-        <GovUKButton onClick={() => navigate(`/organisation-admin/submissions/${submissionId}/modules/${moduleId}/wider-services`)}>Back to wider services</GovUKButton>
+        <GovUKButton onClick={() => navigate(ROUTES.organisationAdmin.submissions.widerServices.list(submissionId, moduleId))}>Back to wider services</GovUKButton>
       </GeneralLayout>
     );
   }
 
   if (viewMode === 'summary') {
-    const allFields = [...formData.fields].sort((a, b) => a.displayOrder - b.displayOrder);
+    const allFields = sortFieldsForDisplay(formData.fields);
 
     const hasFieldValue = (field: FormModuleFieldDto): boolean => {
       const value = fieldValues[field.code];
@@ -346,6 +374,11 @@ const WiderServiceForm = (): React.ReactElement => {
 
     return (
       <GeneralLayout backLink={{ href: '#', onClick: handleBack }}>
+        <div ref={stepFocusRef}>
+        {saveMutation.isError && (
+          <GovUKErrorSummary heading="There was a problem saving" errors={[{ text: saveError ?? 'Please try again or contact support if the problem persists.' }]} />
+        )}
+
         <span className="govuk-caption-l">
           Step {totalSteps} of {totalSteps}
         </span>
@@ -361,7 +394,7 @@ const WiderServiceForm = (): React.ReactElement => {
           noOuterBorder
           halfWidthColumns
           items={fieldsWithValues.map((field) => ({
-            label: field.label,
+            label: resolveSnapshotLabel(field, fieldValues[field.code]),
             value: getFieldDisplayValue(field),
             onAction: () => handleChangeAnswer(field.stepNumber ?? 1),
             actionLabel: 'Change',
@@ -377,29 +410,26 @@ const WiderServiceForm = (): React.ReactElement => {
         <GovUKButton onClick={handleConfirmAndSave} isLoading={saveMutation.isLoading}>
           Confirm and save
         </GovUKButton>
-
-        {saveMutation.isError && (
-          <div className="govuk-error-summary" data-module="govuk-error-summary">
-            <h2 className="govuk-error-summary__title">There was a problem saving</h2>
-            <div className="govuk-error-summary__body">
-              <p>{saveError ?? 'Please try again or contact support if the problem persists.'}</p>
-            </div>
-          </div>
-        )}
+        </div>
       </GeneralLayout>
     );
   }
 
   return (
     <GeneralLayout backLink={{ href: '#', onClick: handleBack }}>
+      <div ref={stepFocusRef}>
+      {saveMutation.isError && Object.keys(fieldErrors).length === 0 && (
+        <GovUKErrorSummary heading="There was a problem saving" errors={[{ text: saveError ?? 'Please try again or contact support if the problem persists.' }]} />
+      )}
+
       <span className="govuk-caption-l">
         Step {currentStep} of {totalSteps}
       </span>
       <h1 className="govuk-heading-l">Provide data for {formData.categoryName}</h1>
 
       <p className="govuk-body">
-        Tell us about the users who accessed the wider services in this category over the past 3 months. This information will be included in your quarterly Management Information
-        data collection.
+        Tell us about the users who accessed the wider services in this category in the relevant quarter. This information will be included in your quarterly Management
+        Information data collection.
       </p>
 
       <hr className="govuk-section-break govuk-section-break--l govuk-section-break--visible" />
@@ -416,7 +446,7 @@ const WiderServiceForm = (): React.ReactElement => {
                 const summaryMessage = field ? `${field.label} – ${message}` : message;
                 return (
                   <li key={fieldCode}>
-                    <a href={`#${fieldCode}`}>{summaryMessage}</a>
+                    <a href={`#${fieldCode}`} onClick={(e) => focusErrorTarget(e, fieldCode)}>{summaryMessage}</a>
                   </li>
                 );
               })}
@@ -450,15 +480,7 @@ const WiderServiceForm = (): React.ReactElement => {
           Save as draft and exit
         </GovUKButton>
       </div>
-
-      {saveMutation.isError && (
-        <div className="govuk-error-summary" data-module="govuk-error-summary">
-          <h2 className="govuk-error-summary__title">There was a problem saving</h2>
-          <div className="govuk-error-summary__body">
-            <p>{saveError ?? 'Please try again or contact support if the problem persists.'}</p>
-          </div>
-        </div>
-      )}
+      </div>
     </GeneralLayout>
   );
 };

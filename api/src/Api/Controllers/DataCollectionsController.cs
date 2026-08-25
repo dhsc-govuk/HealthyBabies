@@ -110,6 +110,26 @@ public class DataCollectionsController(
             error => error.ToObjectResult());
     }
 
+    [HttpPatch("{dataCollectionId:guid}/dates")]
+    public async Task<ActionResult<DataCollectionDto>> UpdateDates(
+        [FromRoute] Guid dataCollectionId,
+        [FromBody] UpdateDataCollectionDatesDto dto,
+        CancellationToken cancellationToken)
+    {
+        var command = new UpdateDataCollectionDatesCommand
+        {
+            Id = dataCollectionId,
+            StartDate = dto.StartDate,
+            EndDate = dto.EndDate
+        };
+
+        var result = await sender.Send(command, cancellationToken);
+
+        return result.Match<ActionResult<DataCollectionDto>>(
+            dc => DataCollectionDto.FromDomainModelWithLocalAuthorities(dc),
+            error => error.ToObjectResult());
+    }
+
     [HttpDelete("{dataCollectionId:guid}")]
     public async Task<ActionResult<DataCollectionDto>> Delete(
         [FromRoute] Guid dataCollectionId,
@@ -259,23 +279,12 @@ public class DataCollectionsController(
     public async Task<ActionResult> DownloadSubmission(
         [FromRoute] Guid dataCollectionId,
         [FromRoute] Guid localAuthorityId,
-        [FromQuery] string format = "csv",
         CancellationToken cancellationToken = default)
     {
-        if (format.Equals("json", StringComparison.OrdinalIgnoreCase))
-        {
-            var jsonResult = await submissionExportService.ExportSubmissionAsJsonAsync(
-                dataCollectionId, localAuthorityId, cancellationToken);
-
-            return jsonResult.Match<ActionResult>(
-                bytes => File(bytes, "application/json", $"submission_{dataCollectionId}_{localAuthorityId}.json"),
-                error => NotFound(error));
-        }
-
-        var csvResult = await submissionExportService.ExportSubmissionAsCsvZipAsync(
+        var zipResult = await submissionExportService.ExportSubmissionAsZipAsync(
             dataCollectionId, localAuthorityId, cancellationToken);
 
-        return csvResult.Match<ActionResult>(
+        return zipResult.Match<ActionResult>(
             bytes => File(bytes, "application/zip", $"submission_{dataCollectionId}_{localAuthorityId}.zip"),
             error => NotFound(error));
     }
