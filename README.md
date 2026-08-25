@@ -7,7 +7,6 @@ A secure, cloud-native compliance management platform for local authorities mana
 ## Table of Contents
 
 - [Architecture](#architecture)
-- [⚠️ Security note before you start](#️-security-note-before-you-start)
 - [Prerequisites](#prerequisites)
 - [Project Structure](#project-structure)
 - [Entra ID setup](#entra-id-setup)
@@ -37,17 +36,6 @@ A full-stack application consisting of:
 - **Hosting / CI-CD**: this repo currently has **two independent deployment lineages** that must not be confused — see [Deployment](#deployment).
 
 For the full architecture diagram and detailed technical specification see [docs/Technical-Architecture-Spec.md](docs/Technical-Architecture-Spec.md) and [docs/architecture-c4-deployment.puml](docs/architecture-c4-deployment.puml).
-
----
-
-## ⚠️ Security note before you start
-
-An audit while writing this README found **live, working credentials committed to git history** (present since the repo's initial commit), not placeholders:
-
-- `api/src/Api/appsettings.Development.json` — a real Entra client secret, a real Azure Storage account key (full connection string), and a real default-user password
-- `client/src/config.json` — a real tenant ID, API app ID, and SPA app ID (lower sensitivity, but also not meant to be public)
-
-Both files are tracked by git (`client/src/config.json` has a `.gitignore` entry, but it was already committed before that was added, so the entry has no effect). **Before or as part of this handover, rotate the client secret and storage account key in Azure/Entra, and decide whether to scrub git history** — editing the files going forward does not remove old values already in history. This README uses placeholders throughout; do not copy real values out of it into anything you share further.
 
 ---
 
@@ -96,7 +84,7 @@ family-hubs-suite/
 │       ├── hooks/                # Custom React hooks
 │       ├── services/             # API service layer
 │       ├── types/                # TypeScript type definitions
-│       ├── config.json           # Runtime config (tracked in git — see security note above)
+│       ├── config.json           # Runtime config, tracked in git (contains placeholders only)
 │       ├── config.ts             # Loads config.json, overridable via VITE_* env vars
 │       └── Routes.tsx
 ├── docs/                         # Architecture documentation and diagrams
@@ -273,7 +261,7 @@ GRANT ALL PRIVILEGES ON DATABASE family_hubs_db TO family_hubs_user;
 
 #### 2. Configure the API
 
-Create `api/src/Api/appsettings.Development.json` (this file already exists in the repo with real values checked in — see the [security note](#️-security-note-before-you-start); replace them with your own tenant's values rather than reusing what's there):
+Create `api/src/Api/appsettings.Development.json` (gitignored — it will hold your own secrets, so it should never be committed):
 
 ```json
 {
@@ -330,7 +318,7 @@ The API listens on the URL printed by `dotnet run` (typically `https://localhost
 
 #### 4. Configure the client
 
-`client/src/config.json` already exists in the repo (also with real values checked in — replace with your own). Either edit it directly, or override any field with an environment variable prefixed `VITE_` (see [Configuration Reference](#configuration-reference)) without touching the tracked file — e.g. a `client/.env.local` (gitignored by the default Vite `.gitignore` pattern, though this repo doesn't currently have a template for it):
+`client/src/config.json` already exists in the repo with placeholder values — replace them with your own tenant's values. Either edit it directly, or override any field with an environment variable prefixed `VITE_` (see [Configuration Reference](#configuration-reference)) without touching the tracked file — e.g. a `client/.env.local` (gitignored by the default Vite `.gitignore` pattern, though this repo doesn't currently have a template for it):
 
 ```json
 {
