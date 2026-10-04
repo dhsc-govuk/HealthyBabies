@@ -30,7 +30,7 @@
     "govuk-frontend": "^6.0.0-rc.0",
     "govuk-react": "^0.10.7",
     "konva": "^9.2.3",
-    "moment": "^2.29.4",
+    "moment": "^2.31.0",
     "notistack": "^2.0.8",
     "pdfkit": "^0.19.1",
     "qrcode.react": "^4.2.0",
